@@ -32,8 +32,7 @@ model = DualProcessModel()
 # MV_result.to_csv('./data/MV_results_dual.csv', index=False)
 # HV_result.to_csv('./data/HV_results_dual.csv', index=False)
 
-for df in [LV, MV, HV]:
-    for model_type in ['Dir', 'Gau', 'Param']:
-        result = model.fit(df, model_type, num_iterations=100)
-        result.to_csv(f'./data/{df}_results_{model_type}.csv', index=False)
+for model_type in ['Dir', 'Gau', 'Param']:
+    result = model.fit(HV, model_type, num_iterations=100)
+    result.to_csv(f'./data/DataFitting/{model_type}_hv_results.csv', index=False)
 

@@ -146,8 +146,8 @@ class DualProcessModel:
 
                 unpacked_results.append(var)
 
-            df = pd.DataFrame(unpacked_results)
-            return df
+        df = pd.DataFrame(unpacked_results)
+        return df
 
     def simulate(self, reward_means, reward_sd, model, AB_freq=None, CD_freq=None,
                  sim_trials=250, num_iterations=1000):
