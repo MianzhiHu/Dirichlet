@@ -23,15 +23,17 @@ LV, MV, HV = dataframes
 
 
 model = DualProcessModel()
-LV_result = model.fit(LV, 'Dual', num_iterations=100)
-MV_result = model.fit(MV, 'Dual', num_iterations=100)
-HV_result = model.fit(HV, 'Dual', num_iterations=100)
+# LV_result = model.fit(LV, 'Dual', num_iterations=100)
+# MV_result = model.fit(MV, 'Dual', num_iterations=100)
+# HV_result = model.fit(HV, 'Dual', num_iterations=100)
 
-# Save the results
-LV_result.to_csv('./data/LV_results_dual.csv', index=False)
-MV_result.to_csv('./data/MV_results_dual.csv', index=False)
-HV_result.to_csv('./data/HV_results_dual.csv', index=False)
+# # Save the results
+# LV_result.to_csv('./data/LV_results_dual.csv', index=False)
+# MV_result.to_csv('./data/MV_results_dual.csv', index=False)
+# HV_result.to_csv('./data/HV_results_dual.csv', index=False)
 
-LV_dir = model.fit(LV, 'Dir', num_iterations=1)
-LV_Gau = model.fit(LV, 'Gau', num_iterations=1)
+for df in [LV, MV, HV]:
+    for model_type in ['Dir', 'Gau', 'Param']:
+        result = model.fit(df, model_type, num_iterations=100)
+        result.to_csv(f'./data/{df}_results_{model_type}.csv', index=False)
 
