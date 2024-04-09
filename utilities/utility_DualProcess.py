@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from scipy.optimize import minimize
 from scipy.stats import chi2, dirichlet, multivariate_normal
+from concurrent.futures import ProcessPoolExecutor
 
 
 # This function is used to build and fit a dual-process model
@@ -9,6 +10,65 @@ from scipy.stats import chi2, dirichlet, multivariate_normal
 # is potentially driven by two processes: a Dirichlet process and a Gaussian process.
 # When the variance of the underlying reward distribution is small, the Gaussian process (average) dominates the
 # decision-making process, whereas when the variance is large, the Dirichlet process (frequency) dominates.
+
+def fit_participant(model, participant_id, pdata, model_type, num_iterations=1000):
+
+    print(f"Fitting participant {participant_id}...")
+
+    total_nll = 0
+    total_n = model.num_trials
+
+    if model_type == 'Param':
+        k = 2
+    else:
+        k = 1
+
+    model.iteration = 0
+
+    best_nll = 100000
+    best_initial_guess = None
+    best_parameters = None
+
+    for _ in range(num_iterations):
+
+        model.iteration += 1
+
+        print(f"\n=== Iteration {model.iteration} ===\n")
+
+        if model_type == 'Param':
+            initial_guess = [np.random.uniform(0, 5), np.random.uniform(0, 1)]
+            bounds = [(0, 5), (0, 1)]
+        else:
+            initial_guess = [np.random.uniform(0, 5)]
+            bounds = [(0, 5)]
+
+        result = minimize(model.negative_log_likelihood, initial_guess,
+                          args=(pdata['reward'], pdata['choiceset'], pdata['choice']),
+                          bounds=bounds, method='L-BFGS-B', options={'maxiter': 10000})
+
+        if result.fun < best_nll:
+            best_nll = result.fun
+            best_initial_guess = initial_guess
+            best_parameters = result.x
+            best_process_chosen = model.process_chosen
+
+    aic = 2 * k + 2 * best_nll
+    bic = k * np.log(total_n) + 2 * best_nll
+
+    total_nll += best_nll
+
+    result_dict = {
+        'participant_id': participant_id,
+        'best_nll': best_nll,
+        'best_initial_guess': best_initial_guess,
+        'best_parameters': best_parameters,
+        'best_process_chosen': best_process_chosen,
+        'total_nll': total_nll,
+        'AIC': aic,
+        'BIC': bic
+    }
+
+    return result_dict
 
 
 class DualProcessModel:
@@ -158,6 +218,8 @@ class DualProcessModel:
         for iteration in range(num_iterations):
 
             print(f"Iteration {iteration + 1} of {num_iterations}")
+
+            self.reset()
 
             self.t = np.random.uniform(0, 5)
 
@@ -321,66 +383,22 @@ class DualProcessModel:
     def fit(self, data, model, num_iterations=1000):
 
         self.model = model
-        all_results = []
-        total_nll = 0
-        total_n = self.num_trials
 
-        if self.model == 'Param':
-            k = 2
-        else:
-            k = 1
+        # Creating a list to hold the future results
+        futures = []
+        results = []
 
-        for participant_id, pdata in data.items():
-            print(f"Fitting data for {participant_id}...")
-            self.iteration = 0
+        # Starting a pool of workers with ProcessPoolExecutor
+        with ProcessPoolExecutor() as executor:
+            # Submitting jobs to the executor for each participant
+            for participant_id, participant_data in data.items():
+                # fit_participant is the function to be executed in parallel
+                future = executor.submit(fit_participant, self, participant_id, participant_data, model, num_iterations)
+                futures.append(future)
 
-            best_nll = 100000
-            best_initial_guess = None
-            best_parameters = None
+            # Collecting results as they complete
+            for future in futures:
+                results.append(future.result())
 
-            for _ in range(num_iterations):
-
-                self.iteration += 1
-
-                print(f"\n=== Iteration {self.iteration} ===\n")
-
-                if self.model == 'Param':
-                    initial_guess = [np.random.uniform(0, 5), np.random.uniform(0, 1)]
-                    bounds = [(0, 5), (0, 1)]
-                else:
-                    initial_guess = [np.random.uniform(0, 5)]
-                    bounds = [(0, 5)]
-
-                result = minimize(self.negative_log_likelihood, initial_guess,
-                                  args=(pdata['reward'], pdata['choiceset'], pdata['choice']),
-                                  bounds=bounds, method='L-BFGS-B', options={'maxiter': 10000})
-
-                if result.fun < best_nll:
-                    best_nll = result.fun
-                    best_initial_guess = initial_guess
-                    best_parameters = result.x
-                    best_process_chosen = self.process_chosen
-
-            aic = 2 * k + 2 * best_nll
-            bic = k * np.log(total_n) + 2 * best_nll
-
-            total_nll += best_nll
-
-            result_dict = {
-                'participant_id': participant_id,
-                'best_nll': best_nll,
-                'best_initial_guess': best_initial_guess,
-                'best_parameters': best_parameters,
-                'best_process_chosen': best_process_chosen,
-                'total_nll': total_nll,
-                'AIC': aic,
-                'BIC': bic
-            }
-
-            all_results.append(result_dict)
-
-        return pd.DataFrame(all_results)
-
-
-
+        return pd.DataFrame(results)
 
