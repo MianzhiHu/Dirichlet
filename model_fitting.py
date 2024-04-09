@@ -24,14 +24,14 @@ if __name__ == '__main__':
 
 
     model = DualProcessModel()
-    # LV_result = model.fit(LV, 'Dual', num_iterations=100)
-    # MV_result = model.fit(MV, 'Dual', num_iterations=100)
-    # HV_result = model.fit(HV, 'Dual', num_iterations=100)
-    #
-    # # Save the results
-    # LV_result.to_csv('./data/dual_LV_results.csv', index=False)
-    # MV_result.to_csv('./data/dual_MV_results.csv', index=False)
-    # HV_result.to_csv('./data/dual_HV_results.csv', index=False)
+    LV_result = model.fit(LV, 'Dual', num_iterations=100)
+    MV_result = model.fit(MV, 'Dual', num_iterations=100)
+    HV_result = model.fit(HV, 'Dual', num_iterations=100)
+
+    # Save the results
+    LV_result.to_csv('./data/dual_LV_results.csv', index=False)
+    MV_result.to_csv('./data/dual_MV_results.csv', index=False)
+    HV_result.to_csv('./data/dual_HV_results.csv', index=False)
 
     for model_type in ['Dir', 'Gau', 'Param']:
         result = model.fit(HV, model_type, num_iterations=100)

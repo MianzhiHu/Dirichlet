@@ -2,6 +2,79 @@ import numpy as np
 import pandas as pd
 from scipy.optimize import minimize
 from scipy.stats import chi2
+from concurrent.futures import ProcessPoolExecutor
+
+
+def fit_participant(model, participant_id, pdata, model_type, num_iterations=1000,
+                    beta_lower=-1, beta_upper=1):
+
+    print(f"Fitting participant {participant_id}...")
+
+    total_nll = 0  # Initialize the cumulative negative log likelihood
+    total_n = model.num_trials
+
+    if model_type in ('decay', 'delta', 'decay_choice', 'decay_win'):
+        k = 2  # Initialize the cumulative number of parameters
+    elif model_type in ('decay_fre', 'delta_decay'):
+        k = 3
+    elif model_type == 'sampler_decay':
+        k = model.num_params
+
+    model.iteration = 0
+
+    best_nll = 100000  # Initialize best negative log likelihood to a large number
+    best_initial_guess = None
+    best_parameters = None
+
+    for _ in range(num_iterations):  # Randomly initiate the starting parameter for 1000 times
+
+        model.iteration += 1
+
+        print(f"\n=== Iteration {model.iteration} ===\n")
+
+        if model_type in ('decay', 'delta', 'decay_choice', 'decay_win'):
+            initial_guess = [np.random.uniform(0, 5), np.random.uniform(0, 1)]
+            bounds = ((0.0001, 4.9999), (0.0001, 0.9999))
+        elif model_type in ('decay_fre', 'delta_decay'):
+            initial_guess = [np.random.uniform(0, 5), np.random.uniform(0, 1),
+                             np.random.uniform(beta_lower, beta_upper)]
+            bounds = ((0.0001, 4.9999), (0.0001, 0.9999), (beta_lower, beta_upper))
+        elif model_type == 'sampler_decay':
+            if model.num_params == 2:
+                initial_guess = [np.random.uniform(0, 5), np.random.uniform(0, 1)]
+                bounds = ((0.0001, 4.9999), (0.0001, 0.9999))
+            elif model.num_params == 3:
+                initial_guess = [np.random.uniform(0, 5), np.random.uniform(0, 1),
+                                 np.random.uniform(0, 1)]
+                bounds = ((0.0001, 4.9999), (0.0001, 0.9999), (0, 1))
+
+        result = minimize(model.negative_log_likelihood, initial_guess,
+                          args=(pdata['reward'], pdata['choiceset'], pdata['choice']),
+                          bounds=bounds, method='L-BFGS-B', options={'maxiter': 10000})
+
+        if result.fun < best_nll:
+            best_nll = result.fun
+            best_initial_guess = initial_guess
+            best_parameters = result.x
+
+    aic = 2 * k + 2 * best_nll
+    bic = k * np.log(total_n) + 2 * best_nll
+
+    total_nll += best_nll
+
+    result_dict = {
+        'participant_id': participant_id,
+        'best_nll': best_nll,
+        'best_initial_guess': best_initial_guess,
+        'best_parameters': best_parameters,
+        'total_nll': total_nll,
+        'AIC': aic,
+        'BIC': bic
+    }
+
+    return result_dict
+
+
 
 
 class ComputationalModels:
@@ -283,83 +356,26 @@ class ComputationalModels:
             self.update(ch, r, trial)
         return nll
 
-    def fit(self, data, num_iterations=1, beta_lower=-1, beta_upper=1):
-        """
-        Fit the model to the provided data.
+    def fit(self, data, num_iterations=1000, beta_lower=-1, beta_upper=1):\
 
-        Parameters:
-        - data: Dictionary of data for each participant.
-        - num_iterations: Number of times to repeat the fitting.
-        - beta_lower: Lower bound for the beta parameter.
-        - beta_upper: Upper bound for the beta parameter.
-        """
+        # Creating a list to hold the future results
+        futures = []
+        results = []
 
-        all_results = []
-        total_nll = 0  # Initialize the cumulative negative log likelihood
-        total_n = self.num_trials
+        # Starting a pool of workers with ProcessPoolExecutor
+        with ProcessPoolExecutor() as executor:
+            # Submitting jobs to the executor for each participant
+            for participant_id, participant_data in data.items():
+                # fit_participant is the function to be executed in parallel
+                future = executor.submit(fit_participant, self, participant_id, participant_data, self.model_type,
+                                         num_iterations, beta_lower, beta_upper)
+                futures.append(future)
 
-        if self.model_type in ('decay', 'delta', 'decay_choice', 'decay_win'):
-            k = 2  # Initialize the cumulative number of parameters
-        elif self.model_type in ('decay_fre', 'delta_decay'):
-            k = 3
-        elif self.model_type == 'sampler_decay':
-            k = self.num_params
+            # Collecting results as they complete
+            for future in futures:
+                results.append(future.result())
 
-        for participant_id, pdata in data.items():
-
-            print(f"Fitting data for {participant_id}...")
-            self.iteration = 0
-
-            best_nll = 100000  # Initialize best negative log likelihood to a large number
-            best_initial_guess = None
-            best_parameters = None
-
-            for _ in range(num_iterations):  # Randomly initiate the starting parameter for 1000 times
-
-                self.iteration += 1
-                print(f"\n=== Iteration {self.iteration} ===\n")
-
-                if self.model_type in ('decay', 'delta', 'decay_choice', 'decay_win'):
-                    initial_guess = [np.random.uniform(0, 5), np.random.uniform(0, 1)]
-                    bounds = ((0, 5), (0, 1))
-                elif self.model_type in ('decay_fre', 'delta_decay'):
-                    initial_guess = [np.random.uniform(0, 5), np.random.uniform(0, 1),
-                                     np.random.uniform(beta_lower, beta_upper)]
-                    bounds = ((0, 5), (0, 1), (beta_lower, beta_upper))
-                elif self.model_type == 'sampler_decay':
-                    if self.num_params == 2:
-                        initial_guess = [np.random.uniform(0, 5), np.random.uniform(0, 1)]
-                        bounds = ((0, 5), (0, 1))
-                    elif self.num_params == 3:
-                        initial_guess = [np.random.uniform(0, 5), np.random.uniform(0, 1),
-                                         np.random.uniform(0, 1)]
-                        bounds = ((0, 5), (0, 1), (0, 1))
-
-                result = minimize(self.negative_log_likelihood, initial_guess,
-                                  args=(pdata['reward'], pdata['choiceset'], pdata['choice']),
-                                  bounds=bounds, method='L-BFGS-B', options={'maxiter': 10000})
-
-                if result.fun < best_nll:
-                    best_nll = result.fun
-                    best_initial_guess = initial_guess
-                    best_parameters = result.x
-
-            aic = 2 * k + 2 * best_nll
-            bic = k * np.log(total_n) + 2 * best_nll
-
-            total_nll += best_nll
-
-            all_results.append({
-                'participant_id': participant_id,
-                'best_nll': best_nll,
-                'best_initial_guess': best_initial_guess,
-                'best_parameters': best_parameters,
-                'total_nll': total_nll,
-                'AIC': aic,
-                'BIC': bic
-            })
-
-        return all_results
+        return pd.DataFrame(results)
 
 
 def likelihood_ratio_test(null_results, alternative_results, df):

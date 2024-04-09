@@ -112,13 +112,19 @@ class DualProcessModel:
             return self.EV_Dir, self.EV_Gau
 
         else:
+            self.reward_history[chosen].append(reward)
             # for every trial, we need to update the EV for both the Dirichlet and Gaussian processes
             # Dirichlet process
-            self.alpha[chosen] += 1
+            flatten_reward_history = [item for sublist in self.reward_history for item in sublist]
+            AV_total = np.mean(flatten_reward_history)
+            if reward > AV_total:
+                self.alpha[chosen] += 1
+            else:
+                pass
+
             self.EV_Dir = np.mean(dirichlet.rvs(self.alpha, size=self.n_samples), axis=0)
 
             # Gaussian process
-            self.reward_history[chosen].append(reward)
             # Update AV and var with new calculations or keep initial values if no rewards
             self.AV = [np.mean(hist) if len(hist) > 0 else 0.5 for hist in self.reward_history]
             self.var = [np.var(hist) if len(hist) > 0 else 0 for hist in self.reward_history]

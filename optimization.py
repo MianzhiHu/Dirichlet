@@ -2,7 +2,7 @@ import pandas as pd
 import cProfile
 import pstats
 from utilities.utility_DualProcess import DualProcessModel
-from utilities.utility_ComputationalModeling import dict_generator
+from utilities.utility_ComputationalModeling import dict_generator, ComputationalModels
 
 # When running the model fitting function, I found out that it was taking too much time to run.
 # So this file is to optimize the model fitting function to make it run faster and it serves no other purpose.
@@ -13,13 +13,14 @@ if __name__ == '__main__':
 
     # setting up the model
     model = DualProcessModel()
-    # reward_means = [0.65, 0.35, 0.75, 0.25]
-    # hv = [0.43, 0.43, 0.43, 0.43]
-    # mv = [0.265, 0.265, 0.265, 0.265]
-    # lv = [0.1, 0.1, 0.1, 0.1]
-    # uncertainty = [0.43, 0.43, 0.12, 0.12]
-    #
-    #
+
+    reward_means = [0.65, 0.35, 0.75, 0.25]
+    hv = [0.43, 0.43, 0.43, 0.43]
+    mv = [0.265, 0.265, 0.265, 0.265]
+    lv = [0.1, 0.1, 0.1, 0.1]
+    uncertainty = [0.43, 0.43, 0.12, 0.12]
+
+    RLmodel = ComputationalModels(reward_means, hv, 'decay')
     # model.simulate(reward_means, hv, model='Dual', AB_freq=100, CD_freq=50, num_iterations=30)
 
     # optimize the model fitting function
@@ -43,7 +44,8 @@ if __name__ == '__main__':
 
     LV, MV, HV = dataframes
 
-    LV_result = model.fit(LV, 'Dual', num_iterations=1)
+    # LV_result = model.fit(LV, 'Dual', num_iterations=1)
+    LV_result = RLmodel.fit(LV, num_iterations=2)
 
     profiler.disable()
     stats = pstats.Stats(profiler).sort_stats('cumtime')
