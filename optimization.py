@@ -20,7 +20,7 @@ if __name__ == '__main__':
     lv = [0.1, 0.1, 0.1, 0.1]
     uncertainty = [0.43, 0.43, 0.12, 0.12]
 
-    RLmodel = ComputationalModels(reward_means, hv, 'decay')
+    RLmodel = ComputationalModels('decay')
     # model.simulate(reward_means, hv, model='Dual', AB_freq=100, CD_freq=50, num_iterations=30)
 
     # optimize the model fitting function
@@ -45,7 +45,7 @@ if __name__ == '__main__':
     LV, MV, HV = dataframes
 
     # LV_result = model.fit(LV, 'Dual', num_iterations=1)
-    LV_result = RLmodel.fit(LV, num_iterations=2)
+    LV_result = RLmodel.fit(LV, num_iterations=20)
 
     profiler.disable()
     stats = pstats.Stats(profiler).sort_stats('cumtime')

@@ -33,19 +33,19 @@ def fit_participant(model, participant_id, pdata, model_type, num_iterations=100
         print(f"\n=== Iteration {model.iteration} ===\n")
 
         if model_type in ('decay', 'delta', 'decay_choice', 'decay_win'):
-            initial_guess = [np.random.uniform(0, 5), np.random.uniform(0, 1)]
+            initial_guess = [np.random.uniform(0.0001, 4.9999), np.random.uniform(0.0001, 0.9999)]
             bounds = ((0.0001, 4.9999), (0.0001, 0.9999))
         elif model_type in ('decay_fre', 'delta_decay'):
-            initial_guess = [np.random.uniform(0, 5), np.random.uniform(0, 1),
+            initial_guess = [np.random.uniform(0.0001, 4.9999), np.random.uniform(0.0001, 0.9999),
                              np.random.uniform(beta_lower, beta_upper)]
             bounds = ((0.0001, 4.9999), (0.0001, 0.9999), (beta_lower, beta_upper))
         elif model_type == 'sampler_decay':
             if model.num_params == 2:
-                initial_guess = [np.random.uniform(0, 5), np.random.uniform(0, 1)]
+                initial_guess = [np.random.uniform(0.0001, 4.9999), np.random.uniform(0.0001, 0.9999)]
                 bounds = ((0.0001, 4.9999), (0.0001, 0.9999))
             elif model.num_params == 3:
-                initial_guess = [np.random.uniform(0, 5), np.random.uniform(0, 1),
-                                 np.random.uniform(0, 1)]
+                initial_guess = [np.random.uniform(0.0001, 4.9999), np.random.uniform(0.0001, 0.9999),
+                                 np.random.uniform(0.0001, 0.9999)]
                 bounds = ((0.0001, 4.9999), (0.0001, 0.9999), (0, 1))
 
         result = minimize(model.negative_log_likelihood, initial_guess,
@@ -75,11 +75,8 @@ def fit_participant(model, participant_id, pdata, model_type, num_iterations=100
     return result_dict
 
 
-
-
 class ComputationalModels:
-    def __init__(self, reward_means, reward_sd, model_type, condition="Gains", num_trials=250,
-                 num_params=2):
+    def __init__(self, model_type, condition="Gains", num_trials=250, num_params=2):
         """
         Initialize the Model.
 
@@ -114,10 +111,6 @@ class ComputationalModels:
             self.EVs = np.full(self.num_options, -0.5)
         elif self.condition == "Both":
             self.EVs = np.full(self.num_options, 0.0)
-
-        # Reward structure
-        self.reward_means = reward_means
-        self.reward_sd = reward_sd
 
         # Model type
         self.model_type = model_type
@@ -235,7 +228,7 @@ class ComputationalModels:
         denom = num + np.exp(min(700, c * alt1))
         return num / denom
 
-    def simulate(self, num_trials=250, AB_freq=None, CD_freq=None, num_iterations=1000,
+    def simulate(self, reward_means, reward_sd, num_trials=250, AB_freq=None, CD_freq=None, num_iterations=1000,
                  beta_lower=-1, beta_upper=1):
         """
         Simulate the EV updates for a given number of trials and specified number of iterations.
@@ -289,7 +282,7 @@ class ComputationalModels:
                     prob_optimal = self.softmax(self.EVs[optimal], self.EVs[suboptimal])
                     chosen = optimal if np.random.rand() < prob_optimal else suboptimal
 
-                reward = np.random.normal(self.reward_means[chosen], self.reward_sd[chosen])
+                reward = np.random.normal(reward_means[chosen], reward_sd[chosen])
                 trial_details.append(
                     {"trial": trial + 1, "pair": (chr(65 + pair[0]), chr(65 + pair[1])), "choice": chr(65 + chosen),
                      "reward": reward})

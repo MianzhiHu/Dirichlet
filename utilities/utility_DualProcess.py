@@ -4,7 +4,6 @@ from scipy.optimize import minimize
 from scipy.stats import chi2, dirichlet, multivariate_normal
 from concurrent.futures import ProcessPoolExecutor
 
-
 # This function is used to build and fit a dual-process model
 # The idea of the dual-process model is that decision-making, particularly decision-making in the ABCD task,
 # is potentially driven by two processes: a Dirichlet process and a Gaussian process.
@@ -36,11 +35,11 @@ def fit_participant(model, participant_id, pdata, model_type, num_iterations=100
         print(f"\n=== Iteration {model.iteration} ===\n")
 
         if model_type == 'Param':
-            initial_guess = [np.random.uniform(0, 5), np.random.uniform(0, 1)]
-            bounds = [(0, 5), (0, 1)]
+            initial_guess = [np.random.uniform(0.0001, 4.9999), np.random.uniform(0.0001, 0.9999)]
+            bounds = [(0.0001, 4.9999), (0.0001, 0.9999)]
         else:
-            initial_guess = [np.random.uniform(0, 5)]
-            bounds = [(0, 5)]
+            initial_guess = [np.random.uniform(0.0001, 4.9999)]
+            bounds = [(0.0001, 4.9999)]
 
         result = minimize(model.negative_log_likelihood, initial_guess,
                           args=(pdata['reward'], pdata['choiceset'], pdata['choice']),

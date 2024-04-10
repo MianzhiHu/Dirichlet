@@ -1,5 +1,6 @@
 import pandas as pd
 import os
+import ast
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 from utilities.utility_DualProcess import DualProcessModel
@@ -24,61 +25,60 @@ hv = [0.43, 0.43, 0.43, 0.43]
 mv = [0.265, 0.265, 0.265, 0.265]
 lv = [0.1, 0.1, 0.1, 0.1]
 uncertainty = [0.43, 0.43, 0.12, 0.12]
+#
+# # model simulation
+# dir_hv = model.simulate(reward_means, hv, model='Dir', AB_freq=100, CD_freq=50)
+# dir_mv = model.simulate(reward_means, mv, model='Dir', AB_freq=100, CD_freq=50)
+# dir_lv = model.simulate(reward_means, lv, model='Dir', AB_freq=100, CD_freq=50)
+#
+# gau_hv = model.simulate(reward_means, hv, model='Gau', AB_freq=100, CD_freq=50)
+# gau_mv = model.simulate(reward_means, mv, model='Gau', AB_freq=100, CD_freq=50)
+# gau_lv = model.simulate(reward_means, lv, model='Gau', AB_freq=100, CD_freq=50)
+#
+# dual_hv = model.simulate(reward_means, hv, model='Dual', AB_freq=100, CD_freq=50)
+# dual_mv = model.simulate(reward_means, mv, model='Dual', AB_freq=100, CD_freq=50)
+# dual_lv = model.simulate(reward_means, lv, model='Dual', AB_freq=100, CD_freq=50)
+#
+# mixed_hv = model.simulate(reward_means, hv, model='Param', AB_freq=100, CD_freq=50)
+# mixed_mv = model.simulate(reward_means, mv, model='Param', AB_freq=100, CD_freq=50)
+# mixed_lv = model.simulate(reward_means, lv, model='Param', AB_freq=100, CD_freq=50)
+#
+# uncertainty_dual = model.simulate(reward_means, uncertainty, model='Dual', AB_freq=100, CD_freq=50)
+#
+# uncertainty_dir = model.simulate(reward_means, uncertainty, model='Dir', AB_freq=100, CD_freq=50)
+#
+# uncertainty_gau = model.simulate(reward_means, uncertainty, model='Gau', AB_freq=100, CD_freq=50)
+#
+# uncertainty_mixed = model.simulate(reward_means, uncertainty, model='Param', AB_freq=100, CD_freq=50)
+#
+# # save the simulation results
+# dir_hv.to_csv('./data/Simulation/dir_hv.csv', index=False)
+# dir_mv.to_csv('./data/Simulation/dir_mv.csv', index=False)
+# dir_lv.to_csv('./data/Simulation/dir_lv.csv', index=False)
+#
+# gau_hv.to_csv('./data/Simulation/gau_hv.csv', index=False)
+# gau_mv.to_csv('./data/Simulation/gau_mv.csv', index=False)
+# gau_lv.to_csv('./data/Simulation/gau_lv.csv', index=False)
+#
+# dual_hv.to_csv('./data/Simulation/dual_hv.csv', index=False)
+# dual_mv.to_csv('./data/Simulation/dual_mv.csv', index=False)
+# dual_lv.to_csv('./data/Simulation/dual_lv.csv', index=False)
 
-# model simulation
-dir_hv = model.simulate(reward_means, hv, model='Dir', AB_freq=100, CD_freq=50)
-dir_mv = model.simulate(reward_means, mv, model='Dir', AB_freq=100, CD_freq=50)
-dir_lv = model.simulate(reward_means, lv, model='Dir', AB_freq=100, CD_freq=50)
+# mixed_hv.to_csv('./data/Simulation/mixed_hv.csv', index=False)
+# mixed_mv.to_csv('./data/Simulation/mixed_mv.csv', index=False)
+# mixed_lv.to_csv('./data/Simulation/mixed_lv.csv', index=False)
 
-gau_hv = model.simulate(reward_means, hv, model='Gau', AB_freq=100, CD_freq=50)
-gau_mv = model.simulate(reward_means, mv, model='Gau', AB_freq=100, CD_freq=50)
-gau_lv = model.simulate(reward_means, lv, model='Gau', AB_freq=100, CD_freq=50)
-
-dual_hv = model.simulate(reward_means, hv, model='Dual', AB_freq=100, CD_freq=50)
-dual_mv = model.simulate(reward_means, mv, model='Dual', AB_freq=100, CD_freq=50)
-dual_lv = model.simulate(reward_means, lv, model='Dual', AB_freq=100, CD_freq=50)
-
-mixed_hv = model.simulate(reward_means, hv, model='Param', AB_freq=100, CD_freq=50)
-mixed_mv = model.simulate(reward_means, mv, model='Param', AB_freq=100, CD_freq=50)
-mixed_lv = model.simulate(reward_means, lv, model='Param', AB_freq=100, CD_freq=50)
-
-uncertainty_dual = model.simulate(reward_means, uncertainty, model='Dual', AB_freq=100, CD_freq=50)
-
-uncertainty_dir = model.simulate(reward_means, uncertainty, model='Dir', AB_freq=100, CD_freq=50)
-
-uncertainty_gau = model.simulate(reward_means, uncertainty, model='Gau', AB_freq=100, CD_freq=50)
-
-uncertainty_mixed = model.simulate(reward_means, uncertainty, model='Param', AB_freq=100, CD_freq=50)
-
-# save the simulation results
-dir_hv.to_csv('./data/Simulation/dir_hv.csv', index=False)
-dir_mv.to_csv('./data/Simulation/dir_mv.csv', index=False)
-dir_lv.to_csv('./data/Simulation/dir_lv.csv', index=False)
-
-gau_hv.to_csv('./data/Simulation/gau_hv.csv', index=False)
-gau_mv.to_csv('./data/Simulation/gau_mv.csv', index=False)
-gau_lv.to_csv('./data/Simulation/gau_lv.csv', index=False)
-
-dual_hv.to_csv('./data/Simulation/dual_hv.csv', index=False)
-dual_mv.to_csv('./data/Simulation/dual_mv.csv', index=False)
-dual_lv.to_csv('./data/Simulation/dual_lv.csv', index=False)
-
-mixed_hv.to_csv('./data/Simulation/mixed_hv.csv', index=False)
-mixed_mv.to_csv('./data/Simulation/mixed_mv.csv', index=False)
-mixed_lv.to_csv('./data/Simulation/mixed_lv.csv', index=False)
-
-uncertainty_dual.to_csv('./data/Simulation/dual_uncertainty.csv', index=False)
-uncertainty_dir.to_csv('./data/Simulation/dir_uncertainty.csv', index=False)
-uncertainty_gau.to_csv('./data/Simulation/gau_uncertainty.csv', index=False)
-uncertainty_mixed.to_csv('./data/Simulation/mixed_uncertainty.csv', index=False)
-
+# uncertainty_dual.to_csv('./data/Simulation/dual_uncertainty.csv', index=False)
+# uncertainty_dir.to_csv('./data/Simulation/dir_uncertainty.csv', index=False)
+# uncertainty_gau.to_csv('./data/Simulation/gau_uncertainty.csv', index=False)
+# uncertainty_mixed.to_csv('./data/Simulation/mixed_uncertainty.csv', index=False)
 
 
 # # visualize the simulation results
 # cols_to_mean_dir = ['EV_A_Dir', 'EV_B_Dir', 'EV_C_Dir', 'EV_D_Dir']
 # cols_to_mean_gau = ['EV_A_Gau', 'EV_B_Gau', 'EV_C_Gau', 'EV_D_Gau']
 # cols_to_mean_mixed = ['EV_A', 'EV_B', 'EV_C', 'EV_D']
-# df_avg = dual_lv.groupby('trial_index')[cols_to_mean_dir + cols_to_mean_gau].mean().reset_index()
+# df_avg = dual_mv.groupby('trial_index')[cols_to_mean_dir + cols_to_mean_gau].mean().reset_index()
 # df_mixed = mixed_lv.groupby('trial_index')[cols_to_mean_mixed].mean().reset_index()
 #
 # fig, ax = plt.subplots(4, 2, figsize=(20, 20))
@@ -105,18 +105,18 @@ uncertainty_mixed.to_csv('./data/Simulation/mixed_uncertainty.csv', index=False)
 #     ax[1].legend()
 #
 # plt.show()
-#
-# # calculate the percentage of choosing the best option
-# # create a new column to indicate the best option
-# dual_lv['pair'] = dual_lv['pair'].map(lambda x: ''.join(x)).astype(str)
-# best_option_dict = {'AB': 'A', 'CA': 'C', 'AD': 'A',
-#                     'CB': 'C', 'BD': 'B', 'CD': 'C'}
-# dual_lv['BestOption'] = dual_lv['pair'].map(best_option_dict)
-# dual_lv['BestOptionChosen'] = dual_lv['choice'] == dual_lv['BestOption']
-# propoptimal = dual_lv.groupby('pair')['BestOptionChosen'].mean().reset_index()
-# propoptimal_by_trial = dual_lv.groupby(['pair', 'trial_index'])['BestOptionChosen'].mean().reset_index()
-#
-#
+
+# calculate the percentage of choosing the best option
+# create a new column to indicate the best option
+dual_mv['pair'] = dual_mv['pair'].map(lambda x: ''.join(ast.literal_eval(x)))
+best_option_dict = {'AB': 'A', 'CA': 'C', 'AD': 'A',
+                    'CB': 'C', 'BD': 'B', 'CD': 'C'}
+dual_mv['BestOption'] = dual_mv['pair'].map(best_option_dict)
+dual_mv['BestOptionChosen'] = dual_mv['choice'] == dual_mv['BestOption']
+propoptimal = dual_mv.groupby('pair')['BestOptionChosen'].mean().reset_index()
+propoptimal_by_trial = dual_mv.groupby(['pair', 'trial_index'])['BestOptionChosen'].mean().reset_index()
+
+
 # # plot the percentage of choosing the best option
 # fig, ax = plt.subplots(1, 1, figsize=(10, 10))
 # ax.bar(propoptimal['pair'], propoptimal['BestOptionChosen'])
@@ -125,7 +125,7 @@ uncertainty_mixed.to_csv('./data/Simulation/mixed_uncertainty.csv', index=False)
 # ax.set_xlabel('Pair')
 # ax.yaxis.set_major_formatter(ticker.PercentFormatter(xmax=1))
 # plt.show()
-#
+
 # # plot the percentage of choosing the best option by trial
 # fig, ax = plt.subplots(3, 2, figsize=(20, 20))
 # for i, pair in enumerate(propoptimal_by_trial['pair'].unique()):
@@ -137,9 +137,14 @@ uncertainty_mixed.to_csv('./data/Simulation/mixed_uncertainty.csv', index=False)
 #     ax[i // 2, i % 2].yaxis.set_major_formatter(ticker.PercentFormatter(xmax=1))
 #
 # plt.show()
-#
+
 # # calculate the percentage of process chosen
-# process_chosen = dual_lv.groupby('trial_index')['process'].value_counts(normalize=True).unstack().reset_index()
+# process_chosen = dual_mv.groupby('trial_index')['process'].value_counts(normalize=True).unstack().reset_index()
+# process_chosen_percentage = dual_mv['process'].value_counts(normalize=True).reset_index()
+# # take only trial 151 to 250
+# transfer_trials = dual_mv[dual_mv['trial_index'] > 150]
+# transfer_process_chosen = transfer_trials.groupby('pair')['process'].value_counts(normalize=True).unstack().reset_index()
+#
 #
 # # plot the percentage of process chosen
 # fig, ax = plt.subplots(1, 1, figsize=(10, 10))
@@ -153,6 +158,22 @@ uncertainty_mixed.to_csv('./data/Simulation/mixed_uncertainty.csv', index=False)
 #
 # plt.show()
 #
+# fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+# bar_width = 0.35
+# processes = transfer_process_chosen.columns[1:]
+# for i, process in enumerate(processes):
+#     if i == 0:
+#         bars = ax.bar(transfer_process_chosen['pair'], transfer_process_chosen[process], bar_width, label=process)
+#     else:
+#         bars = ax.bar(transfer_process_chosen['pair'], transfer_process_chosen[process], bar_width, label=process, bottom=transfer_process_chosen[processes[i-1]])
+#
+# ax.set_title('Percentage of Process Chosen in Transfer Trials')
+# ax.set_ylabel('Percentage')
+# ax.set_xlabel('Pair')
+# ax.legend()
+# ax.yaxis.set_major_formatter(ticker.PercentFormatter(xmax=1))
+# plt.show()
+
 # # this is the same set of plotting functions except that there are only four options to be plotted
 # fig, ax = plt.subplots(4, 1, figsize=(10, 20))
 # for i, col in enumerate(cols_to_mean_mixed):
