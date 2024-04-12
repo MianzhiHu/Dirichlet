@@ -1,10 +1,11 @@
 import pandas as pd
+import os
 from utilities.utility_DualProcess import DualProcessModel
 from utilities.utility_ComputationalModeling import dict_generator, ComputationalModels, bayes_factor
 
 
 if __name__ == '__main__':
-    # load data
+
     data = pd.read_csv("./data/ABCDContRewardsAllData.csv")
 
     LV = data[data['Condition'] == 'LV']
@@ -18,27 +19,52 @@ if __name__ == '__main__':
         dataframes[i].rename(columns={'X': 'Subnum', 'setSeen': 'SetSeen.', 'choice': 'KeyResponse', 'points': 'Reward'}, inplace=True)
         dataframes[i]['KeyResponse'] = dataframes[i]['KeyResponse'] - 1
         dataframes[i]['SetSeen.'] = dataframes[i]['SetSeen.'] - 1
-        dataframes[i] = dict_generator(dataframes[i])
+        dataframes[i]['trial_index'] = dataframes[i].groupby('Subnum').cumcount() + 1
 
-    LV, MV, HV = dataframes
+    LV_df, MV_df, HV_df = dataframes
+
+    dicts = [LV_df, MV_df, HV_df]
+    for i in range(len(dicts)):
+        dicts[i] = dict_generator(dicts[i])
+
+    LV, MV, HV = dicts
+
+    # fit uncertainty data
+    uncertainty_data = pd.read_csv('./data/UncertaintyData.csv')
+    uncertainty_data['KeyResponse'] = uncertainty_data['KeyResponse'] - 1
+    uncertainty = dict_generator(uncertainty_data)
 
     model = DualProcessModel()
     decay = ComputationalModels("decay")
     delta = ComputationalModels("delta")
 
-    # LV_result = model.fit(LV, 'Dual', num_iterations=100)
-    # MV_result = model.fit(MV, 'Dual', num_iterations=100)
-    # HV_result = model.fit(HV, 'Dual', num_iterations=100)
+    # for model_type in ['Dir', 'Gau', 'Dual', 'Param']:
+    #     result = model.fit(HV, model_type, num_iterations=100)
+    #     result.to_csv(f'./data/DataFitting/FittingResults/{model_type}_HV_results.csv', index=False)
     #
-    # # Save the results
-    # LV_result.to_csv('./data/dual_LV_results.csv', index=False)
-    # MV_result.to_csv('./data/dual_MV_results.csv', index=False)
-    # HV_result.to_csv('./data/dual_HV_results.csv', index=False)
+    # for model_type in ['Dir', 'Gau', 'Dual', 'Param']:
+    #     result = model.fit(MV, model_type, num_iterations=100)
+    #     result.to_csv(f'./data/DataFitting/FittingResults/{model_type}_MV_results.csv', index=False)
     #
-    for model_type in ['Dir', 'Gau', 'Param']:
-        result = model.fit(MV, model_type, num_iterations=100)
-        result.to_csv(f'./data/DataFitting/{model_type}_MV_results.csv', index=False)
+    # for model_type in ['Dir', 'Gau', 'Dual', 'Param']:
+    #     result = model.fit(LV, model_type, num_iterations=100)
+    #     result.to_csv(f'./data/DataFitting/FittingResults/{model_type}_LV_results.csv', index=False)
+    #
+    # for model_type in ['Dir', 'Gau', 'Dual', 'Param']:
+    #     result = model.fit(uncertainty, model_type, num_iterations=100)
+    #     result.to_csv(f'./data/DataFitting/FittingResults/{model_type}_uncertaintyOld_results.csv', index=False)
 
+    # refit the param model
+    HV_param = model.fit(HV, 'Param', num_iterations=100)
+    MV_param = model.fit(MV, 'Param', num_iterations=100)
+    LV_param = model.fit(LV, 'Param', num_iterations=100)
+
+    # save
+    HV_param.to_csv('./data/DataFitting/Param_HV_results.csv', index=False)
+    MV_param.to_csv('./data/DataFitting/Param_MV_results.csv', index=False)
+    LV_param.to_csv('./data/DataFitting/Param_LV_results.csv', index=False)
+
+    # # fit the traditional delta and decay models
     # HV_decay = decay.fit(HV, num_iterations=100)
     # HV_delta = delta.fit(HV, num_iterations=100)
     # MV_decay = decay.fit(MV, num_iterations=100)
@@ -55,21 +81,5 @@ if __name__ == '__main__':
     # LV_delta.to_csv('./data/DataFitting/delta_LV_results.csv', index=False)
 
 
-# # calculate the mean AIC and BIC values
-# print(f"LV_decay AIC: {LV_decay['AIC'].mean()}")
-# print(f"LV_decay BIC: {LV_decay['BIC'].mean()}")
-# print(f"LV_delta AIC: {LV_delta['AIC'].mean()}")
-# print(f"LV_delta BIC: {LV_delta['BIC'].mean()}")
-# print(f"MV_decay AIC: {MV_decay['AIC'].mean()}")
-# print(f"MV_decay BIC: {MV_decay['BIC'].mean()}")
-# print(f"MV_delta AIC: {MV_delta['AIC'].mean()}")
-# print(f"MV_delta BIC: {MV_delta['BIC'].mean()}")
-# print(f"HV_decay AIC: {HV_decay['AIC'].mean()}")
-# print(f"HV_decay BIC: {HV_decay['BIC'].mean()}")
-# print(f"HV_delta AIC: {HV_delta['AIC'].mean()}")
-# print(f"HV_delta BIC: {HV_delta['BIC'].mean()}")
 
-# # calculate the Bayes factor
-# LV_bf = bayes_factor(LV_decay, LV_delta)
-# MV_bf = bayes_factor(MV_decay, MV_delta)
-# HV_bf = bayes_factor(HV_decay, HV_delta)
+

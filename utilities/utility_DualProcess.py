@@ -10,6 +10,7 @@ from concurrent.futures import ProcessPoolExecutor
 # When the variance of the underlying reward distribution is small, the Gaussian process (average) dominates the
 # decision-making process, whereas when the variance is large, the Dirichlet process (frequency) dominates.
 
+
 def fit_participant(model, participant_id, pdata, model_type, num_iterations=1000):
 
     print(f"Fitting participant {participant_id}...")
@@ -333,13 +334,24 @@ class DualProcessModel:
         trial = np.arange(1, self.num_trials + 1)
 
         if self.model == 'Param':
-            # Calculate the expected value of the model
-            self.EVs = params[1] * self.EV_Dir + (1 - params[1]) * self.EV_Gau
+            # # Calculate the expected value of the model
+            # self.EVs = params[1] * self.EV_Dir + (1 - params[1]) * self.EV_Gau
+            #
+            # for r, cs, ch, trial in zip(reward, choiceset, choice, trial):
+            #     cs_mapped = choiceset_mapping[cs]
+            #     prob_choice = self.softmax(self.EVs[cs_mapped[0]], self.EVs[cs_mapped[1]])
+            #     prob_choice_alt = self.softmax(self.EVs[cs_mapped[1]], self.EVs[cs_mapped[0]])
+            #     nll += -np.log(prob_choice if ch == cs_mapped[0] else prob_choice_alt)
+            #     self.update(ch, r, trial)
 
             for r, cs, ch, trial in zip(reward, choiceset, choice, trial):
                 cs_mapped = choiceset_mapping[cs]
-                prob_choice = self.softmax(self.EVs[cs_mapped[0]], self.EVs[cs_mapped[1]])
-                prob_choice_alt = self.softmax(self.EVs[cs_mapped[1]], self.EVs[cs_mapped[0]])
+                dir_prob = self.softmax(self.EV_Dir[cs_mapped[0]], self.EV_Dir[cs_mapped[1]])
+                gau_prob = self.softmax(self.EV_Gau[cs_mapped[0]], self.EV_Gau[cs_mapped[1]])
+
+                prob_choice = params[1] * dir_prob + (1 - params[1]) * gau_prob
+                prob_choice_alt = 1 - prob_choice
+
                 nll += -np.log(prob_choice if ch == cs_mapped[0] else prob_choice_alt)
                 self.update(ch, r, trial)
 
