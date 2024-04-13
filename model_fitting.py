@@ -38,10 +38,10 @@ if __name__ == '__main__':
     decay = ComputationalModels("decay")
     delta = ComputationalModels("delta")
 
-    # for model_type in ['Dir', 'Gau', 'Dual', 'Param']:
-    #     result = model.fit(HV, model_type, num_iterations=100)
-    #     result.to_csv(f'./data/DataFitting/FittingResults/{model_type}_HV_results.csv', index=False)
-    #
+    for model_type in ['Dir', 'Gau', 'Dual', 'Param']:
+        result = model.fit(HV, model_type, num_iterations=100)
+        result.to_csv(f'./data/DataFitting/FittingResults/{model_type}New_HV_results.csv', index=False)
+
     # for model_type in ['Dir', 'Gau', 'Dual', 'Param']:
     #     result = model.fit(MV, model_type, num_iterations=100)
     #     result.to_csv(f'./data/DataFitting/FittingResults/{model_type}_MV_results.csv', index=False)
@@ -49,10 +49,10 @@ if __name__ == '__main__':
     # for model_type in ['Dir', 'Gau', 'Dual', 'Param']:
     #     result = model.fit(LV, model_type, num_iterations=100)
     #     result.to_csv(f'./data/DataFitting/FittingResults/{model_type}_LV_results.csv', index=False)
-    #
-    # for model_type in ['Dir', 'Gau', 'Dual', 'Param']:
-    #     result = model.fit(uncertainty, model_type, num_iterations=100)
-    #     result.to_csv(f'./data/DataFitting/FittingResults/{model_type}_uncertaintyOld_results.csv', index=False)
+
+    for model_type in ['Param']:
+        result = model.fit(uncertainty, model_type, num_iterations=100)
+        result.to_csv(f'./data/DataFitting/FittingResults/{model_type}Prob_uncertaintyOld_results.csv', index=False)
 
     # refit the param model
     HV_param = model.fit(HV, 'Param', num_iterations=100)
@@ -60,9 +60,9 @@ if __name__ == '__main__':
     LV_param = model.fit(LV, 'Param', num_iterations=100)
 
     # save
-    HV_param.to_csv('./data/DataFitting/Param_HV_results.csv', index=False)
-    MV_param.to_csv('./data/DataFitting/Param_MV_results.csv', index=False)
-    LV_param.to_csv('./data/DataFitting/Param_LV_results.csv', index=False)
+    HV_param.to_csv('./data/DataFitting/ParamProb_HV_results.csv', index=False)
+    MV_param.to_csv('./data/DataFitting/ParamProb_MV_results.csv', index=False)
+    LV_param.to_csv('./data/DataFitting/ParamProb_LV_results.csv', index=False)
 
     # # fit the traditional delta and decay models
     # HV_decay = decay.fit(HV, num_iterations=100)
@@ -71,6 +71,8 @@ if __name__ == '__main__':
     # MV_delta = delta.fit(MV, num_iterations=100)
     # LV_decay = decay.fit(LV, num_iterations=100)
     # LV_delta = delta.fit(LV, num_iterations=100)
+    # uncertainty_decay = decay.fit(uncertainty, num_iterations=100)
+    # uncertainty_delta = delta.fit(uncertainty, num_iterations=100)
 
     # # save
     # HV_decay.to_csv('./data/DataFitting/decay_HV_results.csv', index=False)
@@ -79,7 +81,9 @@ if __name__ == '__main__':
     # MV_delta.to_csv('./data/DataFitting/delta_MV_results.csv', index=False)
     # LV_decay.to_csv('./data/DataFitting/decay_LV_results.csv', index=False)
     # LV_delta.to_csv('./data/DataFitting/delta_LV_results.csv', index=False)
-
+    # uncertainty_decay.to_csv('./data/DataFitting/FittingResults/decay_uncertaintyOld_results.csv', index=False)
+    # uncertainty_delta.to_csv('./data/DataFitting/FittingResults/delta_uncertaintyOld_results.csv', index=False)
+    #
 
 
 

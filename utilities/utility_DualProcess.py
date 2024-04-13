@@ -379,6 +379,7 @@ class DualProcessModel:
 
             for r, cs, ch, trial in zip(reward, choiceset, choice, trial):
                 cs_mapped = choiceset_mapping[cs]
+
                 dir_prob = self.softmax(self.EV_Dir[cs_mapped[0]], self.EV_Dir[cs_mapped[1]])
                 dir_prob_alt = self.softmax(self.EV_Dir[cs_mapped[1]], self.EV_Dir[cs_mapped[0]])
                 gau_prob = self.softmax(self.EV_Gau[cs_mapped[0]], self.EV_Gau[cs_mapped[1]])

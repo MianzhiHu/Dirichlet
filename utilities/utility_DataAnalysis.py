@@ -50,8 +50,28 @@ def create_bayes_matrix(simulations, file_name):
             if null_model != alternative_model:
                 bayes_matrix.loc[null_model, alternative_model] = bayes_factor(simulations[null_model], simulations[alternative_model])
 
+    bayes_matrix = bayes_matrix.T
+
     add_df_to_doc(bayes_matrix.applymap(format_large_numbers), file_name)
     return bayes_matrix.applymap(format_large_numbers)
+
+
+def process_chosen_prop(results, data, sub=False):
+    results['best_process_chosen'] = results['best_process_chosen'].apply(lambda x: x if isinstance(x, list) else eval(x))
+    process_chosen = results['best_process_chosen'].explode()
+    pd.options.mode.chained_assignment = None
+    data['best_process_chosen'] = process_chosen.values
+    # check if there is a TrialType column
+    if 'TrialType' not in data.columns:
+        mappping = {0: 'AB', 1: 'CD', 2: 'CA', 3: 'CB', 4: 'AD', 5: 'BD'}
+        data['TrialType'] = data['SetSeen.'].map(mappping)
+
+    if sub:
+        process_chosen_df = data.groupby(['Subnum', 'TrialType'])['best_process_chosen'].value_counts(normalize=True).reset_index()
+    else:
+        process_chosen_df = data.groupby('TrialType')['best_process_chosen'].value_counts(normalize=True).unstack().fillna(0)
+
+    return data, process_chosen_df
 
 
 
