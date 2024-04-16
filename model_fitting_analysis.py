@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import os
-from scipy.stats import ttest_ind, pearsonr
+from scipy.stats import ttest_ind, pearsonr, norm
 import statsmodels.formula.api as smf
 from utilities.utility_DataAnalysis import mean_AIC_BIC, create_bayes_matrix, process_chosen_prop
 
@@ -23,6 +23,8 @@ for key in fitting_results:
 for key in fitting_results:
     print(f"Model: {key}")
     mean_AIC_BIC(fitting_results[key])
+    print(fitting_results[key]['best_parameters'].apply(
+            lambda x: float(x.strip('[]').split()[0]) if isinstance(x, str) else np.nan).mean())
 
 # import the data
 data = pd.read_csv("./data/ABCDContRewardsAllData.csv")
@@ -59,21 +61,21 @@ for key, results in fitting_results.items():
         grouped_results = results.groupby('Condition')
         for condition, group in grouped_results:
             uncertainty_condition_results[f"{key}_{condition}"] = group
-        # print(f"Model: {key}")
-        # print(f"Mean AIC: {grouped_results['AIC'].mean()}")
-        # print(f"Mean BIC: {grouped_results['BIC'].mean()}")
+        print(f"Model: {key}")
+        print(f"Mean AIC: {grouped_results['AIC'].mean()}")
+        print(f"Mean BIC: {grouped_results['BIC'].mean()}")
 
 for key in uncertainty_condition_results:
     globals()[key] = uncertainty_condition_results[key]
 
-# create bayes factor matrices
-# Filter fitting_results for HV, MV, and LV
-fitting_results_HV = {k: v for k, v in fitting_results.items() if 'HV' in k}
-fitting_results_MV = {k: v for k, v in fitting_results.items() if 'MV' in k}
-fitting_results_LV = {k: v for k, v in fitting_results.items() if 'LV' in k}
-uncertainty_frequency_results = {k: v for k, v in uncertainty_condition_results.items() if 'S2A1' in k}
-uncertainty_only_results = {k: v for k, v in uncertainty_condition_results.items() if 'S2A2' in k}
-
+# # create bayes factor matrices
+# # Filter fitting_results for HV, MV, and LV
+# fitting_results_HV = {k: v for k, v in fitting_results.items() if 'HV' in k}
+# fitting_results_MV = {k: v for k, v in fitting_results.items() if 'MV' in k}
+# fitting_results_LV = {k: v for k, v in fitting_results.items() if 'LV' in k}
+# uncertainty_frequency_results = {k: v for k, v in uncertainty_condition_results.items() if 'S2A1' in k}
+# uncertainty_only_results = {k: v for k, v in uncertainty_condition_results.items() if 'S2A2' in k}
+#
 # # Create Bayes factor matrices for HV, MV, and LV
 # bayes_matrix_HV = create_bayes_matrix(fitting_results_HV, 'HV Bayes Factor Matrix')
 # bayes_matrix_MV = create_bayes_matrix(fitting_results_MV, 'MV Bayes Factor Matrix')
@@ -87,6 +89,8 @@ MV_df, process_chosen_MV = process_chosen_prop(Dual_MV_results, MV_df, sub=True)
 LV_df, process_chosen_LV = process_chosen_prop(Dual_LV_results, LV_df, sub=True)
 uncertainty_uf, process_chosen_uf = process_chosen_prop(Dual_uncertaintyOld_results_S2A1, uncertainty_uf, sub=True)
 uncertainty_uo, process_chosen_uo = process_chosen_prop(Dual_uncertaintyOld_results_S2A2, uncertainty_uo, sub=True)
+uncertainty_data, process_chosen_uncertainty = process_chosen_prop(Dual_uncertaintyOld_results, uncertainty_data, sub=True)
+# uncertainty_data.to_csv('./data/UncertaintyDualProcess.csv', index=False)
 
 dfs = [HV_df, MV_df, LV_df]
 process_chosen_df = [process_chosen_HV, process_chosen_MV, process_chosen_LV]
@@ -121,13 +125,35 @@ for i in range(len(uncertainty_dfs)):
     print(f"correlation: {corr}, p-value: {p}")
 
 # find out the significance of the model
-HV_df['best_process_chosen'] = (HV_df['best_process_chosen'] == 'Dir').astype(int)
-HV_df_CA = HV_df[HV_df['TrialType'] == 'CA']
-# HV_df.to_csv('./data/HV_df_CA.csv', index=False)
+for df in [HV_df, MV_df, LV_df]:
+    df['best_process_chosen'] = (df['best_process_chosen'] == 'Dir').astype(int)
 
-model = smf.logit('bestOption ~ best_process_chosen', data=HV_df_CA)
+# combine the dataframes and add a column for the condition
+HV_df['Condition'] = 'HV'
+MV_df['Condition'] = 'MV'
+LV_df['Condition'] = 'LV'
+combined_df = pd.concat([HV_df, MV_df, LV_df]).reset_index()
+combined_df['Subnum'] = combined_df.index // 250 + 1
+# combined_df.to_csv('./data/CombinedVarianceData.csv', index=False)
+
+combined_df_CA = combined_df[combined_df['TrialType'] == 'CA']
+
+model = smf.logit('bestOption ~ best_process_chosen + TrialType + Condition', data=combined_df)
 result = model.fit()
 print(result.summary())
+
+# model = smf.logit('bestOption ~ best_process_chosen + Condition', data=combined_df_CA)
+# result = model.fit()
+# print(result.summary())
+
+# Assuming 'result' is the fitted model object
+cov = result.cov_params()
+diff_se = np.sqrt(cov.loc['TrialType[T.CA]', 'TrialType[T.CA]'] + cov.loc['TrialType[T.AD]', 'TrialType[T.AD]'] - 2 * cov.loc['TrialType[T.CA]', 'TrialType[T.AD]'])
+z_score = (-1.5318 - 0.2048) / diff_se
+p_value = norm.sf(abs(z_score)) * 2  # two-tailed p-value
+
+print("Z-score for difference:", z_score)
+print("P-value for difference:", p_value)
 
 
 
@@ -140,7 +166,7 @@ print(result.summary())
 # df_corr = pd.merge(uncertaintyPropOptimal, process_chosen_un_Dir, on=['Subnum', 'ChoiceSet'], how='outer')
 # df_corr.fillna(0, inplace=True)
 # df_corr = df_corr.merge(selected_data, on=['Subnum', 'Condition'])
-# df_corr.to_csv('./data/UncertaintyDualProcess.csv', index=False)
+# df_corr.to_csv('./data/UncertaintyDualProcessParticipant.csv', index=False)
 
 # RT analysis
 # process_rt = LV_df.groupby('best_process_chosen')['RT'].mean().reset_index()
@@ -152,4 +178,3 @@ print(result.summary())
 # model = smf.mixedlm('RT ~ best_process_chosen', data=LV_df, groups=LV_df['Subnum'] + LV_df['SetSeen.'])
 # result = model.fit()
 # print(result.summary())
-
