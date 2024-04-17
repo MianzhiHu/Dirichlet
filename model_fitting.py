@@ -41,7 +41,7 @@ if __name__ == '__main__':
     # for model_type in ['Dir', 'Gau', 'Dual', 'Param']:
     #     result = model.fit(HV, model_type, num_iterations=100)
     #     result.to_csv(f'./data/DataFitting/FittingResults/{model_type}_HV_results.csv', index=False)
-
+    #
     # for model_type in ['Dir', 'Gau', 'Dual', 'Param']:
     #     result = model.fit(MV, model_type, num_iterations=100)
     #     result.to_csv(f'./data/DataFitting/FittingResults/{model_type}_MV_results.csv', index=False)
@@ -49,21 +49,21 @@ if __name__ == '__main__':
     # for model_type in ['Dir', 'Gau', 'Dual', 'Param']:
     #     result = model.fit(LV, model_type, num_iterations=100)
     #     result.to_csv(f'./data/DataFitting/FittingResults/{model_type}_LV_results.csv', index=False)
-
-    # for model_type in ['Param']:
+    #
+    # for model_type in ['Dir', 'Gau', 'Dual', 'Param']:
     #     result = model.fit(uncertainty, model_type, num_iterations=100)
-    #     result.to_csv(f'./data/DataFitting/FittingResults/{model_type}Prob_uncertaintyOld_results.csv', index=False)
+    #     result.to_csv(f'./data/DataFitting/FittingResults/{model_type}Scale_uncertaintyOld_results.csv', index=False)
 
     # refit the param model
-    # HV_param = model.fit(HV, 'Param', num_iterations=100)
-    MV_param = model.fit(MV, 'Param', num_iterations=100)
-    LV_param = model.fit(LV, 'Param', num_iterations=100)
+    # HV_param = model.fit(HV, 'Param', num_iterations=1)
+    # MV_param = model.fit(MV, 'Param', num_iterations=100)
+    # LV_param = model.fit(LV, 'Param', num_iterations=100)
 
-    # save
-    # HV_param.to_csv('./data/DataFitting/FittingResults/ParamScale_HV_results.csv', index=False)
-    MV_param.to_csv('./data/DataFitting/FittingResults/ParamScale_MV_results.csv', index=False)
-    LV_param.to_csv('./data/DataFitting/FittingResults/ParamScale_LV_results.csv', index=False)
-
+    # # save
+    # # HV_param.to_csv('./data/DataFitting/FittingResults/ParamScale_HV_results.csv', index=False)
+    # MV_param.to_csv('./data/DataFitting/FittingResults/ParamScale_MV_results.csv', index=False)
+    # LV_param.to_csv('./data/DataFitting/FittingResults/ParamScale_LV_results.csv', index=False)
+    #
     # # fit the traditional delta and decay models
     # HV_decay = decay.fit(HV, num_iterations=100)
     # HV_delta = delta.fit(HV, num_iterations=100)

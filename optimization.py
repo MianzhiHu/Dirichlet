@@ -54,40 +54,40 @@ if __name__ == '__main__':
     # stats = pstats.Stats(profiler).sort_stats('cumtime')
     # stats.print_stats()
 
-    #############################################################################
-    # The following is an attempt to calculate indifference points for the COVID-19 study
-
-    # Example DataFrame structure
-    data = pd.DataFrame({
-        'Participant_ID': np.repeat(range(10), 100),  # 10 participants, 100 trials each
-        'Lives_Saved': np.random.randint(10, 100, 1000),
-        'Unemployment_Change': np.random.uniform(0.1, 2.0, 1000),
-        'Response': np.random.choice([0, 1], 1000)
-    })
-
-
-    # Function to fit model and calculate indifference point
-    def analyze_participant(participant_data):
-        model = LogisticRegression()
-        features = participant_data[['Lives_Saved', 'Unemployment_Change']]
-        response = participant_data['Response']
-        model.fit(features, response)
-
-        # Coefficients
-        intercept = model.intercept_[0]
-        coef_lives = model.coef_[0][0]
-        coef_unemp = model.coef_[0][1]
-
-        # For A = 50 lives (example calculation)
-        lives = 50
-        indifference_unemployment_change = (intercept + coef_lives * lives) / coef_unemp
-        return indifference_unemployment_change
-
-
-    # Apply function to each participant
-    indifference_points = data.groupby('Participant_ID').apply(analyze_participant)
-
-    # Print results
-    print(indifference_points)
+    # #############################################################################
+    # # The following is an attempt to calculate indifference points for the COVID-19 study
+    #
+    # # Example DataFrame structure
+    # data = pd.DataFrame({
+    #     'Participant_ID': np.repeat(range(10), 100),  # 10 participants, 100 trials each
+    #     'Lives_Saved': np.random.randint(10, 100, 1000),
+    #     'Unemployment_Change': np.random.uniform(0.1, 2.0, 1000),
+    #     'Response': np.random.choice([0, 1], 1000)
+    # })
+    #
+    #
+    # # Function to fit model and calculate indifference point
+    # def analyze_participant(participant_data):
+    #     model = LogisticRegression()
+    #     features = participant_data[['Lives_Saved', 'Unemployment_Change']]
+    #     response = participant_data['Response']
+    #     model.fit(features, response)
+    #
+    #     # Coefficients
+    #     intercept = model.intercept_[0]
+    #     coef_lives = model.coef_[0][0]
+    #     coef_unemp = model.coef_[0][1]
+    #
+    #     # For A = 50 lives (example calculation)
+    #     lives = 50
+    #     indifference_unemployment_change = (intercept + coef_lives * lives) / coef_unemp
+    #     return indifference_unemployment_change
+    #
+    #
+    # # Apply function to each participant
+    # indifference_points = data.groupby('Participant_ID').apply(analyze_participant)
+    #
+    # # Print results
+    # print(indifference_points)
 
 

@@ -335,14 +335,14 @@ class DualProcessModel:
 
         if self.model == 'Param':
 
-            # Standardize the EVs
-            EV_Dir = (self.EV_Dir - np.mean(self.EV_Dir)) / np.std(self.EV_Dir)
-            EV_Gau = (self.EV_Gau - np.mean(self.EV_Gau)) / np.std(self.EV_Gau)
-
-            # Calculate the expected value of the model
-            self.EVs = params[1] * EV_Dir + (1 - params[1]) * EV_Gau
-
             for r, cs, ch, trial in zip(reward, choiceset, choice, trial):
+                # Standardize the EVs
+                EV_Dir = (self.EV_Dir - np.mean(self.EV_Dir)) / np.std(self.EV_Dir)
+                EV_Gau = (self.EV_Gau - np.mean(self.EV_Gau)) / np.std(self.EV_Gau)
+
+                # Calculate the expected value of the model
+                self.EVs = params[1] * EV_Dir + (1 - params[1]) * EV_Gau
+
                 cs_mapped = choiceset_mapping[cs]
                 prob_choice = self.softmax(self.EVs[cs_mapped[0]], self.EVs[cs_mapped[1]])
                 prob_choice_alt = self.softmax(self.EVs[cs_mapped[1]], self.EVs[cs_mapped[0]])
