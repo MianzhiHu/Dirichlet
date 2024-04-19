@@ -63,12 +63,17 @@ for i, col in enumerate(cols_to_mean_gau):
 plt.show()
 
 # plot the percentage of choosing the best option
-fig, ax = plt.subplots(1, 1, figsize=(10, 10))
-ax.bar(propoptimal['pair'], propoptimal['BestOptionChosen'])
-ax.set_title('Percentage of Choosing the Best Option')
-ax.set_ylabel('Percentage')
-ax.set_xlabel('Pair')
-ax.yaxis.set_major_formatter(ticker.PercentFormatter(xmax=1))
+# define the order of the pairs
+pair_order = ['AB', 'CD', 'CA', 'CB', 'AD', 'BD']
+propoptimal['pair'] = pd.Categorical(propoptimal['pair'], categories=pair_order, ordered=True)
+propoptimal = propoptimal.sort_values('pair')
+
+plt.bar(propoptimal['pair'], propoptimal['BestOptionChosen'])
+plt.title('Percentage of Choosing the Best Option')
+plt.ylabel('Percentage')
+plt.xlabel('Pair')
+plt.ylim(0, 0.9)
+plt.gca().yaxis.set_major_formatter(ticker.PercentFormatter(xmax=1))
 plt.show()
 
 # plot the percentage of choosing the best option by trial
@@ -81,6 +86,26 @@ for i, pair in enumerate(propoptimal_by_trial['pair'].unique()):
     ax[i // 2, i % 2].set_xlabel('Trial Index')
     ax[i // 2, i % 2].yaxis.set_major_formatter(ticker.PercentFormatter(xmax=1))
 
+plt.show()
+
+# plot the percentage of choosing the best option only for CA pair
+mean_CA = []
+se_CA = []
+
+var_condition = [dual_lv, dual_mv, dual_hv]
+for var in var_condition:
+    propoptimal_CA = var[var['pair'] == 'CA'].groupby('simulation_num')['BestOptionChosen'].mean()
+    mean_CA.append(propoptimal_CA.mean())
+    # calculate the standard error
+    propoptimal_CA_se = propoptimal_CA.std() / np.sqrt(len(propoptimal_CA))
+    se_CA.append(propoptimal_CA_se)
+
+plt.bar(['LV', 'MV', 'HV'], mean_CA, yerr=se_CA)
+plt.ylim(0, 0.7)
+plt.title('Percentage of Choosing the Best Option for CA Pair')
+plt.ylabel('Percentage')
+plt.xlabel('Condition')
+plt.gca().yaxis.set_major_formatter(ticker.PercentFormatter(xmax=1))
 plt.show()
 
 # calculate the percentage of process chosen
@@ -100,6 +125,16 @@ for col in process_chosen.columns[1:]:
     ax.set_xlabel('Trial Index')
     ax.legend()
     ax.yaxis.set_major_formatter(ticker.PercentFormatter(xmax=1))
+
+plt.show()
+
+for col in process_chosen.columns[1:]:
+    plt.plot(process_chosen['trial_index'], process_chosen[col], label=col)
+    plt.title('Percentage of Process Chosen')
+    plt.ylabel('Percentage')
+    plt.xlabel('Trial Index')
+    plt.legend()
+    plt.gca().yaxis.set_major_formatter(ticker.PercentFormatter(xmax=1))
 
 plt.show()
 

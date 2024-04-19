@@ -28,7 +28,7 @@ uncertainty = [0.43, 0.43, 0.12, 0.12]
 # mixed_mv = model.simulate(reward_means, mv, model='Param', AB_freq=100, CD_freq=50)
 # mixed_lv = model.simulate(reward_means, lv, model='Param', AB_freq=100, CD_freq=50)
 #
-# uncertainty_dual = model.simulate(reward_means_uncertainty, uncertainty, model='Dual', AB_freq=100, CD_freq=50)
+# uncertainty_dual = model.simulate(reward_means_uncertainty, uncertainty, model='Dual', AB_freq=75, CD_freq=75)
 
 # uncertainty_dir = model.simulate(reward_means, uncertainty, model='Dir', AB_freq=100, CD_freq=50)
 #
@@ -53,7 +53,7 @@ uncertainty = [0.43, 0.43, 0.12, 0.12]
 # mixed_mv.to_csv('./data/Simulation/mixed_mv.csv', index=False)
 # mixed_lv.to_csv('./data/Simulation/mixed_lv.csv', index=False)
 
-# uncertainty_dual.to_csv('./data/Simulation/dual_uncertainty.csv', index=False)
+# uncertainty_dual.to_csv('./data/Simulation/dual_uncertainty_UO.csv', index=False)
 # uncertainty_dir.to_csv('./data/Simulation/dir_uncertainty.csv', index=False)
 # uncertainty_gau.to_csv('./data/Simulation/gau_uncertainty.csv', index=False)
 # uncertainty_mixed.to_csv('./data/Simulation/mixed_uncertainty.csv', index=False)

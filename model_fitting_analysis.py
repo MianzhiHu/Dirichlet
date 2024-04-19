@@ -70,18 +70,18 @@ for key in uncertainty_condition_results:
 
 # # create bayes factor matrices
 # # Filter fitting_results for HV, MV, and LV
-# fitting_results_HV = {k: v for k, v in fitting_results.items() if 'HV' in k}
-# fitting_results_MV = {k: v for k, v in fitting_results.items() if 'MV' in k}
-# fitting_results_LV = {k: v for k, v in fitting_results.items() if 'LV' in k}
-# uncertainty_frequency_results = {k: v for k, v in uncertainty_condition_results.items() if 'S2A1' in k}
-# uncertainty_only_results = {k: v for k, v in uncertainty_condition_results.items() if 'S2A2' in k}
-#
+fitting_results_HV = {k: v for k, v in fitting_results.items() if 'HV' in k}
+fitting_results_MV = {k: v for k, v in fitting_results.items() if 'MV' in k}
+fitting_results_LV = {k: v for k, v in fitting_results.items() if 'LV' in k}
+uncertainty_frequency_results = {k: v for k, v in uncertainty_condition_results.items() if 'S2A1' in k}
+uncertainty_only_results = {k: v for k, v in uncertainty_condition_results.items() if 'S2A2' in k}
+
 # # Create Bayes factor matrices for HV, MV, and LV
-# bayes_matrix_HV = create_bayes_matrix(fitting_results_HV, 'HV Bayes Factor Matrix')
-# bayes_matrix_MV = create_bayes_matrix(fitting_results_MV, 'MV Bayes Factor Matrix')
-# bayes_matrix_LV = create_bayes_matrix(fitting_results_LV, 'LV Bayes Factor Matrix')
-# bayes_matrix_uncertainty_frequency = create_bayes_matrix(uncertainty_frequency_results, 'UF Bayes Factor Matrix')
-# bayes_matrix_uncertainty_only = create_bayes_matrix(uncertainty_only_results, 'UO Bayes Factor Matrix')
+bayes_matrix_HV = create_bayes_matrix(fitting_results_HV, 'HV Bayes Factor Matrix')
+bayes_matrix_MV = create_bayes_matrix(fitting_results_MV, 'MV Bayes Factor Matrix')
+bayes_matrix_LV = create_bayes_matrix(fitting_results_LV, 'LV Bayes Factor Matrix')
+bayes_matrix_uncertainty_frequency = create_bayes_matrix(uncertainty_frequency_results, 'UF Bayes Factor Matrix')
+bayes_matrix_uncertainty_only = create_bayes_matrix(uncertainty_only_results, 'UO Bayes Factor Matrix')
 
 # explode ProcessChosen
 HV_df, process_chosen_HV = process_chosen_prop(Dual_HV_results, HV_df, sub=True)
@@ -104,6 +104,8 @@ for i in range(len(dfs)):
     corr, p = pearsonr(df_corr['bestOption'], df_corr['proportion'])
     print(f"correlation: {corr}, p-value: {p}")
 
+
+#
 
 # test the uncertainty data
 prop_uf = uncertaintyPropOptimal[uncertaintyPropOptimal['Condition'] == 'S2A1']
