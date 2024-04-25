@@ -4,6 +4,7 @@ import os
 import ast
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
+import seaborn as sns
 
 # after the simulation has been completed, we can just load the simulated data from the folder
 folder_path = './data/Simulation'
@@ -100,20 +101,48 @@ for var in var_condition:
     propoptimal_CA_se = propoptimal_CA.std() / np.sqrt(len(propoptimal_CA))
     se_CA.append(propoptimal_CA_se)
 
-plt.bar(['LV', 'MV', 'HV'], mean_CA, yerr=se_CA)
+# Define colors for each bar
+palette = sns.color_palette("pastel", 3)
+
+# Plot the percentage of choosing the best option only for CA pair
+plt.bar(['LV', 'MV', 'HV'], mean_CA, yerr=se_CA, color=palette)
 plt.ylim(0, 0.7)
-plt.title('Percentage of Choosing the Best Option for CA Pair')
-plt.ylabel('Percentage')
+plt.ylabel('Percentage of Selecting C in CA Pair')
 plt.xlabel('Condition')
 plt.gca().yaxis.set_major_formatter(ticker.PercentFormatter(xmax=1))
+sns.despine()
 plt.show()
 
 # calculate the percentage of process chosen
-process_chosen = dual_uncertainty.groupby('trial_index')['process'].value_counts(normalize=True).unstack().reset_index()
-process_chosen_percentage = dual_uncertainty['process'].value_counts(normalize=True).reset_index()
+process_chosen = dual_hv.groupby('trial_index')['process'].value_counts(normalize=True).unstack().reset_index()
+process_chosen_percentage = dual_hv['process'].value_counts(normalize=True).reset_index()
+
+
 # take only trial 151 to 250
-transfer_trials = dual_uncertainty[dual_uncertainty['trial_index'] > 150]
-transfer_process_chosen = transfer_trials.groupby('pair')['process'].value_counts(normalize=True).unstack().reset_index()
+def transfer_process_chosen(df):
+    transfer_trials = df[df['trial_index'] > 150]
+    transfer_process_chosen_df = transfer_trials.groupby('pair')['process'].value_counts(normalize=True).unstack().reset_index()
+    return transfer_process_chosen_df
+
+var_df = [dual_lv, dual_mv, dual_hv]
+
+transfer_process_chosen = pd.concat([transfer_process_chosen(df) for df in var_df])
+# create a new column to indicate the condition
+# the first 6 pairs are from the low variance condition
+condition_list = ['LV' for _ in range(4)] + ['MV' for _ in range(4)] + ['HV' for _ in range(4)]
+transfer_process_chosen['Condition'] = condition_list
+
+# Use a Seaborn color palette
+palette = sns.color_palette("pastel")
+
+# Plot the percentage of process chosen for each pair in the transfer phase
+plt.figure()
+sns.barplot(x='pair', y='Dir', hue='Condition', data=transfer_process_chosen, palette=palette)
+plt.ylabel('Percentage of Dirichlet Process Chosen')
+plt.xlabel('Pair')
+plt.gca().yaxis.set_major_formatter(ticker.PercentFormatter(xmax=1))
+sns.despine()
+plt.show()
 
 
 # plot the percentage of process chosen
@@ -128,31 +157,13 @@ for col in process_chosen.columns[1:]:
 
 plt.show()
 
-for col in process_chosen.columns[1:]:
-    plt.plot(process_chosen['trial_index'], process_chosen[col], label=col)
-    plt.title('Percentage of Process Chosen')
-    plt.ylabel('Percentage')
-    plt.xlabel('Trial Index')
-    plt.legend()
-    plt.gca().yaxis.set_major_formatter(ticker.PercentFormatter(xmax=1))
 
-plt.show()
 
-fig, ax = plt.subplots(1, 1, figsize=(10, 10))
-bar_width = 0.35
-processes = transfer_process_chosen.columns[1:]
-for i, process in enumerate(processes):
-    if i == 0:
-        bars = ax.bar(transfer_process_chosen['pair'], transfer_process_chosen[process], bar_width, label=process)
-    else:
-        bars = ax.bar(transfer_process_chosen['pair'], transfer_process_chosen[process], bar_width, label=process, bottom=transfer_process_chosen[processes[i-1]])
 
-ax.set_title('Percentage of Process Chosen in Transfer Trials')
-ax.set_ylabel('Percentage')
-ax.set_xlabel('Pair')
-ax.legend()
-ax.yaxis.set_major_formatter(ticker.PercentFormatter(xmax=1))
-plt.show()
+
+
+
+
 
 # # this is the same set of plotting functions except that there are only four options to be plotted
 # fig, ax = plt.subplots(4, 1, figsize=(10, 20))

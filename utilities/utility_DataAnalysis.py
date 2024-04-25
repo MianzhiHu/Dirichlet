@@ -74,7 +74,8 @@ def process_chosen_prop(results, data, sub=False):
     return data, process_chosen_df
 
 
-
-
+def calculate_mean_squared_error(error_list):
+    squared_error = [x ** 2 for x in error_list]
+    return sum(squared_error) / len(error_list)
 
 

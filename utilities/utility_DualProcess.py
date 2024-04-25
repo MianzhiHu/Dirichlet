@@ -51,6 +51,7 @@ def fit_participant(model, participant_id, pdata, model_type, num_iterations=100
             best_initial_guess = initial_guess
             best_parameters = result.x
             best_process_chosen = model.process_chosen
+            best_error = model.error
 
     aic = 2 * k + 2 * best_nll
     bic = k * np.log(total_n) + 2 * best_nll
@@ -60,6 +61,7 @@ def fit_participant(model, participant_id, pdata, model_type, num_iterations=100
     result_dict = {
         'participant_id': participant_id,
         'best_nll': best_nll,
+        'error': best_error,
         'best_initial_guess': best_initial_guess,
         'best_parameters': best_parameters,
         'best_process_chosen': best_process_chosen,
@@ -83,6 +85,7 @@ class DualProcessModel:
         self.n_samples = n_samples
         self.reward_history = [[0] for _ in range(4)]
         self.process_chosen = []
+        self.error = []
 
         self.t = None
         self.model = None
@@ -95,6 +98,7 @@ class DualProcessModel:
         self.alpha = np.full(4, 1)
         self.reward_history = [[] for _ in range(4)]
         self.process_chosen = []
+        self.error = []
 
     def softmax(self, chosen, alt1):
         c = 3 ** self.t - 1
@@ -346,6 +350,7 @@ class DualProcessModel:
                 cs_mapped = choiceset_mapping[cs]
                 prob_choice = self.softmax(self.EVs[cs_mapped[0]], self.EVs[cs_mapped[1]])
                 prob_choice_alt = self.softmax(self.EVs[cs_mapped[1]], self.EVs[cs_mapped[0]])
+                self.error.append(prob_choice_alt if ch == cs_mapped[0] else prob_choice)
                 nll += -np.log(prob_choice if ch == cs_mapped[0] else prob_choice_alt)
                 self.update(ch, r, trial)
 
@@ -355,6 +360,7 @@ class DualProcessModel:
                 prob_choice = self.softmax(self.EV_Dir[cs_mapped[0]], self.EV_Dir[cs_mapped[1]])
                 prob_choice_alt = self.softmax(self.EV_Dir[cs_mapped[1]], self.EV_Dir[cs_mapped[0]])
                 nll += -np.log(prob_choice if ch == cs_mapped[0] else prob_choice_alt)
+                self.error.append(prob_choice_alt if ch == cs_mapped[0] else prob_choice)
                 self.update(ch, r, trial)
 
         elif self.model == 'Gau':
@@ -363,6 +369,7 @@ class DualProcessModel:
                 prob_choice = self.softmax(self.EV_Gau[cs_mapped[0]], self.EV_Gau[cs_mapped[1]])
                 prob_choice_alt = self.softmax(self.EV_Gau[cs_mapped[1]], self.EV_Gau[cs_mapped[0]])
                 nll += -np.log(prob_choice if ch == cs_mapped[0] else prob_choice_alt)
+                self.error.append(prob_choice_alt if ch == cs_mapped[0] else prob_choice)
                 self.update(ch, r, trial)
 
         elif self.model == 'Dual':
@@ -382,10 +389,12 @@ class DualProcessModel:
                 if ch == cs_mapped[0]:
                     chosen_process = 'Dir' if dir_prob > gau_prob else 'Gau'
                     self.process_chosen.append(chosen_process)
+                    self.error.append(dir_prob_alt if dir_prob > gau_prob else gau_prob_alt)
                     nll += -np.log(dir_prob if dir_prob > gau_prob else gau_prob)
                 elif ch == cs_mapped[1]:
                     chosen_process = 'Dir' if dir_prob_alt > gau_prob_alt else 'Gau'
                     self.process_chosen.append(chosen_process)
+                    self.error.append(dir_prob if dir_prob_alt > gau_prob_alt else gau_prob)
                     nll += -np.log(dir_prob_alt if dir_prob_alt > gau_prob_alt else gau_prob_alt)
 
                 self.update(ch, r, trial)

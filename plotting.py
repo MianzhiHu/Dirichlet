@@ -10,19 +10,27 @@ from utilities.utility_PlottingFunctions import scatter_Dirichlet, bar_Dirichlet
 
 
 # plot illustrations of Dirichlet distribution
-alpha = [1, 2, 1]
-# scatter_Dirichlet(alpha)
+alpha = [1, 102, 1]
+scatter_Dirichlet(alpha)
 # bar_Dirichlet(alpha, resolution=500, elev=45, azim=60)
 
 # do the same for multivariate Gaussian distribution
-b_history = [0.5, 0.0]
-mean_b = np.mean(b_history)
-var_b = np.var(b_history)
+# b_history = [0.5, 0.6]
+# mean_b = np.mean(b_history)
+# var_b = np.var(b_history)
+
+
+b_history_hypo = np.repeat(0.6, 102)
+b_history_hypo[0] = 0.5
+mean_b = np.mean(b_history_hypo)
+var_b = np.var(b_history_hypo)
+
+
 mean = [0.5, mean_b, 0.5]
 var = [0.01, var_b, 0.01]
 
-mean = [0.5, 0.25, 0.5]
-var = [0.01, 0.01, 0.01]
+# mean = [0.5, 0.25, 0.5]
+# var = [0.01, 0.01, 0.01]
 cov = np.diag(var)
 
 scatter_Gaussian(mean, cov)

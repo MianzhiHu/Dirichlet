@@ -3,7 +3,10 @@ import pandas as pd
 import os
 from scipy.stats import ttest_ind, pearsonr, norm
 import statsmodels.formula.api as smf
-from utilities.utility_DataAnalysis import mean_AIC_BIC, create_bayes_matrix, process_chosen_prop
+from utilities.utility_DataAnalysis import (mean_AIC_BIC, create_bayes_matrix, process_chosen_prop,
+                                            calculate_mean_squared_error)
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 # after the simulation has been completed, we can just load the simulated data from the folder
 folder_path = './data/DataFitting/FittingResults'
@@ -19,12 +22,23 @@ for file in os.listdir(folder_path):
 for key in fitting_results:
     globals()[key] = fitting_results[key]
 
-# calculate the mean AIC and BIC values
+# see the average t
 for key in fitting_results:
     print(f"Model: {key}")
     mean_AIC_BIC(fitting_results[key])
     print(fitting_results[key]['best_parameters'].apply(
             lambda x: float(x.strip('[]').split()[0]) if isinstance(x, str) else np.nan).mean())
+
+# calculate MSE
+
+
+# Apply the function to each row of the DataFrame
+for results in [Dual_HV_results, Dual_MV_results, Dual_LV_results]:
+    results['error'] = results['error'].apply(eval)
+    results['MSE'] = results['error'].apply(calculate_mean_squared_error)
+    print(f"Mean MSE: {results['MSE'].mean()}")
+
+
 
 # import the data
 data = pd.read_csv("./data/ABCDContRewardsAllData.csv")
@@ -77,11 +91,11 @@ uncertainty_frequency_results = {k: v for k, v in uncertainty_condition_results.
 uncertainty_only_results = {k: v for k, v in uncertainty_condition_results.items() if 'S2A2' in k}
 
 # # Create Bayes factor matrices for HV, MV, and LV
-bayes_matrix_HV = create_bayes_matrix(fitting_results_HV, 'HV Bayes Factor Matrix')
-bayes_matrix_MV = create_bayes_matrix(fitting_results_MV, 'MV Bayes Factor Matrix')
-bayes_matrix_LV = create_bayes_matrix(fitting_results_LV, 'LV Bayes Factor Matrix')
-bayes_matrix_uncertainty_frequency = create_bayes_matrix(uncertainty_frequency_results, 'UF Bayes Factor Matrix')
-bayes_matrix_uncertainty_only = create_bayes_matrix(uncertainty_only_results, 'UO Bayes Factor Matrix')
+# bayes_matrix_HV = create_bayes_matrix(fitting_results_HV, 'HV Bayes Factor Matrix')
+# bayes_matrix_MV = create_bayes_matrix(fitting_results_MV, 'MV Bayes Factor Matrix')
+# bayes_matrix_LV = create_bayes_matrix(fitting_results_LV, 'LV Bayes Factor Matrix')
+# bayes_matrix_uncertainty_frequency = create_bayes_matrix(uncertainty_frequency_results, 'UF Bayes Factor Matrix')
+# bayes_matrix_uncertainty_only = create_bayes_matrix(uncertainty_only_results, 'UO Bayes Factor Matrix')
 
 # explode ProcessChosen
 HV_df, process_chosen_HV = process_chosen_prop(Dual_HV_results, HV_df, sub=True)
@@ -105,7 +119,46 @@ for i in range(len(dfs)):
     print(f"correlation: {corr}, p-value: {p}")
 
 
-#
+# combine the AIC and BIC values
+columns = ['AIC', 'BIC', 'Model']
+hv_results = [delta_HV_results, decay_HV_results, Dual_HV_results]
+mv_results = [delta_MV_results, decay_MV_results, Dual_MV_results]
+lv_results = [delta_LV_results, decay_LV_results, Dual_LV_results]
+
+
+def combine_results(results):
+    combined_results = []
+    model_names = ['Delta', 'Decay', 'Dual Process']
+    for i in range(len(results)):
+        model_results = results[i]
+        model_results['Model'] = model_names[i]
+        combined_results.append(model_results[columns])
+    return pd.concat(combined_results)
+
+
+combined_HV_results = combine_results(hv_results)
+combined_MV_results = combine_results(mv_results)
+combined_LV_results = combine_results(lv_results)
+
+# # plot the AIC and BIC values
+# sns.set_theme(style='white')
+# fig, ax = plt.subplots(1, 3, figsize=(15, 5))
+# sns.barplot(x='Model', y='AIC', data=combined_LV_results, ax=ax[0])
+# ax[0].set_title('Low Variance')
+# sns.barplot(x='Model', y='AIC', data=combined_MV_results, ax=ax[1])
+# ax[1].set_title('Moderate Variance')
+# sns.barplot(x='Model', y='AIC', data=combined_HV_results, ax=ax[2])
+# ax[2].set_title('High Variance')
+# for i in range(3):
+#     # remove the x label
+#     ax[i].set_xlabel('')
+#     # set lower y limit
+#     ax[i].set_ylim(bottom=120)
+# for i in (1, 2):
+#     ax[i].set_ylabel('')
+# sns.despine()
+# plt.show()
+
 
 # test the uncertainty data
 prop_uf = uncertaintyPropOptimal[uncertaintyPropOptimal['Condition'] == 'S2A1']
