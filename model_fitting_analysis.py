@@ -30,10 +30,8 @@ for key in fitting_results:
             lambda x: float(x.strip('[]').split()[0]) if isinstance(x, str) else np.nan).mean())
 
 # calculate MSE
-
-
-# Apply the function to each row of the DataFrame
-for results in [Dual_HV_results, Dual_MV_results, Dual_LV_results]:
+for results in [Dir_HV_results, Gau_HV_results, Dual_HV_results, Param_HV_results,
+                Dual_MV_results, Dual_LV_results]:
     results['error'] = results['error'].apply(eval)
     results['MSE'] = results['error'].apply(calculate_mean_squared_error)
     print(f"Mean MSE: {results['MSE'].mean()}")

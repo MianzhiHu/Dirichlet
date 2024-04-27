@@ -370,6 +370,101 @@ class ComputationalModels:
 
         return pd.DataFrame(results)
 
+    def post_hoc_simulation(self, fitting_result, original_data, reward_mean,
+                            reward_sd, num_iterations=1000):
+
+        t_sequence = fitting_result['best_parameters'].apply(
+            lambda x: float(x.strip('[]').split()[0]) if isinstance(x, str) else np.nan)
+
+        a_sequence = fitting_result['best_parameters'].apply(
+            lambda x: float(x.strip('[]').split()[1]) if isinstance(x, str) else np.nan)
+
+        # extract the trial sequence for each participant
+        trial_sequence = original_data.groupby('Subnum')['TrialType'].apply(list)
+        trial_index = original_data.groupby('Subnum')['trial_index'].apply(list)
+
+        # create a mapping of the choice set to the pair of options
+        choice_set_mapping = {
+            'AB': (0, 1),
+            'CD': (2, 3),
+            'CA': (2, 0),
+            'CB': (2, 1),
+            'BD': (0, 3),
+            'AD': (1, 3)
+        }
+
+        # start the simulation
+        all_results = []
+
+        for participant in fitting_result['participant_id']:
+            print(f"Participant {participant}")
+
+            for _ in range(num_iterations):
+
+                print(f"Iteration {_ + 1} of {num_iterations}")
+
+                self.reset()
+
+                self.t = t_sequence[participant - 1]
+                self.a = a_sequence[participant - 1]
+                self.iteration = 0
+
+                trial_details = []
+                trial_indices = []
+
+                for trial, pair in zip(trial_index[participant], trial_sequence[participant]):
+
+                    trial_indices.append(trial)
+
+                    optimal, suboptimal = choice_set_mapping[pair]
+
+                    prob_optimal = self.softmax(self.EVs[optimal], self.EVs[suboptimal])
+                    chosen = 1 if np.random.rand() < prob_optimal else 0
+
+                    reward = np.random.normal(reward_mean[optimal if chosen == 1 else suboptimal],
+                                              reward_sd[optimal if chosen == 1 else suboptimal])
+
+                    trial_details.append(
+                        {"pair": pair, "choice": chosen, "reward": reward}
+                    )
+
+                    self.update(optimal if chosen == 1 else suboptimal, reward, trial)
+
+                all_results.append({
+                    "Subnum": participant,
+                    "t": self.t,
+                    "a": self.a,
+                    "trial_indices": trial_indices,
+                    "trial_details": trial_details
+                })
+
+        unpacked_results = []
+
+        for result in all_results:
+            sim_num = result['Subnum']
+            t = result["t"]
+            a = result["a"]
+
+            for trial_idx, trial_detail in zip(result['trial_indices'], result['trial_details']):
+                var = {
+                    "Subnum": sim_num,
+                    "trial_index": trial_idx,
+                    "t": t,
+                    "a": a,
+                    "pair": trial_detail['pair'],
+                    "choice": trial_detail['choice'],
+                    "reward": trial_detail['reward'],
+                }
+
+                unpacked_results.append(var)
+
+        df = pd.DataFrame(unpacked_results)
+
+        summary = df.groupby(['Subnum', 'trial_index'])[
+            ['t', 'a', 'reward', 'choice']].mean().reset_index()
+
+        return summary
+
 
 def likelihood_ratio_test(null_results, alternative_results, df):
     """

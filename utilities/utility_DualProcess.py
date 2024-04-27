@@ -89,6 +89,7 @@ class DualProcessModel:
 
         self.t = None
         self.model = None
+        self.sim_type = None
 
     def reset(self):
         self.EV_Dir = np.full(4, 0.5)
@@ -144,80 +145,110 @@ class DualProcessModel:
         unpacked_results = []
 
         for result in results:
-            sim_num = result["simulation_num"]
-            t = result["t"]
+            if 'simulation_num' not in result:  # that means this is a post-hoc simulation
+                self.sim_type = 'post-hoc'
+                sim_num = result['Subnum']
+                t = result["t"]
 
-            for trial_idx, trial_detail, ev_dir, ev_gau in zip(result['trial_indices'],
-                                                               result['trial_details'],
-                                                               result['EV_history_Dir'],
-                                                               result['EV_history_Gau']):
-
-                if self.model == 'Dir':
+                for trial_idx, trial_detail in zip(result['trial_indices'], result['trial_details']):
                     var = {
-                        "simulation_num": sim_num,
+                        "Subnum": sim_num,
                         "trial_index": trial_idx,
                         "t": t,
                         "pair": trial_detail['pair'],
                         "choice": trial_detail['choice'],
                         "reward": trial_detail['reward'],
-                        "EV_A": ev_dir[0],
-                        "EV_B": ev_dir[1],
-                        "EV_C": ev_dir[2],
-                        "EV_D": ev_dir[3]
+                        "process": trial_detail['process'] if self.model == 'Dual' else None,
+                        "weight": trial_detail['weight'] if self.model == 'Param' else None,
                     }
 
-                elif self.model == 'Gau':
-                    var = {
-                        "simulation_num": sim_num,
-                        "trial_index": trial_idx,
-                        "t": t,
-                        "pair": trial_detail['pair'],
-                        "choice": trial_detail['choice'],
-                        "reward": trial_detail['reward'],
-                        "EV_A": ev_gau[0],
-                        "EV_B": ev_gau[1],
-                        "EV_C": ev_gau[2],
-                        "EV_D": ev_gau[3]
-                    }
+                    unpacked_results.append(var)
 
-                elif self.model == 'Dual':
-                    var = {
-                        "simulation_num": sim_num,
-                        "trial_index": trial_idx,
-                        "t": t,
-                        "pair": trial_detail['pair'],
-                        "choice": trial_detail['choice'],
-                        "reward": trial_detail['reward'],
-                        "process": trial_detail['process'],
-                        "EV_A_Dir": ev_dir[0],
-                        "EV_B_Dir": ev_dir[1],
-                        "EV_C_Dir": ev_dir[2],
-                        "EV_D_Dir": ev_dir[3],
-                        "EV_A_Gau": ev_gau[0],
-                        "EV_B_Gau": ev_gau[1],
-                        "EV_C_Gau": ev_gau[2],
-                        "EV_D_Gau": ev_gau[3]
-                    }
+            else:
+                self.sim_type = 'a priori'
+                sim_num = result["simulation_num"]
+                t = result["t"]
 
-                elif self.model == 'Param':
-                    var = {
-                        "simulation_num": sim_num,
-                        "trial_index": trial_idx,
-                        "t": t,
-                        "pair": trial_detail['pair'],
-                        "choice": trial_detail['choice'],
-                        "reward": trial_detail['reward'],
-                        "weight": trial_detail['weight'],
-                        "EV_A": self.EV_calculation(ev_dir[0], ev_gau[0], trial_detail['weight']),
-                        "EV_B": self.EV_calculation(ev_dir[1], ev_gau[1], trial_detail['weight']),
-                        "EV_C": self.EV_calculation(ev_dir[2], ev_gau[2], trial_detail['weight']),
-                        "EV_D": self.EV_calculation(ev_dir[3], ev_gau[3], trial_detail['weight'])
-                    }
+                for trial_idx, trial_detail, ev_dir, ev_gau in zip(result['trial_indices'],
+                                                                   result['trial_details'],
+                                                                   result['EV_history_Dir'],
+                                                                   result['EV_history_Gau']):
 
-                unpacked_results.append(var)
+                    if self.model == 'Dir':
+                        var = {
+                            "simulation_num": sim_num,
+                            "trial_index": trial_idx,
+                            "t": t,
+                            "pair": trial_detail['pair'],
+                            "choice": trial_detail['choice'],
+                            "reward": trial_detail['reward'],
+                            "EV_A": ev_dir[0],
+                            "EV_B": ev_dir[1],
+                            "EV_C": ev_dir[2],
+                            "EV_D": ev_dir[3]
+                        }
+
+                    elif self.model == 'Gau':
+                        var = {
+                            "simulation_num": sim_num,
+                            "trial_index": trial_idx,
+                            "t": t,
+                            "pair": trial_detail['pair'],
+                            "choice": trial_detail['choice'],
+                            "reward": trial_detail['reward'],
+                            "EV_A": ev_gau[0],
+                            "EV_B": ev_gau[1],
+                            "EV_C": ev_gau[2],
+                            "EV_D": ev_gau[3]
+                        }
+
+                    elif self.model == 'Dual':
+                        var = {
+                            "simulation_num": sim_num,
+                            "trial_index": trial_idx,
+                            "t": t,
+                            "pair": trial_detail['pair'],
+                            "choice": trial_detail['choice'],
+                            "reward": trial_detail['reward'],
+                            "process": trial_detail['process'],
+                            "EV_A_Dir": ev_dir[0],
+                            "EV_B_Dir": ev_dir[1],
+                            "EV_C_Dir": ev_dir[2],
+                            "EV_D_Dir": ev_dir[3],
+                            "EV_A_Gau": ev_gau[0],
+                            "EV_B_Gau": ev_gau[1],
+                            "EV_C_Gau": ev_gau[2],
+                            "EV_D_Gau": ev_gau[3]
+                        }
+
+                    elif self.model == 'Param':
+                        var = {
+                            "simulation_num": sim_num,
+                            "trial_index": trial_idx,
+                            "t": t,
+                            "pair": trial_detail['pair'],
+                            "choice": trial_detail['choice'],
+                            "reward": trial_detail['reward'],
+                            "weight": trial_detail['weight'],
+                            "EV_A": self.EV_calculation(ev_dir[0], ev_gau[0], trial_detail['weight']),
+                            "EV_B": self.EV_calculation(ev_dir[1], ev_gau[1], trial_detail['weight']),
+                            "EV_C": self.EV_calculation(ev_dir[2], ev_gau[2], trial_detail['weight']),
+                            "EV_D": self.EV_calculation(ev_dir[3], ev_gau[3], trial_detail['weight'])
+                        }
+
+                    unpacked_results.append(var)
 
         df = pd.DataFrame(unpacked_results)
-        return df
+
+        df['process'] = df['process'].map({'Gau': 0, 'Dir': 1})
+
+        summary = df.groupby(['Subnum', 'trial_index'])[
+            ['t', 'reward', 'choice', 'process']].mean().reset_index()
+
+        if self.sim_type == 'a priori':
+            return df
+        elif self.sim_type == 'post-hoc':
+            return summary
 
     def simulate(self, reward_means, reward_sd, model, AB_freq=None, CD_freq=None,
                  sim_trials=250, num_iterations=1000):
@@ -422,4 +453,110 @@ class DualProcessModel:
                 results.append(future.result())
 
         return pd.DataFrame(results)
+
+    def post_hoc_simulation(self, fitting_result, original_data, model, reward_means,
+                            reward_sd, num_iterations=1000):
+
+        t_sequence = fitting_result['best_parameters'].apply(
+            lambda x: float(x.strip('[]').split()[0]) if isinstance(x, str) else np.nan)
+
+        self.model = model
+
+        # extract the trial sequence for each participant
+        trial_sequence = original_data.groupby('Subnum')['TrialType'].apply(list)
+        trial_index = original_data.groupby('Subnum')['trial_index'].apply(list)
+
+        # create a mapping of the choice set to the pair of options
+        choice_set_mapping = {
+            'AB': (0, 1),
+            'CD': (2, 3),
+            'CA': (2, 0),
+            'CB': (2, 1),
+            'BD': (0, 3),
+            'AD': (1, 3)
+        }
+
+        # start the simulation
+        all_results = []
+
+        for participant in fitting_result['participant_id']:
+            print(f"Participant {participant}")
+
+            for _ in range(num_iterations):
+
+                print(f"Iteration {_ + 1} of {num_iterations}")
+
+                self.reset()
+
+                self.t = t_sequence[participant - 1]
+                self.iteration = 0
+
+                trial_details = []
+                trial_indices = []
+
+                for trial, pair in zip(trial_index[participant], trial_sequence[participant]):
+
+                    trial_indices.append(trial)
+
+                    optimal, suboptimal = choice_set_mapping[pair]
+
+                    if self.model == 'Dir':
+                        prob_optimal = self.softmax(self.EV_Dir[optimal], self.EV_Dir[suboptimal])
+                        chosen = 1 if np.random.rand() < prob_optimal else 0
+
+                    elif self.model == 'Gau':
+                        prob_optimal = self.softmax(self.EV_Gau[optimal], self.EV_Gau[suboptimal])
+                        chosen = 1 if np.random.rand() < prob_optimal else 0
+
+                    elif self.model == 'Dual':
+                        prob_optimal_dir = self.softmax(self.EV_Dir[optimal], self.EV_Dir[suboptimal])
+                        prob_optimal_gau = self.softmax(self.EV_Gau[optimal], self.EV_Gau[suboptimal])
+                        prob_suboptimal_dir = self.softmax(self.EV_Dir[suboptimal], self.EV_Dir[optimal])
+                        prob_suboptimal_gau = self.softmax(self.EV_Gau[suboptimal], self.EV_Gau[optimal])
+
+                        chosen_dir = 1 if np.random.rand() < prob_optimal_dir else 0
+                        chosen_gau = 1 if np.random.rand() < prob_optimal_gau else 0
+
+                        max_prob = max(prob_optimal_dir, prob_suboptimal_dir, prob_optimal_gau, prob_suboptimal_gau)
+
+                        if max_prob == prob_optimal_dir or max_prob == prob_suboptimal_dir:
+                            process_chosen = 'Dir'
+                            chosen = chosen_dir
+                        elif max_prob == prob_optimal_gau or max_prob == prob_suboptimal_gau:
+                            process_chosen = 'Gau'
+                            chosen = chosen_gau
+
+                    elif self.model == 'Param':
+                        EV_Dir = self.EV_Dir
+                        EV_Gau = self.EV_Gau
+                        weight = np.random.uniform(0, 1)
+
+                        EVs = self.EV_calculation(EV_Dir, EV_Gau, weight)
+                        prob_optimal = self.softmax(EVs[optimal], EVs[suboptimal])
+                        chosen = 1 if np.random.rand() < prob_optimal else 0
+
+                    reward = np.random.normal(reward_means[optimal if chosen == 1 else suboptimal],
+                                              reward_sd[optimal if chosen == 1 else suboptimal])
+
+                    if self.model == 'Dual':
+                        trial_details.append(
+                            {"pair": pair, "choice": chosen, "reward": reward, "process": process_chosen})
+                    elif self.model == 'Param':
+                        trial_details.append(
+                            {"pair": pair, "choice": chosen, "reward": reward, "weight": weight})
+                    else:
+                        trial_details.append(
+                            {"pair": pair, "choice": chosen, "reward": reward})
+
+                    self.update(optimal if chosen == 1 else suboptimal, reward, trial)
+
+
+                all_results.append({
+                    "Subnum": participant,
+                    "t": self.t,
+                    "trial_indices": trial_indices,
+                    "trial_details": trial_details
+                })
+
+        return self.unpack_simulation_results(all_results)
 

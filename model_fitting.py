@@ -38,17 +38,20 @@ if __name__ == '__main__':
     decay = ComputationalModels("decay")
     delta = ComputationalModels("delta")
 
-    for model_type in ['Dual']:
-        result = model.fit(HV, model_type, num_iterations=100)
-        result.to_csv(f'./data/DataFitting/FittingResults/{model_type}_HV_results.csv', index=False)
+    # this is for testing
+    result = model.fit(LV, 'Dual', num_iterations=1)
 
-    for model_type in ['Dual']:
-        result = model.fit(MV, model_type, num_iterations=100)
-        result.to_csv(f'./data/DataFitting/FittingResults/{model_type}_MV_results.csv', index=False)
-
-    for model_type in ['Dual']:
-        result = model.fit(LV, model_type, num_iterations=100)
-        result.to_csv(f'./data/DataFitting/FittingResults/{model_type}_LV_results.csv', index=False)
+    # for model_type in ['Dir', 'Gau', 'Dual', 'Param']:
+    #     result = model.fit(HV, model_type, num_iterations=100)
+    #     result.to_csv(f'./data/DataFitting/FittingResults/{model_type}_HV_results.csv', index=False)
+    #
+    # for model_type in ['Dir', 'Gau', 'Dual', 'Param']:
+    #     result = model.fit(MV, model_type, num_iterations=100)
+    #     result.to_csv(f'./data/DataFitting/FittingResults/{model_type}_MV_results.csv', index=False)
+    #
+    # for model_type in ['Dir', 'Gau', 'Dual', 'Param']:
+    #     result = model.fit(LV, model_type, num_iterations=100)
+    #     result.to_csv(f'./data/DataFitting/FittingResults/{model_type}_LV_results.csv', index=False)
     #
     # for model_type in ['Param']:
     #     result = model.fit(uncertainty, model_type, num_iterations=100)

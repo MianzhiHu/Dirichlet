@@ -79,3 +79,12 @@ def calculate_mean_squared_error(error_list):
     return sum(squared_error) / len(error_list)
 
 
+def MSE_calculation(original, simulated, mean=True):
+    if mean:
+        mse = np.mean((original - simulated) ** 2)
+        return mse
+    else:
+        se = (original - simulated) ** 2
+        return se
+
+
