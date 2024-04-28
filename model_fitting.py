@@ -39,7 +39,10 @@ if __name__ == '__main__':
     delta = ComputationalModels("delta")
 
     # this is for testing
-    result = model.fit(LV, 'Dual', num_iterations=1)
+    # select the first 500 rows for testing
+    testing_data = LV_df.iloc[:500, :]
+    testing_data = dict_generator(testing_data)
+    result = model.fit(LV, 'Multi_Param', num_iterations=2)
 
     # for model_type in ['Dir', 'Gau', 'Dual', 'Param']:
     #     result = model.fit(HV, model_type, num_iterations=100)

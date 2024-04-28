@@ -2,7 +2,8 @@ import numpy as np
 import pandas as pd
 import os
 import ast
-from utilities.utility_DataAnalysis import MSE_calculation
+from utilities.utility_DataAnalysis import RMSE_calculation
+from scipy.stats import ttest_ind
 
 # import original data
 data = pd.read_csv("./data/ABCDContRewardsAllData.csv")
@@ -50,34 +51,47 @@ for key in simulations:
 
     globals()[key] = simulations[key]
 
-# calculate the MSE for each model
-for key, value in simulations.items():
-    mse = MSE_calculation(value['bestOption'], value['choice'])
-    print('Condition: {}; Model: {}; MSE: {}'.format(
-        value['Condition'].unique()[0], key.split('_')[0], mse))
+# add summary columns to all_posthoc
+all_posthoc['pred_choice'] = np.where(all_posthoc['choice'] > 0.5, 1, 0)
+all_posthoc['AE'] = np.abs(all_posthoc['bestOption'] - all_posthoc['choice'])
+all_posthoc['squared_error'] = all_posthoc['AE'] ** 2
+all_posthoc.to_csv('./data/all_posthoc.csv', index=False)
 
-# participant level analysis
-MSE_by_participant = all_posthoc.groupby(['Condition', 'model', 'Subnum'])[[
-    'choice', 'bestOption']].apply(lambda x: MSE_calculation(x['bestOption'], x['choice'])).reset_index()
-MSE_by_participant.columns = ['Condition', 'Model', 'Subnum', 'MSE']
-# change the model column to categorical
-MSE_by_participant['Model'] = pd.Categorical(MSE_by_participant['Model'], categories=['delta', 'decay', 'Dir',
-                                                                                      'Gau', 'Dual'])
-MSE_by_participant['Condition'] = pd.Categorical(MSE_by_participant['Condition'])
+MSE_by_participant = all_posthoc.groupby(['Condition', 'model', 'Subnum', 'TrialType'])[[
+    'AE', 'squared_error']].mean().reset_index()
+MSE_by_participant.to_csv('./data/MSE_by_participant.csv', index=False)
 
-# mixed effects model
-import statsmodels.api as sm
-import statsmodels.formula.api as smf
+# calculate the proportion of accurately predicting the best option
+all_posthoc['correct'] = np.where(all_posthoc['bestOption'] == all_posthoc['pred_choice'], 1, 0)
+proportion_correct = all_posthoc.groupby(['Condition', 'model', 'Subnum', 'TrialType'])['correct'].mean().reset_index()
+proportion_correct_CA = proportion_correct[proportion_correct['TrialType'] == 'CA']
+
+# plot the proportion of correctly predicting the best option
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+sns.set_theme(style='white')
+plt.figure(figsize=(10, 6))
+sns.barplot(data=proportion_correct_CA, x='Condition', y='correct', hue='model')
+plt.title('Proportion of correctly predicting the best option')
+plt.ylabel('Proportion')
+plt.xlabel('Model')
+plt.show()
 
 
-data_mixed = MSE_by_participant[MSE_by_participant['Condition'] == 'HV']
-# Create a mixed-effects model formula
-formula = 'MSE ~ Model'
+# MSE for the proportion of optimal choices for each trial type
+MSE_by_proportion = all_posthoc.groupby(['Condition', 'model', 'TrialType'])[
+    ['choice', 'bestOption']].mean().reset_index()
+MSE_by_proportion = MSE_by_proportion.groupby(['Condition', 'model', 'TrialType']).apply(
+    lambda x: np.abs(x['choice'] - x['bestOption']).mean()).reset_index()
+# divide the df by the condition
+MSE_by_proportion_HV = MSE_by_proportion[MSE_by_proportion['Condition'] == 'HV']
+MSE_by_proportion_MV = MSE_by_proportion[MSE_by_proportion['Condition'] == 'MV']
+MSE_by_proportion_LV = MSE_by_proportion[MSE_by_proportion['Condition'] == 'LV']
+MSE_by_proportion = MSE_by_proportion[MSE_by_proportion['TrialType'] == 'CA']
 
-# Fit the mixed-effects model
-mixed_model = smf.mixedlm(formula, data=data_mixed, groups='Subnum').fit()
-
-# Print the summary of the model
-print(mixed_model.summary())
-
-x = HV.groupby('Subnum')['TrialType'].apply(list)
+# MSE for processes chosen
+process_data = pd.read_csv('./data/CombinedVarianceData.csv')
+HV_process = process_data[process_data['Condition'] == 'HV']
+MV_process = process_data[process_data['Condition'] == 'MV']
+LV_process = process_data[process_data['Condition'] == 'LV']

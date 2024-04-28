@@ -20,6 +20,8 @@ def fit_participant(model, participant_id, pdata, model_type, num_iterations=100
 
     if model_type == 'Param':
         k = 2
+    elif model_type == 'Multi_Param':
+        k = 7
     else:
         k = 1
 
@@ -38,6 +40,13 @@ def fit_participant(model, participant_id, pdata, model_type, num_iterations=100
         if model_type == 'Param':
             initial_guess = [np.random.uniform(0.0001, 4.9999), np.random.uniform(0.0001, 0.9999)]
             bounds = [(0.0001, 4.9999), (0.0001, 0.9999)]
+        elif model_type == 'Multi_Param':
+            initial_guess = [np.random.uniform(0.0001, 4.9999), np.random.uniform(0.0001, 0.9999),
+                             np.random.uniform(0.0001, 4.9999), np.random.uniform(0.0001, 0.9999),
+                             np.random.uniform(0.0001, 4.9999), np.random.uniform(0.0001, 0.9999),
+                             np.random.uniform(0.0001, 4.9999)]
+            bounds = [(0.0001, 4.9999), (0.0001, 0.9999), (0.0001, 4.9999), (0.0001, 0.9999),
+                      (0.0001, 4.9999), (0.0001, 0.9999), (0.0001, 4.9999)]
         else:
             initial_guess = [np.random.uniform(0.0001, 4.9999)]
             bounds = [(0.0001, 4.9999)]
@@ -51,7 +60,6 @@ def fit_participant(model, participant_id, pdata, model_type, num_iterations=100
             best_initial_guess = initial_guess
             best_parameters = result.x
             best_process_chosen = model.process_chosen
-            best_error = model.error
 
     aic = 2 * k + 2 * best_nll
     bic = k * np.log(total_n) + 2 * best_nll
@@ -61,7 +69,6 @@ def fit_participant(model, participant_id, pdata, model_type, num_iterations=100
     result_dict = {
         'participant_id': participant_id,
         'best_nll': best_nll,
-        'error': best_error,
         'best_initial_guess': best_initial_guess,
         'best_parameters': best_parameters,
         'best_process_chosen': best_process_chosen,
@@ -85,7 +92,6 @@ class DualProcessModel:
         self.n_samples = n_samples
         self.reward_history = [[0] for _ in range(4)]
         self.process_chosen = []
-        self.error = []
 
         self.t = None
         self.model = None
@@ -99,7 +105,6 @@ class DualProcessModel:
         self.alpha = np.full(4, 1)
         self.reward_history = [[] for _ in range(4)]
         self.process_chosen = []
-        self.error = []
 
     def softmax(self, chosen, alt1):
         c = 3 ** self.t - 1
@@ -366,7 +371,38 @@ class DualProcessModel:
             5: (1, 3)
         }
 
+
         trial = np.arange(1, self.num_trials + 1)
+
+        # the most complicated model
+        if self.model == 'Multi_Param':
+
+            # Decide which trial type it is
+            weight_mapping = {
+                0: params[1],
+                1: params[2],
+                2: params[3],
+                3: params[4],
+                4: params[5],
+                5: params[6]
+            }
+
+            for r, cs, ch, t in zip(reward, choiceset, choice, trial):
+                # Standardize the EVs
+                EV_Dir = (self.EV_Dir - np.mean(self.EV_Dir)) / np.std(self.EV_Dir)
+                EV_Gau = (self.EV_Gau - np.mean(self.EV_Gau)) / np.std(self.EV_Gau)
+
+                weight = weight_mapping[cs]
+
+                # Calculate the expected value of the model
+                self.EVs = weight * EV_Dir + (1 - weight) * EV_Gau
+
+                cs_mapped = choiceset_mapping[cs]
+                prob_choice = self.softmax(self.EVs[cs_mapped[0]], self.EVs[cs_mapped[1]])
+                prob_choice_alt = self.softmax(self.EVs[cs_mapped[1]], self.EVs[cs_mapped[0]])
+
+                nll += -np.log(prob_choice if ch == cs_mapped[0] else prob_choice_alt)
+                self.update(ch, r, t)
 
         if self.model == 'Param':
 
@@ -381,7 +417,6 @@ class DualProcessModel:
                 cs_mapped = choiceset_mapping[cs]
                 prob_choice = self.softmax(self.EVs[cs_mapped[0]], self.EVs[cs_mapped[1]])
                 prob_choice_alt = self.softmax(self.EVs[cs_mapped[1]], self.EVs[cs_mapped[0]])
-                self.error.append(prob_choice_alt if ch == cs_mapped[0] else prob_choice)
                 nll += -np.log(prob_choice if ch == cs_mapped[0] else prob_choice_alt)
                 self.update(ch, r, trial)
 
@@ -391,7 +426,6 @@ class DualProcessModel:
                 prob_choice = self.softmax(self.EV_Dir[cs_mapped[0]], self.EV_Dir[cs_mapped[1]])
                 prob_choice_alt = self.softmax(self.EV_Dir[cs_mapped[1]], self.EV_Dir[cs_mapped[0]])
                 nll += -np.log(prob_choice if ch == cs_mapped[0] else prob_choice_alt)
-                self.error.append(prob_choice_alt if ch == cs_mapped[0] else prob_choice)
                 self.update(ch, r, trial)
 
         elif self.model == 'Gau':
@@ -400,7 +434,6 @@ class DualProcessModel:
                 prob_choice = self.softmax(self.EV_Gau[cs_mapped[0]], self.EV_Gau[cs_mapped[1]])
                 prob_choice_alt = self.softmax(self.EV_Gau[cs_mapped[1]], self.EV_Gau[cs_mapped[0]])
                 nll += -np.log(prob_choice if ch == cs_mapped[0] else prob_choice_alt)
-                self.error.append(prob_choice_alt if ch == cs_mapped[0] else prob_choice)
                 self.update(ch, r, trial)
 
         elif self.model == 'Dual':
@@ -420,12 +453,10 @@ class DualProcessModel:
                 if ch == cs_mapped[0]:
                     chosen_process = 'Dir' if dir_prob > gau_prob else 'Gau'
                     self.process_chosen.append(chosen_process)
-                    self.error.append(dir_prob_alt if dir_prob > gau_prob else gau_prob_alt)
                     nll += -np.log(dir_prob if dir_prob > gau_prob else gau_prob)
                 elif ch == cs_mapped[1]:
                     chosen_process = 'Dir' if dir_prob_alt > gau_prob_alt else 'Gau'
                     self.process_chosen.append(chosen_process)
-                    self.error.append(dir_prob if dir_prob_alt > gau_prob_alt else gau_prob)
                     nll += -np.log(dir_prob_alt if dir_prob_alt > gau_prob_alt else gau_prob_alt)
 
                 self.update(ch, r, trial)

@@ -147,7 +147,7 @@ for fold in np.arange(n_fold):
     lstm_igt = lstmIGT(4, n_nodes, 4, n_layers)
     criterion_igt = nn.MSELoss()
     optimizer_igt = optim.Adam(lstm_igt.parameters(), lr=1e-2)
-    n_epochs, window, batch_size = 10, 10, 10
+    n_epochs, window, batch_size = 10, 10, 20
     loss_set_igt = []
     for ep in np.arange(n_epochs):
         for bc in np.arange(train_set_igt.shape[0] / batch_size):
@@ -208,3 +208,18 @@ for fold in np.arange(n_fold):
 
 
 x = getTS(choice_100)
+
+ryc2 = revTS(ry2[:, lag:].cpu().numpy().copy())
+ryr2 = getChR(ry2[:, lag:, :].cpu().numpy().copy())
+ryo2 = getCoR(ry2[:, lag:, :].cpu().numpy().copy())
+pyc2 = revTS(py2[:, :-lag].copy())
+pyr2 = getChR(py2[:, :-lag, :].copy())
+pyo2 = getCoR(py2[:, :-lag, :].copy())
+pycar2 = revTS(pyar2[:, :-lag].copy())
+pyrar2 = getChR(pyar2[:, :-lag, :].copy())
+pyoar2 = getCoR(pyar2[:, :-lag, :].copy())
+
+igt_lstm_mse = np.mean(MSE_by_time(ryr2, pyr2))
+igt_ar_mse = np.mean(MSE_by_time(ryr2, pyrar2))
+print(n_nodes, n_layers, "MSE:", igt_lstm_mse, igt_ar_mse)
+print(np.mean(MSE_by_time(ry2, py2)))
