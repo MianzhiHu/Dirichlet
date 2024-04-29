@@ -35,7 +35,8 @@ def fit_participant(model, participant_id, pdata, model_type, num_iterations=100
 
         model.iteration += 1
 
-        print(f"\n=== Iteration {model.iteration} ===\n")
+        print('Participant {} - Iteration [{}/{}]'.format(participant_id, model.iteration,
+                                                            num_iterations))
 
         if model_type == 'Param':
             initial_guess = [np.random.uniform(0.0001, 4.9999), np.random.uniform(0.0001, 0.9999)]
@@ -45,8 +46,8 @@ def fit_participant(model, participant_id, pdata, model_type, num_iterations=100
                              np.random.uniform(0.0001, 4.9999), np.random.uniform(0.0001, 0.9999),
                              np.random.uniform(0.0001, 4.9999), np.random.uniform(0.0001, 0.9999),
                              np.random.uniform(0.0001, 4.9999)]
-            bounds = [(0.0001, 4.9999), (0.0001, 0.9999), (0.0001, 4.9999), (0.0001, 0.9999),
-                      (0.0001, 4.9999), (0.0001, 0.9999), (0.0001, 4.9999)]
+            bounds = [(0.0001, 4.9999), (0.0001, 0.9999), (0.0001, 0.9999), (0.0001, 0.9999),
+                      (0.0001, 0.9999), (0.0001, 0.9999), (0.0001, 0.9999)]
         else:
             initial_guess = [np.random.uniform(0.0001, 4.9999)]
             bounds = [(0.0001, 4.9999)]

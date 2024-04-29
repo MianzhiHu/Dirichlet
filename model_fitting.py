@@ -38,11 +38,11 @@ if __name__ == '__main__':
     decay = ComputationalModels("decay")
     delta = ComputationalModels("delta")
 
-    # this is for testing
-    # select the first 500 rows for testing
-    testing_data = LV_df.iloc[:500, :]
-    testing_data = dict_generator(testing_data)
-    result = model.fit(LV, 'Multi_Param', num_iterations=2)
+    # # this is for testing
+    # # select the first 500 rows for testing
+    # testing_data = LV_df.iloc[:500, :]
+    # testing_data = dict_generator(testing_data)
+    # result = model.fit(LV, 'Multi_Param', num_iterations=2)
 
     # for model_type in ['Dir', 'Gau', 'Dual', 'Param']:
     #     result = model.fit(HV, model_type, num_iterations=100)
@@ -60,10 +60,15 @@ if __name__ == '__main__':
     #     result = model.fit(uncertainty, model_type, num_iterations=100)
     #     result.to_csv(f'./data/DataFitting/FittingResults/{model_type}Scale_uncertaintyOld_results.csv', index=False)
 
-    # refit the param model
-    # HV_param = model.fit(HV, 'Param', num_iterations=100)
-    # MV_param = model.fit(MV, 'Param', num_iterations=100)
-    # LV_param = model.fit(LV, 'Param', num_iterations=100)
+    # refit the param model with multiple parameters
+    # HV_param = model.fit(HV, 'Multi_Param', num_iterations=100)
+    # HV_param.to_csv('./data/DataFitting/FittingResults/MultiParam_HV_results.csv', index=False)
+
+    MV_param = model.fit(MV, 'Multi_Param', num_iterations=100)
+    MV_param.to_csv('./data/DataFitting/FittingResults/MultiParam_MV_results.csv', index=False)
+
+    LV_param = model.fit(LV, 'Multi_Param', num_iterations=100)
+    LV_param.to_csv('./data/DataFitting/FittingResults/MultiParam_LV_results.csv', index=False)
 
     # # # save
     # HV_param.to_csv('./data/DataFitting/FittingResults/ParamScale_HV_results.csv', index=False)

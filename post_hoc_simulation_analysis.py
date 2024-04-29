@@ -4,6 +4,8 @@ import os
 import ast
 from utilities.utility_DataAnalysis import RMSE_calculation
 from scipy.stats import ttest_ind
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 # import original data
 data = pd.read_csv("./data/ABCDContRewardsAllData.csv")
@@ -55,24 +57,25 @@ for key in simulations:
 all_posthoc['pred_choice'] = np.where(all_posthoc['choice'] > 0.5, 1, 0)
 all_posthoc['AE'] = np.abs(all_posthoc['bestOption'] - all_posthoc['choice'])
 all_posthoc['squared_error'] = all_posthoc['AE'] ** 2
-all_posthoc.to_csv('./data/all_posthoc.csv', index=False)
+# all_posthoc.to_csv('./data/all_posthoc.csv', index=False)
+for condition, model in all_posthoc.groupby(['Condition', 'model']):
+    print(f'{condition[0]}: {condition[1]}')
+    print(f'MSE: {model["squared_error"].mean()}')
+    print(f'MAE: {model["AE"].mean()}')
 
 MSE_by_participant = all_posthoc.groupby(['Condition', 'model', 'Subnum', 'TrialType'])[[
     'AE', 'squared_error']].mean().reset_index()
-MSE_by_participant.to_csv('./data/MSE_by_participant.csv', index=False)
+# MSE_by_participant.to_csv('./data/MSE_by_participant.csv', index=False)
 
 # calculate the proportion of accurately predicting the best option
 all_posthoc['correct'] = np.where(all_posthoc['bestOption'] == all_posthoc['pred_choice'], 1, 0)
 proportion_correct = all_posthoc.groupby(['Condition', 'model', 'Subnum', 'TrialType'])['correct'].mean().reset_index()
-proportion_correct_CA = proportion_correct[proportion_correct['TrialType'] == 'CA']
+# proportion_correct_CA = proportion_correct[proportion_correct['TrialType'] == 'CA']
 
 # plot the proportion of correctly predicting the best option
-import seaborn as sns
-import matplotlib.pyplot as plt
-
 sns.set_theme(style='white')
 plt.figure(figsize=(10, 6))
-sns.barplot(data=proportion_correct_CA, x='Condition', y='correct', hue='model')
+sns.barplot(data=proportion_correct, x='Condition', y='correct', hue='model')
 plt.title('Proportion of correctly predicting the best option')
 plt.ylabel('Proportion')
 plt.xlabel('Model')

@@ -29,14 +29,6 @@ for key in fitting_results:
     print(fitting_results[key]['best_parameters'].apply(
             lambda x: float(x.strip('[]').split()[0]) if isinstance(x, str) else np.nan).mean())
 
-# calculate MSE
-for results in [Dir_HV_results, Gau_HV_results, Dual_HV_results, Param_HV_results,
-                Dual_MV_results, Dual_LV_results]:
-    results['error'] = results['error'].apply(eval)
-    results['MSE'] = results['error'].apply(calculate_mean_squared_error)
-    print(f"Mean MSE: {results['MSE'].mean()}")
-
-
 
 # import the data
 data = pd.read_csv("./data/ABCDContRewardsAllData.csv")
