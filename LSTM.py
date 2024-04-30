@@ -296,6 +296,10 @@ for n_nodes, n_layers, n_epochs, batch_size in product(param_grid['n_nodes'], pa
     MSE_dict[(n_layers, n_nodes, n_epochs, batch_size)] = MSEloss
     weights_dict[(n_layers, n_nodes, n_epochs, batch_size)] = weights_full
 
+# =============================================================================
+# The post-hoc analysis starts here
+# =============================================================================
+
 # calculate the mean squared error for each configuration
 for key, value in results_dict.items():
     MSE = np.mean((value['bestOption'] - value['pred_bestOption']) ** 2)
