@@ -5,6 +5,7 @@ from torch import nn
 from torch.utils.data import Dataset, DataLoader
 from sklearn.model_selection import KFold
 from sklearn.metrics import mean_squared_error
+from itertools import product
 
 
 # define the LSTM model
@@ -69,6 +70,32 @@ def find_best_choice(row, target_variable):  # Function to extract the value of 
     best_choice_position = best_choice_mapping[row['TrialType']]
     best_choice = row[target_variable][best_choice_position]
     return best_choice
+
+
+def weight_storing(current_model):
+    # preallocate a dictionary to store the weights
+    temp_weights = {
+        'Parameter Name': [],
+        'Size': [],
+        'Values': []
+    }
+
+    # Iterate over state_dict to collect parameter names and values
+    for param_name, param_values in current_model.state_dict().items():
+        temp_weights['Parameter Name'].append(param_name)
+        temp_weights['Size'].append(param_values.size())
+        # Flatten the tensor values and convert them to a list
+        temp_weights['Values'].append(param_values.cpu().numpy().flatten().tolist())
+
+    return pd.DataFrame(temp_weights)
+
+
+def average_weights(values):
+    # convert the list of weights to a dataframe
+    expanded = values['Values'].apply(pd.Series)
+    expanded['Parameter Name'] = values['Parameter Name']
+    mean_df = expanded.groupby('Parameter Name').mean().reset_index()
+    return mean_df
 
 
 # =============================================================================
@@ -146,105 +173,137 @@ mask = padded_sequences[:, :, 2:6]
 # The model fitting process starts here
 # =============================================================================
 
-# define model parameters
-n_folds = 5
+# # define model parameters
+param_grid = {
+    'n_nodes': [5, 10, 20, 50, 100],
+    'n_layers': [1, 2, 3, 4, 5],
+    'n_epochs': [100, 200, 400],
+    'batch_size': [1, 5, 10]
+}
+
+results_dict = {}
+MSE_dict = {}
+weights_dict = {}
+
+# unchangeable parameters
 lag = 1  # the model prediction starts from the second trial
-n_layers = 3
-n_nodes = 10
-n_epochs = 10
-batch_size = 1
+n_folds = 5
+iteration = 0
 
 # define the model
-model = LSTM(len(var), n_nodes, 4, n_layers)
-criterion = nn.MSELoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-5)
+for n_nodes, n_layers, n_epochs, batch_size in product(param_grid['n_nodes'], param_grid['n_layers'],
+                                                       param_grid['n_epochs'], param_grid['batch_size']):
 
-# split the data into n_folds
-kf = KFold(n_splits=n_folds, shuffle=True, random_state=42)
+    iteration += 1
 
-# iterate over the folds
-for fold, (train_index, test_index) in enumerate(kf.split(features)):
-    # split the data
-    X_train, X_test = features[train_index], features[test_index]
-    y_train, y_test = targets[train_index], targets[test_index]
-    mask_train, mask_test = mask[train_index], mask[test_index]
+    print('Iteration [{}/{}]'.format(iteration, len(list(product(param_grid['n_nodes'], param_grid['n_layers'],
+                                                                 param_grid['n_epochs'], param_grid['batch_size'])))))
+    print('Current Configuration:')
+    print(f'Number of Layers: {n_layers}, Number of Nodes: {n_nodes}, Number of Epochs: {n_epochs}, '
+          f'Batch Size: {batch_size}')
 
-    losses = []
+    model = LSTM(len(var), n_nodes, 4, n_layers)
+    criterion = nn.MSELoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-5)
 
-    for epoch in np.arange(n_epochs):
-        for i in np.arange(X_train.shape[0] / batch_size):
-            batch_participant_ids = train_index[int(i * batch_size):int((i + 1) * batch_size)]
+    # Temporary DataFrame for current configuration
+    LSTM_result = pd.DataFrame()
 
-            X_batch = X_train[int(i * batch_size):int((i + 1) * batch_size)].float()
-            y_batch = y_train[int(i * batch_size):int((i + 1) * batch_size)].float()
-            mask_batch = mask_train[int(i * batch_size):int((i + 1) * batch_size)].float()
+    # split the data into n_folds
+    kf = KFold(n_splits=n_folds, shuffle=True, random_state=42)
 
-            optimizer.zero_grad()
-            output = model(X_batch, mask_batch)
-            loss = criterion(output[:, :-lag], y_batch[:, lag:])
-            loss.backward()
+    # iterate over the folds
+    for fold, (train_index, test_index) in enumerate(kf.split(features)):
+        # split the data
+        X_train, X_test = features[train_index], features[test_index]
+        y_train, y_test = targets[train_index], targets[test_index]
+        mask_train, mask_test = mask[train_index], mask[test_index]
 
-            on_policy_loss = loss.item()
-            losses.append(on_policy_loss)
+        losses = []
 
-            optimizer.step()
+        for epoch in np.arange(n_epochs):
+            for i in np.arange(X_train.shape[0] / batch_size):
+                batch_participant_ids = train_index[int(i * batch_size):int((i + 1) * batch_size)]
 
-            # print the number of folds
-            if i % 10 == 0:
-                print(f'Fold: {fold + 1}/{n_folds}')
-                print('Epoch[{}/{}], Batch[{}/{}], Loss: {:.5f}'.format(
-                    epoch + 1, n_epochs, i + 1, X_train.shape[0] / batch_size, on_policy_loss))
+                X_batch = X_train[int(i * batch_size):int((i + 1) * batch_size)].float()
+                y_batch = y_train[int(i * batch_size):int((i + 1) * batch_size)].float()
+                mask_batch = mask_train[int(i * batch_size):int((i + 1) * batch_size)].float()
 
-    # evaluate
-    model_eval = model.eval()
-    y_pred = model_eval(X_test, mask_test).data.cpu().numpy()
+                optimizer.zero_grad()
+                output = model(X_batch, mask_batch)
+                loss = criterion(output[:, :-lag], y_batch[:, lag:])
+                loss.backward()
 
-    if fold == 0:
-        test_set_full = y_test
-        pred_set_full = y_pred
-        MSEloss = losses
-    else:
-        test_set_full = np.concatenate((test_set_full, y_test), axis=0)
-        pred_set_full = np.concatenate((pred_set_full, y_pred), axis=0)
-        MSEloss = np.concatenate((MSEloss, losses), axis=0)
+                on_policy_loss = loss.item()
+                losses.append(on_policy_loss)
 
-# =============================================================================
-# The model fitting process ends here
-# =============================================================================
+                optimizer.step()
 
-# convert the results back to the original format
-for results in [test_set_full, pred_set_full]:
-    participant = []
-    trial_index = []
-    outcome = []
-    for i in range(results.shape[0]):
-        for j in range(results.shape[1]):
-            participant.append(i)
-            trial_index.append(j)
-            outcome.append(results[i, j])
+                # print the number of folds
+                if i % 10 == 0:
+                    print(f'Fold: {fold + 1}/{n_folds}')
+                    print('Epoch[{}/{}], Batch[{}/{}], Loss: {:.5f}'.format(
+                        epoch + 1, n_epochs, i + 1, X_train.shape[0] / batch_size, on_policy_loss))
 
-    # if the result df doesn't exist, create it, otherwise, join the results
-    if 'LSTM_result' not in locals():
-        LSTM_result = pd.DataFrame({'Subnum': participant, 'trial_index': trial_index, 'real_y': outcome})
-    else:
-        LSTM_result = pd.merge(LSTM_result,
-                               pd.DataFrame({'Subnum': participant, 'trial_index': trial_index, 'pred_y': outcome}),
-                               on=['Subnum', 'trial_index'])
+        # evaluate
+        model_eval = model.eval()
+        y_pred = model_eval(X_test, mask_test).data.cpu().numpy()
+        weights = weight_storing(model)
 
+        if fold == 0:
+            test_set_full = y_test
+            pred_set_full = y_pred
+            MSEloss = losses
+            weights_full = weights
+        else:
+            test_set_full = np.concatenate((test_set_full, y_test), axis=0)
+            pred_set_full = np.concatenate((pred_set_full, y_pred), axis=0)
+            MSEloss = np.concatenate((MSEloss, losses), axis=0)
+            weights_full = pd.concat([weights_full, weights], axis=0)
 
-# now, get the trial type first
-LSTM_result['TrialType'] = LSTM_result['pred_y'].apply(find_trial_type)
+    # =============================================================================
+    # The model fitting process ends here
+    # =============================================================================
 
+    # convert the results back to the original format
+    for results in [test_set_full, pred_set_full]:
+        participant = []
+        trial_index = []
+        outcome = []
+        for i in range(results.shape[0]):
+            for j in range(results.shape[1]):
+                participant.append(i)
+                trial_index.append(j)
+                outcome.append(results[i, j])
 
-# get people's actual choices, as well as the predicted choices
-LSTM_result['bestOption'] = LSTM_result.apply(find_best_choice, axis=1, target_variable='real_y')
-LSTM_result['pred_bestOption'] = LSTM_result.apply(find_best_choice, axis=1, target_variable='pred_y')
+        # create a df for the current fold
+        fold_results = pd.DataFrame({'Subnum': participant, 'trial_index': trial_index, 'real_y': outcome})
 
-# calculate the mean squared error
-on_policy_MSE = np.mean(MSEloss)
-MSE = np.mean((LSTM_result['bestOption'] - LSTM_result['pred_bestOption']) ** 2)
-MAE = np.mean(np.abs(LSTM_result['bestOption'] - LSTM_result['pred_bestOption']))
+        if LSTM_result.empty:
+            LSTM_result = fold_results
+        else:
+            LSTM_result = pd.merge(LSTM_result, pd.DataFrame({'Subnum': participant, 'trial_index': trial_index,
+                                                              'pred_y': outcome}), on=['Subnum', 'trial_index'])
 
-# get the weights
-weights = model.fcLayer.weight.data.cpu().numpy()
+    # now, get the trial type first
+    LSTM_result['TrialType'] = LSTM_result['pred_y'].apply(find_trial_type)
+
+    # get people's actual choices, as well as the predicted choices
+    LSTM_result['bestOption'] = LSTM_result.apply(find_best_choice, axis=1, target_variable='real_y')
+    LSTM_result['pred_bestOption'] = LSTM_result.apply(find_best_choice, axis=1, target_variable='pred_y')
+
+    results_dict[(n_layers, n_nodes, n_epochs, batch_size)] = LSTM_result
+    MSE_dict[(n_layers, n_nodes, n_epochs, batch_size)] = MSEloss
+    weights_dict[(n_layers, n_nodes, n_epochs, batch_size)] = weights_full
+
+# calculate the mean squared error for each configuration
+for key, value in results_dict.items():
+    MSE = np.mean((value['bestOption'] - value['pred_bestOption']) ** 2)
+    MAE = np.mean(np.abs(value['bestOption'] - value['pred_bestOption']))
+    print(f'Number of Layers: {key[0]}, Number of Nodes: {key[1]}, Number of Epochs: {key[2]}, Batch Size: {key[3]}')
+    print(f'MSE: {MSE}')
+    print(f'MAE: {MAE}')
+    print('------------------------------------')
+    print('\n')
+
 

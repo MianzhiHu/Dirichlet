@@ -61,8 +61,8 @@ if __name__ == '__main__':
     #     result.to_csv(f'./data/DataFitting/FittingResults/{model_type}Scale_uncertaintyOld_results.csv', index=False)
 
     # refit the param model with multiple parameters
-    # HV_param = model.fit(HV, 'Multi_Param', num_iterations=100)
-    # HV_param.to_csv('./data/DataFitting/FittingResults/MultiParam_HV_results.csv', index=False)
+    HV_param = model.fit(HV, 'Multi_Param', num_iterations=100)
+    HV_param.to_csv('./data/DataFitting/FittingResults/MultiParam_HV_results.csv', index=False)
 
     MV_param = model.fit(MV, 'Multi_Param', num_iterations=100)
     MV_param.to_csv('./data/DataFitting/FittingResults/MultiParam_MV_results.csv', index=False)

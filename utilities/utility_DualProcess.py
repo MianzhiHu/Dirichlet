@@ -43,18 +43,20 @@ def fit_participant(model, participant_id, pdata, model_type, num_iterations=100
             bounds = [(0.0001, 4.9999), (0.0001, 0.9999)]
         elif model_type == 'Multi_Param':
             initial_guess = [np.random.uniform(0.0001, 4.9999), np.random.uniform(0.0001, 0.9999),
-                             np.random.uniform(0.0001, 4.9999), np.random.uniform(0.0001, 0.9999),
-                             np.random.uniform(0.0001, 4.9999), np.random.uniform(0.0001, 0.9999),
-                             np.random.uniform(0.0001, 4.9999)]
+                             np.random.uniform(0.0001, 0.9999), np.random.uniform(0.0001, 0.9999),
+                             np.random.uniform(0.0001, 0.9999), np.random.uniform(0.0001, 0.9999),
+                             np.random.uniform(0.0001, 0.9999)]
             bounds = [(0.0001, 4.9999), (0.0001, 0.9999), (0.0001, 0.9999), (0.0001, 0.9999),
                       (0.0001, 0.9999), (0.0001, 0.9999), (0.0001, 0.9999)]
+            cons = {'type': 'eq', 'fun': model.constraint}
         else:
             initial_guess = [np.random.uniform(0.0001, 4.9999)]
             bounds = [(0.0001, 4.9999)]
 
         result = minimize(model.negative_log_likelihood, initial_guess,
                           args=(pdata['reward'], pdata['choiceset'], pdata['choice']),
-                          bounds=bounds, method='L-BFGS-B', options={'maxiter': 10000})
+                          bounds=bounds, constraints=cons if model_type == 'Multi_Param' else None,
+                          method='L-BFGS-B', options={'maxiter': 10000})
 
         if result.fun < best_nll:
             best_nll = result.fun
@@ -116,6 +118,9 @@ class DualProcessModel:
     def EV_calculation(self, EV_Dir, EV_Gau, weight):
         EVs = weight * EV_Dir + (1 - weight) * EV_Gau
         return EVs
+
+    def constraint(self, params):
+        return 1 - np.sum(params[1:])  # the sum of the weights should be 1
 
     def update(self, chosen, reward, trial):
 
