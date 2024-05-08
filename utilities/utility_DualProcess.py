@@ -4,6 +4,7 @@ from scipy.optimize import minimize
 from scipy.stats import chi2, dirichlet, multivariate_normal
 from concurrent.futures import ProcessPoolExecutor
 
+
 # This function is used to build and fit a dual-process model
 # The idea of the dual-process model is that decision-making, particularly decision-making in the ABCD task,
 # is potentially driven by two processes: a Dirichlet process and a Gaussian process.
@@ -12,13 +13,12 @@ from concurrent.futures import ProcessPoolExecutor
 
 
 def fit_participant(model, participant_id, pdata, model_type, num_iterations=1000):
-
     print(f"Fitting participant {participant_id}...")
 
     total_nll = 0
     total_n = model.num_trials
 
-    if model_type == 'Param':
+    if model_type in ('Param', 'Recency'):
         k = 2
     elif model_type == 'Multi_Param':
         k = 7
@@ -36,9 +36,9 @@ def fit_participant(model, participant_id, pdata, model_type, num_iterations=100
         model.iteration += 1
 
         print('Participant {} - Iteration [{}/{}]'.format(participant_id, model.iteration,
-                                                            num_iterations))
+                                                          num_iterations))
 
-        if model_type == 'Param':
+        if model_type in ('Param', 'Recency'):
             initial_guess = [np.random.uniform(0.0001, 4.9999), np.random.uniform(0.0001, 0.9999)]
             bounds = [(0.0001, 4.9999), (0.0001, 0.9999)]
         elif model_type == 'Multi_Param':
@@ -48,15 +48,13 @@ def fit_participant(model, participant_id, pdata, model_type, num_iterations=100
                              np.random.uniform(0.0001, 0.9999)]
             bounds = [(0.0001, 4.9999), (0.0001, 0.9999), (0.0001, 0.9999), (0.0001, 0.9999),
                       (0.0001, 0.9999), (0.0001, 0.9999), (0.0001, 0.9999)]
-            cons = {'type': 'eq', 'fun': model.constraint}
         else:
             initial_guess = [np.random.uniform(0.0001, 4.9999)]
             bounds = [(0.0001, 4.9999)]
 
         result = minimize(model.negative_log_likelihood, initial_guess,
                           args=(pdata['reward'], pdata['choiceset'], pdata['choice']),
-                          bounds=bounds, constraints=cons if model_type == 'Multi_Param' else None,
-                          method='L-BFGS-B', options={'maxiter': 10000})
+                          bounds=bounds, method='L-BFGS-B', options={'maxiter': 10000})
 
         if result.fun < best_nll:
             best_nll = result.fun
@@ -83,8 +81,14 @@ def fit_participant(model, participant_id, pdata, model_type, num_iterations=100
     return result_dict
 
 
+def EV_calculation(EV_Dir, EV_Gau, weight):
+    EVs = weight * EV_Dir + (1 - weight) * EV_Gau
+    return EVs
+
+
 class DualProcessModel:
     def __init__(self, n_samples=1000, num_trials=250):
+        self.iteration = None
         self.num_trials = num_trials
         self.EVs = np.full(4, 0.5)
         self.EV_Dir = np.full(4, 0.5)
@@ -97,6 +101,7 @@ class DualProcessModel:
         self.process_chosen = []
 
         self.t = None
+        self.a = None
         self.model = None
         self.sim_type = None
 
@@ -115,26 +120,25 @@ class DualProcessModel:
         denom = num + np.exp(min(700, c * alt1))
         return num / denom
 
-    def EV_calculation(self, EV_Dir, EV_Gau, weight):
-        EVs = weight * EV_Dir + (1 - weight) * EV_Gau
-        return EVs
-
-    def constraint(self, params):
-        return 1 - np.sum(params[1:])  # the sum of the weights should be 1
-
     def update(self, chosen, reward, trial):
 
         if trial > 150:
             return self.EV_Dir, self.EV_Gau
 
         else:
+            if self.model == 'Recency':
+                self.alpha = [max(np.finfo(float).tiny, (1 - self.a) * i) for i in self.alpha]  # avoid alpha = 0
+                self.reward_history = [[(1 - self.a) * i for i in hist] for hist in self.reward_history]
+
             self.reward_history[chosen].append(reward)
             # for every trial, we need to update the EV for both the Dirichlet and Gaussian processes
             # Dirichlet process
             flatten_reward_history = [item for sublist in self.reward_history for item in sublist]
             AV_total = np.mean(flatten_reward_history)
+
             if reward > AV_total:
                 self.alpha[chosen] += 1
+                # print(f'trial {trial}: alpha {self.alpha}')
             else:
                 pass
 
@@ -241,24 +245,22 @@ class DualProcessModel:
                             "choice": trial_detail['choice'],
                             "reward": trial_detail['reward'],
                             "weight": trial_detail['weight'],
-                            "EV_A": self.EV_calculation(ev_dir[0], ev_gau[0], trial_detail['weight']),
-                            "EV_B": self.EV_calculation(ev_dir[1], ev_gau[1], trial_detail['weight']),
-                            "EV_C": self.EV_calculation(ev_dir[2], ev_gau[2], trial_detail['weight']),
-                            "EV_D": self.EV_calculation(ev_dir[3], ev_gau[3], trial_detail['weight'])
+                            "EV_A": EV_calculation(ev_dir[0], ev_gau[0], trial_detail['weight']),
+                            "EV_B": EV_calculation(ev_dir[1], ev_gau[1], trial_detail['weight']),
+                            "EV_C": EV_calculation(ev_dir[2], ev_gau[2], trial_detail['weight']),
+                            "EV_D": EV_calculation(ev_dir[3], ev_gau[3], trial_detail['weight'])
                         }
 
                     unpacked_results.append(var)
 
         df = pd.DataFrame(unpacked_results)
 
-        df['process'] = df['process'].map({'Gau': 0, 'Dir': 1})
-
-        summary = df.groupby(['Subnum', 'trial_index'])[
-            ['t', 'reward', 'choice', 'process']].mean().reset_index()
-
         if self.sim_type == 'a priori':
             return df
         elif self.sim_type == 'post-hoc':
+            df['process'] = df['process'].map({'Gau': 0, 'Dir': 1}) if self.model == 'Dual' else None
+            summary = df.groupby(['Subnum', 'trial_index'])[
+                ['t', 'reward', 'choice', 'process']].mean().reset_index()
             return summary
 
     def simulate(self, reward_means, reward_sd, model, AB_freq=None, CD_freq=None,
@@ -330,7 +332,7 @@ class DualProcessModel:
                     EV_Gau = self.EV_Gau
                     weight = np.random.uniform(0, 1)
 
-                    EVs = self.EV_calculation(EV_Dir, EV_Gau, weight)
+                    EVs = EV_calculation(EV_Dir, EV_Gau, weight)
                     prob_optimal = self.softmax(EVs[optimal], EVs[suboptimal])
                     chosen = optimal if np.random.rand() < prob_optimal else suboptimal
 
@@ -376,7 +378,6 @@ class DualProcessModel:
             4: (0, 3),
             5: (1, 3)
         }
-
 
         trial = np.arange(1, self.num_trials + 1)
 
@@ -442,11 +443,14 @@ class DualProcessModel:
                 nll += -np.log(prob_choice if ch == cs_mapped[0] else prob_choice_alt)
                 self.update(ch, r, trial)
 
-        elif self.model == 'Dual':
+        elif self.model in ('Dual', 'Recency'):
             # Calculate the nll for two processes individually
             # Choose the process with the lowest nll for each trial
 
             self.process_chosen = []
+
+            if self.model == 'Recency':
+                self.a = params[1]
 
             for r, cs, ch, trial in zip(reward, choiceset, choice, trial):
                 cs_mapped = choiceset_mapping[cs]
@@ -545,7 +549,7 @@ class DualProcessModel:
                         prob_optimal = self.softmax(self.EV_Gau[optimal], self.EV_Gau[suboptimal])
                         chosen = 1 if np.random.rand() < prob_optimal else 0
 
-                    elif self.model == 'Dual':
+                    elif self.model in ('Dual', 'Recency'):
                         prob_optimal_dir = self.softmax(self.EV_Dir[optimal], self.EV_Dir[suboptimal])
                         prob_optimal_gau = self.softmax(self.EV_Gau[optimal], self.EV_Gau[suboptimal])
                         prob_suboptimal_dir = self.softmax(self.EV_Dir[suboptimal], self.EV_Dir[optimal])
@@ -568,7 +572,7 @@ class DualProcessModel:
                         EV_Gau = self.EV_Gau
                         weight = np.random.uniform(0, 1)
 
-                        EVs = self.EV_calculation(EV_Dir, EV_Gau, weight)
+                        EVs = EV_calculation(EV_Dir, EV_Gau, weight)
                         prob_optimal = self.softmax(EVs[optimal], EVs[suboptimal])
                         chosen = 1 if np.random.rand() < prob_optimal else 0
 
@@ -587,7 +591,6 @@ class DualProcessModel:
 
                     self.update(optimal if chosen == 1 else suboptimal, reward, trial)
 
-
                 all_results.append({
                     "Subnum": participant,
                     "t": self.t,
@@ -596,4 +599,3 @@ class DualProcessModel:
                 })
 
         return self.unpack_simulation_results(all_results)
-

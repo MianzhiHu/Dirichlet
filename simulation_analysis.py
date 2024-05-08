@@ -5,6 +5,8 @@ import ast
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import seaborn as sns
+from scipy.stats import f_oneway
+from statsmodels.stats.multicomp import pairwise_tukeyhsd
 
 # after the simulation has been completed, we can just load the simulated data from the folder
 folder_path = './data/Simulation'
@@ -93,7 +95,13 @@ plt.show()
 mean_CA = []
 se_CA = []
 
-var_condition = [dual_lv, dual_mv, dual_hv]
+dual_list = [dual_lv, dual_mv, dual_hv]
+decay_list = [decay_lv, decay_mv, decay_hv]
+delta_list = [delta_lv, delta_mv, delta_hv]
+dir_list = [dir_lv, dir_mv, dir_hv]
+gau_list = [gau_lv, gau_mv, gau_hv]
+
+var_condition = dual_list
 for var in var_condition:
     propoptimal_CA = var[var['pair'] == 'CA'].groupby('simulation_num')['BestOptionChosen'].mean()
     mean_CA.append(propoptimal_CA.mean())
@@ -101,14 +109,29 @@ for var in var_condition:
     propoptimal_CA_se = propoptimal_CA.std() / np.sqrt(len(propoptimal_CA))
     se_CA.append(propoptimal_CA_se)
 
+# conduct a one-way ANOVA for all the var in the list
+f_stat, p_val = f_oneway(*[var[var['pair'] == 'CA'].groupby('simulation_num')['BestOptionChosen'].mean()
+                           for var in var_condition])
+print(f'F-statistic: {f_stat}, p-value: {p_val}')
+
+# pairwise comparison
+# conduct the Tukey HSD test
+df = pd.concat([var[var['pair'] == 'CA'].groupby('simulation_num')['BestOptionChosen'].mean() for var in var_condition])
+df = pd.DataFrame(df)
+df['condition'] = ['LV' for _ in range(5000)] + ['MV' for _ in range(5000)] + ['HV' for _ in range(5000)]
+tukey = pairwise_tukeyhsd(endog=df['BestOptionChosen'], groups=df['condition'], alpha=0.05)
+
+
 # Define colors for each bar
 palette = sns.color_palette("pastel", 3)
 
 # Plot the percentage of choosing the best option only for CA pair
 plt.bar(['LV', 'MV', 'HV'], mean_CA, yerr=se_CA, color=palette)
-plt.ylim(0, 0.7)
-plt.ylabel('Percentage of Selecting C in CA Pair')
-plt.xlabel('Condition')
+plt.ylim(0, .75)
+# plt.ylabel('Percentage of Selecting C in CA Pair')
+plt.axhline(y=0.5, color='black', linestyle='--')
+plt.xticks(fontsize=20)
+plt.yticks(fontsize=20)
 plt.gca().yaxis.set_major_formatter(ticker.PercentFormatter(xmax=1))
 sns.despine()
 plt.show()
@@ -131,16 +154,15 @@ transfer_process_chosen = pd.concat([transfer_process_chosen(df) for df in var_d
 # the first 6 pairs are from the low variance condition
 condition_list = ['LV' for _ in range(4)] + ['MV' for _ in range(4)] + ['HV' for _ in range(4)]
 transfer_process_chosen['Condition'] = condition_list
-
-# Use a Seaborn color palette
-palette = sns.color_palette("pastel")
+transfer_process_chosen = transfer_process_chosen[transfer_process_chosen['pair'] == 'CA']
 
 # Plot the percentage of process chosen for each pair in the transfer phase
 plt.figure()
-sns.barplot(x='pair', y='Dir', hue='Condition', data=transfer_process_chosen, palette=palette)
-plt.ylabel('Percentage of Dirichlet Process Chosen')
-plt.xlabel('Pair')
+plt.bar(transfer_process_chosen['Condition'], transfer_process_chosen['Dir'], color=palette)
+# plt.ylabel('Percentage of Dirichlet-Based Decisions')
 plt.gca().yaxis.set_major_formatter(ticker.PercentFormatter(xmax=1))
+plt.xticks(fontsize=20)
+plt.yticks(fontsize=20)
 sns.despine()
 plt.show()
 
@@ -156,13 +178,6 @@ for col in process_chosen.columns[1:]:
     ax.yaxis.set_major_formatter(ticker.PercentFormatter(xmax=1))
 
 plt.show()
-
-
-
-
-
-
-
 
 
 # # this is the same set of plotting functions except that there are only four options to be plotted

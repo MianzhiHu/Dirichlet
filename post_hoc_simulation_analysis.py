@@ -70,17 +70,25 @@ MSE_by_participant = all_posthoc.groupby(['Condition', 'model', 'Subnum', 'Trial
 # calculate the proportion of accurately predicting the best option
 all_posthoc['correct'] = np.where(all_posthoc['bestOption'] == all_posthoc['pred_choice'], 1, 0)
 proportion_correct = all_posthoc.groupby(['Condition', 'model', 'Subnum', 'TrialType'])['correct'].mean().reset_index()
-# proportion_correct_CA = proportion_correct[proportion_correct['TrialType'] == 'CA']
+proportion_correct_CA = proportion_correct[proportion_correct['TrialType'] == 'CA']
+
+# calculate the proportion of best option chosen
+proportion_best_option = all_posthoc.groupby(['Condition', 'model', 'Subnum', 'TrialType'])[
+    'choice'].mean().reset_index()
+proportion_best_option_CA = proportion_best_option[proportion_best_option['TrialType'] == 'CA']
+proportion_best_option_CA = proportion_best_option_CA[proportion_best_option_CA['model'].isin(['Dual', 'delta', 'decay'])]
+proportion_best_option_CA['Condition'] = pd.Categorical(proportion_best_option_CA['Condition'],
+                                                        categories=['LV', 'MV', 'HV'], ordered=True)
 
 # plot the proportion of correctly predicting the best option
+palette = sns.color_palette("pastel", 3)
 sns.set_theme(style='white')
 plt.figure(figsize=(10, 6))
-sns.barplot(data=proportion_correct, x='Condition', y='correct', hue='model')
+sns.barplot(data=proportion_best_option_CA, x='model', y='choice', hue='Condition', palette=palette)
 plt.title('Proportion of correctly predicting the best option')
 plt.ylabel('Proportion')
 plt.xlabel('Model')
 plt.show()
-
 
 # MSE for the proportion of optimal choices for each trial type
 MSE_by_proportion = all_posthoc.groupby(['Condition', 'model', 'TrialType'])[

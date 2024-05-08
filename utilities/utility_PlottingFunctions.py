@@ -4,6 +4,12 @@ from mpl_toolkits.mplot3d import Axes3D
 from scipy.stats import dirichlet, multivariate_normal
 import matplotlib.tri as mtri
 from matplotlib import cm
+from matplotlib import font_manager as fm
+
+
+# load the font
+font_path = 'utilities/AbhayaLibre-ExtraBold.ttf'
+prop = fm.FontProperties(fname=font_path)
 
 
 def scatter_Dirichlet(alpha, num_samples=5000):
@@ -22,9 +28,9 @@ def scatter_Dirichlet(alpha, num_samples=5000):
     ax.scatter(samples[:, 0], samples[:, 1], samples[:, 2], alpha=0.6, s=5)
 
     # Labels and title with a custom font
-    ax.set_xlabel('Option A', fontweight='bold', fontsize=12, labelpad=15)
-    ax.set_ylabel('Option B', fontweight='bold', fontsize=12, labelpad=15)
-    ax.set_zlabel('Option C', fontweight='bold', fontsize=12, labelpad=15)
+    ax.set_xlabel('Option A', fontweight='bold', fontsize=20, labelpad=15, fontproperties=prop)
+    ax.set_ylabel('Option B', fontweight='bold', fontsize=20, labelpad=15, fontproperties=prop)
+    ax.set_zlabel('Option C', fontweight='bold', fontsize=20, labelpad=15, fontproperties=prop)
 
     # Viewing angle
     ax.view_init(elev=30, azim=45)
@@ -72,16 +78,16 @@ def bar_Dirichlet(alpha, resolution=50, elev=30, azim=135):
     ax.bar3d(X1, X2, np.zeros_like(X1), dx, dy, pdf_values, color=colors, shade=True)
 
     # Labels and title with custom fonts
-    ax.set_xlabel('Option A/Option C', fontweight='bold', fontsize=12, labelpad=15)
-    ax.set_ylabel('Option B', fontweight='bold', fontsize=12, labelpad=15)
-    ax.set_zlabel('PDF', fontweight='bold', fontsize=12, rotation=-90)
+    ax.set_xlabel('Option A/Option C', fontweight='bold', fontsize=20, labelpad=15, fontproperties=prop)
+    ax.set_ylabel('Option B', fontweight='bold', fontsize=20, labelpad=15, fontproperties=prop)
+    ax.set_zlabel('PDF', fontweight='bold', fontsize=20, rotation=-90, fontproperties=prop)
 
     # Set up the colorbar explicitly with the 'ax' argument
     cbar_ax = fig.add_axes([0.85, 0.15, 0.02, 0.7])
     mappable = cm.ScalarMappable(cmap=colormap)
     mappable.set_array(pdf_values)
     cbar = fig.colorbar(mappable, cax=cbar_ax)
-    cbar.set_label('PDF Value', fontweight='bold', fontsize=12, rotation=-90, labelpad=15)
+    cbar.set_label('PDF Value', fontweight='bold', fontsize=20, rotation=-90, labelpad=15, fontproperties=prop)
 
     # Adjust the viewing angle for better perception
     ax.view_init(elev=elev, azim=azim)
@@ -115,9 +121,9 @@ def scatter_Gaussian(mean, cov, num_samples=5000):
     ax.set_zlim(0, 0.8)
 
     # Labels and title with a custom font
-    ax.set_xlabel('Option A', fontweight='bold', fontsize=12, labelpad=15)
-    ax.set_ylabel('Option B', fontweight='bold', fontsize=12, labelpad=15)
-    ax.set_zlabel('Option C', fontweight='bold', fontsize=12, labelpad=15)
+    ax.set_xlabel('Option A', fontweight='bold', fontsize=20, labelpad=15, fontproperties=prop)
+    ax.set_ylabel('Option B', fontweight='bold', fontsize=20, labelpad=15, fontproperties=prop)
+    ax.set_zlabel('Option C', fontweight='bold', fontsize=20, labelpad=15, fontproperties=prop)
 
     # Viewing angle
     ax.view_init(elev=30, azim=45)
@@ -164,9 +170,9 @@ def bar_Gaussian(mean, cov, resolution=50, elev=30, azim=135):
     ax.bar3d(X1, X2, np.zeros_like(X1), dx, dy, pdf_values, color=colors, shade=True)
 
     # Labels and title with custom fonts
-    ax.set_xlabel('Option A/Option C', fontweight='bold', fontsize=12, labelpad=15)
-    ax.set_ylabel('Option B', fontweight='bold', fontsize=12, labelpad=15)
-    ax.set_zlabel('PDF', fontweight='bold', fontsize=12, rotation=-90, labelpad=15)
+    ax.set_xlabel('Option A/Option C', fontweight='bold', fontsize=20, labelpad=15, fontproperties=prop)
+    ax.set_ylabel('Option B', fontweight='bold', fontsize=20, labelpad=15, fontproperties=prop)
+    ax.set_zlabel('PDF', fontweight='bold', fontsize=20, rotation=-90, labelpad=15, fontproperties=prop)
 
 
     # Set up the colorbar explicitly with the 'ax' argument
@@ -174,7 +180,7 @@ def bar_Gaussian(mean, cov, resolution=50, elev=30, azim=135):
     mappable = cm.ScalarMappable(cmap=colormap)
     mappable.set_array(pdf_values)
     cbar = fig.colorbar(mappable, cax=cbar_ax)
-    cbar.set_label('PDF Value', fontweight='bold', fontsize=12, rotation=-90, labelpad=15)
+    cbar.set_label('PDF Value', fontweight='bold', fontsize=20, rotation=-90, labelpad=15, fontproperties=prop)
 
     # Adjust the viewing angle for better perception
     ax.view_init(elev=elev, azim=azim)

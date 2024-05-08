@@ -106,14 +106,18 @@ best_option = data_process.groupby(['Subnum', 'Condition', 'TrialType'])['bestOp
 sns.barplot(x='Condition', y='bestOption', hue='TrialType', data=best_option)
 plt.title('Percentage of Best Option Chosen')
 plt.ylabel('Percentage')
-plt.xlabel('Condition')
 plt.show()
 
 palette = sns.color_palette("pastel", 3)
 
 sns.barplot(x='Condition', y='best_process_chosen', data=process_chosen_CA, palette=palette)
-plt.ylabel('Percentage')
-plt.xlabel('Condition')
+# plt.ylabel('Percentage')
+plt.gca().yaxis.set_major_formatter(ticker.PercentFormatter(xmax=1))
+plt.axhline(y=0.5, color='black', linestyle='--')
+plt.xticks(fontsize=20)
+plt.yticks(fontsize=20)
+plt.xlabel('')
+plt.ylabel('')
 sns.despine()
 plt.show()
 

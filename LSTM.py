@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import torch
+import pickle
 from torch import nn
 from torch.utils.data import Dataset, DataLoader
 from sklearn.model_selection import KFold
@@ -175,10 +176,10 @@ mask = padded_sequences[:, :, 2:6]
 
 # # define model parameters
 param_grid = {
-    'n_nodes': [5, 10, 20, 50, 100],
-    'n_layers': [1, 2, 3, 4, 5],
-    'n_epochs': [100, 200, 400],
-    'batch_size': [1, 5, 10]
+    'n_nodes': [5, 10, 50, 100],
+    'n_layers': [1, 2, 3],
+    'n_epochs': [400],
+    'batch_size': [10]
 }
 
 results_dict = {}
@@ -296,6 +297,16 @@ for n_nodes, n_layers, n_epochs, batch_size in product(param_grid['n_nodes'], pa
     MSE_dict[(n_layers, n_nodes, n_epochs, batch_size)] = MSEloss
     weights_dict[(n_layers, n_nodes, n_epochs, batch_size)] = weights_full
 
+# save the results as a pickle file
+with open('./data/LSTM/HV_LSTM_simple.pkl', 'wb') as f:
+    pickle.dump(results_dict, f)
+
+with open('./data/LSTM/HV_LSTM_simple_MSE.pkl', 'wb') as f:
+    pickle.dump(MSE_dict, f)
+
+with open('./data/LSTM/HV_LSTM_simple_weights.pkl', 'wb') as f:
+    pickle.dump(weights_dict, f)
+
 # =============================================================================
 # The post-hoc analysis starts here
 # =============================================================================
@@ -309,5 +320,33 @@ for key, value in results_dict.items():
     print(f'MAE: {MAE}')
     print('------------------------------------')
     print('\n')
+
+# find the best configuration
+best_MSE = 100
+best_MAE = 100
+best_percent_correct = 0
+best_config = None
+for key, value in results_dict.items():
+    MSE = np.mean((value['bestOption'] - value['pred_bestOption']) ** 2)
+    MAE = np.mean(np.abs(value['bestOption'] - value['pred_bestOption']))
+    # if MAE < best_MAE:
+    #     best_MSE = MSE
+    #     best_MAE = MAE
+    #     best_config = key
+
+    value['binary_pred'] = np.where(value['pred_bestOption'] > 0.5, 1, 0)
+    value['correct_pred'] = np.where(value['bestOption'] == value['binary_pred'], 1, 0)
+    percent_correct = value['correct_pred'].mean()
+    if percent_correct > best_percent_correct:
+        best_MSE = MSE
+        best_MAE = MAE
+        best_percent_correct = percent_correct
+        best_config = key
+
+
+
+
+
+
 
 
