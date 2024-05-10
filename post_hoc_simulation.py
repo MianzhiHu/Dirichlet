@@ -49,7 +49,7 @@ model_delta = ComputationalModels(model_type='delta')
 LV_results = [Dual_LV_results, Dir_LV_results, Gau_LV_results, ParamScale_LV_results, Recency_LV_results]
 MV_results = [Dual_MV_results, Dir_MV_results, Gau_MV_results, ParamScale_MV_results, Recency_MV_results]
 HV_results = [Dual_HV_results, Dir_HV_results, Gau_HV_results, ParamScale_HV_results, Recency_HV_results]
-models = ['Dual', 'Dir', 'Gau', 'Param']
+models = ['Dual', 'Dir', 'Gau', 'Param', 'Recency']
 decay_results = [decay_LV_results, decay_MV_results, decay_HV_results]
 delta_results = [delta_LV_results, delta_MV_results, delta_HV_results]
 
@@ -59,6 +59,7 @@ mv = [0.24, 0.24, 0.22, 0.22]
 lv = [0.12, 0.12, 0.11, 0.11]
 sd = [lv, mv, hv]
 df = [LV_df, MV_df, HV_df]
+
 
 for i in range(len(LV_results)):
     file_name = f'./data/Post_hoc/{models[i]}_posthoc_LV.csv'

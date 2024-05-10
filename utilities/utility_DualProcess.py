@@ -94,14 +94,15 @@ class DualProcessModel:
         self.EV_Dir = np.full(4, 0.5)
         self.EV_Gau = np.full(4, 0.5)
         self.AV = np.full(4, 0.5)
-        self.var = np.full(4, 0)
-        self.alpha = np.full(4, 1)
+        self.var = np.full(4, 0.0)
+        self.alpha = np.full(4, 1.0)
         self.n_samples = n_samples
         self.reward_history = [[0] for _ in range(4)]
         self.process_chosen = []
 
         self.t = None
         self.a = None
+        self.b = None
         self.model = None
         self.sim_type = None
 
@@ -109,8 +110,8 @@ class DualProcessModel:
         self.EV_Dir = np.full(4, 0.5)
         self.EV_Gau = np.full(4, 0.5)
         self.AV = np.full(4, 0.5)
-        self.var = np.full(4, 0)
-        self.alpha = np.full(4, 1)
+        self.var = np.full(4, 0.0)
+        self.alpha = np.full(4, 1.0)
         self.reward_history = [[] for _ in range(4)]
         self.process_chosen = []
 
@@ -126,11 +127,8 @@ class DualProcessModel:
             return self.EV_Dir, self.EV_Gau
 
         else:
-            if self.model == 'Recency':
-                self.alpha = [max(np.finfo(float).tiny, (1 - self.a) * i) for i in self.alpha]  # avoid alpha = 0
-                self.reward_history = [[(1 - self.a) * i for i in hist] for hist in self.reward_history]
-
             self.reward_history[chosen].append(reward)
+
             # for every trial, we need to update the EV for both the Dirichlet and Gaussian processes
             # Dirichlet process
             flatten_reward_history = [item for sublist in self.reward_history for item in sublist]
@@ -138,16 +136,23 @@ class DualProcessModel:
 
             if reward > AV_total:
                 self.alpha[chosen] += 1
-                # print(f'trial {trial}: alpha {self.alpha}')
             else:
                 pass
+
+            if self.model == 'Recency':
+                self.alpha = [max(np.finfo(float).tiny, (1 - self.a) * i) for i in self.alpha]  # avoid alpha = 0
 
             self.EV_Dir = np.mean(dirichlet.rvs(self.alpha, size=self.n_samples), axis=0)
 
             # Gaussian process
-            # Update AV and var with new calculations or keep initial values if no rewards
-            self.AV = [np.mean(hist) if len(hist) > 0 else 0.5 for hist in self.reward_history]
-            self.var = [np.var(hist) if len(hist) > 0 else 0 for hist in self.reward_history]
+            if self.model == 'Recency':
+                self.var[chosen] = self.var[chosen] + self.a * ((reward - self.AV[chosen]) ** 2 - self.var[chosen])
+                self.AV[chosen] += self.a * (reward - self.AV[chosen])
+
+            else:
+                self.AV = [np.mean(hist) if len(hist) > 0 else 0.5 for hist in self.reward_history]
+                self.var = [np.var(hist) if len(hist) > 0 else 0 for hist in self.reward_history]
+
             # The four options are independent, so the covariance matrix is diagonal
             cov_matrix = np.diag(self.var)
 
@@ -498,10 +503,14 @@ class DualProcessModel:
     def post_hoc_simulation(self, fitting_result, original_data, model, reward_means,
                             reward_sd, num_iterations=1000):
 
+        self.model = model
+
         t_sequence = fitting_result['best_parameters'].apply(
             lambda x: float(x.strip('[]').split()[0]) if isinstance(x, str) else np.nan)
 
-        self.model = model
+        if self.model == 'Recency':
+            a_sequence = fitting_result['best_parameters'].apply(
+                lambda x: float(x.strip('[]').split()[1]) if isinstance(x, str) else np.nan)
 
         # extract the trial sequence for each participant
         trial_sequence = original_data.groupby('Subnum')['TrialType'].apply(list)
@@ -530,6 +539,7 @@ class DualProcessModel:
                 self.reset()
 
                 self.t = t_sequence[participant - 1]
+                self.a = a_sequence[participant - 1] if self.model == 'Recency' else None
                 self.iteration = 0
 
                 trial_details = []
@@ -579,7 +589,7 @@ class DualProcessModel:
                     reward = np.random.normal(reward_means[optimal if chosen == 1 else suboptimal],
                                               reward_sd[optimal if chosen == 1 else suboptimal])
 
-                    if self.model == 'Dual':
+                    if self.model in ('Dual', 'Recency'):
                         trial_details.append(
                             {"pair": pair, "choice": chosen, "reward": reward, "process": process_chosen})
                     elif self.model == 'Param':
