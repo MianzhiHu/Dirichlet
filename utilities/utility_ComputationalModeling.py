@@ -7,7 +7,6 @@ from concurrent.futures import ProcessPoolExecutor
 
 def fit_participant(model, participant_id, pdata, model_type, num_iterations=1000,
                     beta_lower=-1, beta_upper=1):
-
     print(f"Fitting participant {participant_id}...")
 
     total_nll = 0  # Initialize the cumulative negative log likelihood
@@ -15,7 +14,7 @@ def fit_participant(model, participant_id, pdata, model_type, num_iterations=100
 
     if model_type in ('decay', 'delta', 'decay_choice', 'decay_win'):
         k = 2  # Initialize the cumulative number of parameters
-    elif model_type in ('decay_fre', 'delta_decay'):
+    elif model_type in ('decay_fre', 'delta_decay', 'ACTR'):
         k = 3
     elif model_type == 'sampler_decay':
         k = model.num_params
@@ -47,6 +46,10 @@ def fit_participant(model, participant_id, pdata, model_type, num_iterations=100
                 initial_guess = [np.random.uniform(0.0001, 4.9999), np.random.uniform(0.0001, 0.9999),
                                  np.random.uniform(0.0001, 0.9999)]
                 bounds = ((0.0001, 4.9999), (0.0001, 0.9999), (0, 1))
+        elif model_type == 'ACTR':
+            initial_guess = [np.random.uniform(0.0001, 0.9999), np.random.uniform(0.0001, 0.9999),
+                             np.random.uniform(-1.9999, -0.0001)]
+            bounds = ((0.0001, 0.9999), (0.0001, 0.9999), (-1.9999, -0.0001))
 
         result = minimize(model.negative_log_likelihood, initial_guess,
                           args=(pdata['reward'], pdata['choiceset'], pdata['choice']),
@@ -93,9 +96,12 @@ class ComputationalModels:
         self.num_params = num_params
         self.choices_count = np.zeros(self.num_options)
         self.condition = condition
+        self.possible_options = [0, 1, 2, 3]
         self.memory_weights = []
         self.choice_history = []
         self.reward_history = []
+        self.chosen_history = {option: [] for option in self.possible_options}
+        self.reward_history_by_option = {option: [] for option in self.possible_options}
         self.AllProbs = []
         self.PE = []
         self.AV = 0
@@ -103,6 +109,8 @@ class ComputationalModels:
         self.t = None
         self.a = None
         self.b = None
+        self.s = None
+        self.tau = None
         self.iteration = 0
 
         if self.condition == "Gains":
@@ -115,6 +123,66 @@ class ComputationalModels:
         # Model type
         self.model_type = model_type
 
+        # Mapping of choice sets to pairs of options
+        self.choiceset_mapping = {
+            0: (0, 1),
+            1: (2, 3),
+            2: (2, 0),
+            3: (2, 1),
+            4: (0, 3),
+            5: (1, 3)
+        }
+
+    def calculate_activation(self, appearances, current_trial):
+        sum_tk = np.sum([(current_trial - t) ** (-self.a) for t in appearances])
+        activation = np.log(sum_tk) + np.random.logistic(0, self.s)
+        return activation
+
+    def softmax(self, chosen, alt1, ACTR=False):
+        if not ACTR:
+            c = 3 ** self.t - 1
+            num = np.exp(min(700, c * chosen))
+            denom = num + np.exp(min(700, c * alt1))
+        if ACTR:
+            t = np.sqrt(2) * self.s
+            num = np.exp(min(700, chosen / t))
+            denom = num + np.exp(min(700, alt1 / t))
+        return num / denom
+
+    def softmax_ACTR(self, x):
+        t = np.sqrt(2) * self.s
+        e_x = np.exp(np.clip(x / t, -700, 700))
+        return e_x / e_x.sum()
+
+    def activation_calculation(self, option, current_trial, exclude_current_trial=False):
+        # initialize lists to store activations and corresponding rewards
+        activations = []
+        corresponding_rewards = []
+
+        chosen_history = self.chosen_history[option][:-1] if exclude_current_trial else self.chosen_history[option]
+
+        for previous_trial_index, previous_trial in enumerate(chosen_history):
+            activation_level = self.calculate_activation(chosen_history, current_trial)
+            if activation_level > self.tau:
+                activations.append(activation_level)
+                corresponding_rewards.append(self.reward_history_by_option[option][previous_trial_index])
+
+        return activations, corresponding_rewards
+
+    def EV_calculation(self, option, rewards, activations):
+        # check if the option has been chosen before
+        if len(self.chosen_history[option]) > 0:
+            if len(activations) > 0:
+                probabilities = self.softmax_ACTR(np.array(activations))
+                # Calculate the expected value as the weighted mean of rewards
+                self.EVs[option] = np.dot(probabilities, rewards)
+            else:
+                # If no previous experience passes the threshold, that means the model assumes that the participant has
+                # forgotten the outcomes of the options and therefore, we reset the EV for that option to 0.5
+                self.EVs[option] = 0.5
+        else:
+            self.EVs[option] = 0.5
+
     def reset(self):
         """
         Reset the model.
@@ -123,6 +191,8 @@ class ComputationalModels:
         self.memory_weights = []
         self.choice_history = []
         self.reward_history = []
+        self.chosen_history = {option: [] for option in self.possible_options}
+        self.reward_history_by_option = {option: [] for option in self.possible_options}
         self.AllProbs = []
 
         if self.condition == "Gains":
@@ -135,7 +205,7 @@ class ComputationalModels:
             self.EVs = np.full(self.num_options, 0)
             self.AV = 0.0
 
-    def update(self, chosen, reward, trial):
+    def update(self, chosen, reward, trial, choiceset=None):
         """
         Update EVs based on the choice, received reward, and trial number.
 
@@ -219,14 +289,30 @@ class ComputationalModels:
             # for j in range(len(self.memory_weights)):
             #     self.EVs[self.choice_history[j]] += self.AllProbs[j] * self.PE[j]
 
-        # print(f'C: {chosen}, R: {reward}, EV: {self.EVs}; it has been {self.choices_count[chosen]} times')
-        return self.EVs
+        elif self.model_type == 'ACTR':
+            self.reward_history.append(reward)
+            self.choice_history.append(chosen)
 
-    def softmax(self, chosen, alt1):
-        c = 3 ** self.t - 1
-        num = np.exp(min(700, c * chosen))
-        denom = num + np.exp(min(700, c * alt1))
-        return num / denom
+            # Update the appearance and reward history for the current combination
+            current_trial = len(self.choice_history)
+            self.chosen_history[chosen].append(current_trial)
+            self.reward_history_by_option[chosen].append(reward)
+
+            # determine the alternative option
+            alt_option = self.choiceset_mapping[choiceset][1] if chosen == self.choiceset_mapping[choiceset][0] else \
+                self.choiceset_mapping[choiceset][0]
+
+            # Calculate activation levels for previous occurrences of the current combination
+            activations, corresponding_rewards = self.activation_calculation(chosen, current_trial,
+                                                                             exclude_current_trial=True)
+            alt_activations, alt_corresponding_rewards = self.activation_calculation(alt_option, current_trial,
+                                                                                     exclude_current_trial=False)
+
+            # Calculate probabilities using softmax rule if there are valid activations and update EVs
+            self.EV_calculation(chosen, corresponding_rewards, activations)
+            self.EV_calculation(alt_option, alt_corresponding_rewards, alt_activations)
+
+        return self.EVs
 
     def simulate(self, reward_means, reward_sd, num_trials=250, AB_freq=None, CD_freq=None, num_iterations=1000,
                  beta_lower=-1, beta_upper=1):
@@ -312,6 +398,8 @@ class ComputationalModels:
         """
         self.reset()
 
+        softmax_ACTR = False
+
         if self.model_type in ('decay', 'delta', 'decay_choice', 'decay_win'):
             self.t = params[0]
             self.a = params[1]
@@ -327,29 +415,36 @@ class ComputationalModels:
                 self.t = params[0]
                 self.a = params[1]
                 self.b = params[2]
+        elif self.model_type == 'ACTR':
+            self.s = params[0]
+            self.a = params[1]
+            self.tau = params[2]
+            softmax_ACTR = True
 
         nll = 0
-
-        choiceset_mapping = {
-            0: (0, 1),
-            1: (2, 3),
-            2: (2, 0),
-            3: (2, 1),
-            4: (0, 3),
-            5: (1, 3)
-        }
+        epsilon = 1e-12
 
         trial = np.arange(1, self.num_trials + 1)
 
-        for r, cs, ch, trial in zip(reward, choiceset, choice, trial):
-            cs_mapped = choiceset_mapping[cs]
-            prob_choice = self.softmax(self.EVs[cs_mapped[0]], self.EVs[cs_mapped[1]])
-            prob_choice_alt = self.softmax(self.EVs[cs_mapped[1]], self.EVs[cs_mapped[0]])
-            nll += -np.log(prob_choice if ch == cs_mapped[0] else prob_choice_alt)
-            self.update(ch, r, trial)
+        if self.model_type == 'ACTR':
+            softmax_ACTR = True
+            for r, cs, ch, trial in zip(reward, choiceset, choice, trial):
+                # in the ACTR model, we need to update the EVs before calculating the likelihood
+                self.update(ch, r, trial, cs)
+                cs_mapped = self.choiceset_mapping[cs]
+                prob_choice = self.softmax(self.EVs[cs_mapped[0]], self.EVs[cs_mapped[1]], softmax_ACTR)
+                prob_choice_alt = self.softmax(self.EVs[cs_mapped[1]], self.EVs[cs_mapped[0]], softmax_ACTR)
+                nll += -np.log(max(epsilon, prob_choice if ch == cs_mapped[0] else prob_choice_alt))
+        else:
+            for r, cs, ch, trial in zip(reward, choiceset, choice, trial):
+                cs_mapped = self.choiceset_mapping[cs]
+                prob_choice = self.softmax(self.EVs[cs_mapped[0]], self.EVs[cs_mapped[1]], softmax_ACTR)
+                prob_choice_alt = self.softmax(self.EVs[cs_mapped[1]], self.EVs[cs_mapped[0]], softmax_ACTR)
+                nll += -np.log(max(epsilon, prob_choice if ch == cs_mapped[0] else prob_choice_alt))
+                self.update(ch, r, trial)
         return nll
 
-    def fit(self, data, num_iterations=1000, beta_lower=-1, beta_upper=1):\
+    def fit(self, data, num_iterations=1000, beta_lower=-1, beta_upper=1):
 
         # Creating a list to hold the future results
         futures = []
@@ -413,7 +508,6 @@ class ComputationalModels:
                 trial_indices = []
 
                 for trial, pair in zip(trial_index[participant], trial_sequence[participant]):
-
                     trial_indices.append(trial)
 
                     optimal, suboptimal = choice_set_mapping[pair]
@@ -559,6 +653,3 @@ def best_param_generator(df, param):
             lambda x: float(x.strip('[]').split()[2]) if isinstance(x, str) else np.nan
         )
         return b_best
-
-
-

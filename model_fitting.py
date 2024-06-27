@@ -37,56 +37,43 @@ if __name__ == '__main__':
     model = DualProcessModel()
     decay = ComputationalModels("decay")
     delta = ComputationalModels("delta")
+    actr = ComputationalModels("ACTR")
 
-    # # # this is for testing
+    # # this is for testing
     # # select the first 500 rows for testing
-    # testing_data = LV_df.iloc[:250, :]
+    # testing_data = LV_df.iloc[:10, :]
     # testing_data = dict_generator(testing_data)
-    # result = model.fit(testing_data, 'Recency', num_iterations=1)
+    # result = actr.fit(testing_data, num_iterations=1)
 
-    # for model_type in ['Dir', 'Gau', 'Dual', 'Param']:
+    # for model_type in ['Dir', 'Gau', 'Dual', 'Param', 'Multi_Param', 'Recency']:
     #     result = model.fit(HV, model_type, num_iterations=100)
     #     result.to_csv(f'./data/DataFitting/FittingResults/{model_type}_HV_results.csv', index=False)
     #
-    # for model_type in ['Dir', 'Gau', 'Dual', 'Param']:
+    # for model_type in ['Dir', 'Gau', 'Dual', 'Param', 'Multi_Param', 'Recency']:
     #     result = model.fit(MV, model_type, num_iterations=100)
     #     result.to_csv(f'./data/DataFitting/FittingResults/{model_type}_MV_results.csv', index=False)
     #
-    # for model_type in ['Dir', 'Gau', 'Dual', 'Param']:
+    # for model_type in ['Dir', 'Gau', 'Dual', 'Param', 'Multi_Param', 'Recency']:
     #     result = model.fit(LV, model_type, num_iterations=100)
     #     result.to_csv(f'./data/DataFitting/FittingResults/{model_type}_LV_results.csv', index=False)
     #
-    # for model_type in ['Param']:
+    # for model_type in ['Dir', 'Gau', 'Dual', 'Param', 'Multi_Param', 'Recency']:
     #     result = model.fit(uncertainty, model_type, num_iterations=100)
     #     result.to_csv(f'./data/DataFitting/FittingResults/{model_type}Scale_uncertaintyOld_results.csv', index=False)
-
-    # # refit the param model with multiple parameters
-    # HV_param = model.fit(HV, 'Multi_Param', num_iterations=100)
-    # HV_param.to_csv('./data/DataFitting/FittingResults/MultiParam_HV_results.csv', index=False)
     #
-    # MV_param = model.fit(MV, 'Multi_Param', num_iterations=100)
-    # MV_param.to_csv('./data/DataFitting/FittingResults/MultiParam_MV_results.csv', index=False)
-    #
-    # LV_param = model.fit(LV, 'Multi_Param', num_iterations=100)
-    # LV_param.to_csv('./data/DataFitting/FittingResults/MultiParam_LV_results.csv', index=False)
-
-    # recency models
-    HV_param = model.fit(HV, 'Recency', num_iterations=100)
-    HV_param.to_csv('./data/DataFitting/FittingResults/Recency_HV_results.csv', index=False)
-
-    MV_param = model.fit(MV, 'Recency', num_iterations=100)
-    MV_param.to_csv('./data/DataFitting/FittingResults/Recency_MV_results.csv', index=False)
-
-    LV_param = model.fit(LV, 'Recency', num_iterations=100)
-    LV_param.to_csv('./data/DataFitting/FittingResults/Recency_LV_results.csv', index=False)
-
-    # # fit the traditional delta and decay models
+    # fit the traditional delta and decay models
     # HV_decay = decay.fit(HV, num_iterations=100)
     # HV_delta = delta.fit(HV, num_iterations=100)
+    HV_actr = actr.fit(HV, num_iterations=100)
+    HV_actr.to_csv('./data/DataFitting/actr_HV_results.csv', index=False)
     # MV_decay = decay.fit(MV, num_iterations=100)
     # MV_delta = delta.fit(MV, num_iterations=100)
+    MV_actr = actr.fit(MV, num_iterations=100)
+    MV_actr.to_csv('./data/DataFitting/actr_MV_results.csv', index=False)
     # LV_decay = decay.fit(LV, num_iterations=100)
     # LV_delta = delta.fit(LV, num_iterations=100)
+    LV_actr = actr.fit(LV, num_iterations=100)
+    LV_actr.to_csv('./data/DataFitting/actr_LV_results.csv', index=False)
     # uncertainty_decay = decay.fit(uncertainty, num_iterations=100)
     # uncertainty_delta = delta.fit(uncertainty, num_iterations=100)
     #
