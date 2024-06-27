@@ -66,7 +66,7 @@ for i in range(len(LV_results)):
     if not os.path.exists(file_name):
         print(f"Simulating {models[i]}_posthoc_LV.csv")
         simulated_data = model.post_hoc_simulation(LV_results[i], LV_df, models[i],
-                                                   reward_means, lv, num_iterations=500)
+                                                   reward_means, lv, num_iterations=1000)
         simulated_data.to_csv(file_name, index=False)
     else:
         print(f"{models[i]}_posthoc_LV.csv already exists")
@@ -76,7 +76,7 @@ for i in range(len(MV_results)):
     if not os.path.exists(file_name):
         print(f"Simulating {models[i]}_posthoc_MV.csv")
         simulated_data = model.post_hoc_simulation(MV_results[i], MV_df, models[i],
-                                                   reward_means, mv, num_iterations=500)
+                                                   reward_means, mv, num_iterations=1000)
         simulated_data.to_csv(file_name, index=False)
     else:
         print(f"{models[i]}_posthoc_MV.csv already exists")
@@ -86,20 +86,20 @@ for i in range(len(HV_results)):
     if not os.path.exists(file_name):
         print(f"Simulating {models[i]}_posthoc_HV.csv")
         simulated_data = model.post_hoc_simulation(HV_results[i], HV_df, models[i],
-                                                   reward_means, hv, num_iterations=500)
+                                                   reward_means, hv, num_iterations=1000)
         simulated_data.to_csv(file_name, index=False)
     else:
         print(f"{models[i]}_posthoc_HV.csv already exists")
 
 
 # # decay model
-# for i in range(len(decay_results)):
-#     simulated_data = model_decay.post_hoc_simulation(decay_results[i], df[i], reward_means,
-#                                                         sd[i], num_iterations=500)
-#     simulated_data.to_csv(f'./data/Post_hoc/decay_posthoc_{df[i]["Condition"].unique()[0]}.csv', index=False)
-#
-# # delta rule model
-# for i in range(len(delta_results)):
-#     simulated_data = model_delta.post_hoc_simulation(delta_results[i], df[i], reward_means,
-#                                                         sd[i], num_iterations=500)
-#     simulated_data.to_csv(f'./data/Post_hoc/delta_posthoc_{df[i]["Condition"].unique()[0]}.csv', index=False)
+for i in range(len(decay_results)):
+    simulated_data = model_decay.post_hoc_simulation(decay_results[i], df[i], reward_means,
+                                                        sd[i], num_iterations=1000)
+    simulated_data.to_csv(f'./data/Post_hoc/decay_posthoc_{df[i]["Condition"].unique()[0]}.csv', index=False)
+
+# delta rule model
+for i in range(len(delta_results)):
+    simulated_data = model_delta.post_hoc_simulation(delta_results[i], df[i], reward_means,
+                                                        sd[i], num_iterations=1000)
+    simulated_data.to_csv(f'./data/Post_hoc/delta_posthoc_{df[i]["Condition"].unique()[0]}.csv', index=False)
