@@ -81,9 +81,9 @@ uncertainty_frequency_results = {k: v for k, v in uncertainty_condition_results.
 uncertainty_only_results = {k: v for k, v in uncertainty_condition_results.items() if 'S2A2' in k}
 
 # # Create Bayes factor matrices for HV, MV, and LV
-# bayes_matrix_HV = create_bayes_matrix(fitting_results_HV, 'HV Bayes Factor Matrix')
-# bayes_matrix_MV = create_bayes_matrix(fitting_results_MV, 'MV Bayes Factor Matrix')
-# bayes_matrix_LV = create_bayes_matrix(fitting_results_LV, 'LV Bayes Factor Matrix')
+bayes_matrix_HV = create_bayes_matrix(fitting_results_HV, 'HV Bayes Factor Matrix')
+bayes_matrix_MV = create_bayes_matrix(fitting_results_MV, 'MV Bayes Factor Matrix')
+bayes_matrix_LV = create_bayes_matrix(fitting_results_LV, 'LV Bayes Factor Matrix')
 # bayes_matrix_uncertainty_frequency = create_bayes_matrix(uncertainty_frequency_results, 'UF Bayes Factor Matrix')
 # bayes_matrix_uncertainty_only = create_bayes_matrix(uncertainty_only_results, 'UO Bayes Factor Matrix')
 

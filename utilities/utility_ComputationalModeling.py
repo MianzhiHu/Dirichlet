@@ -122,6 +122,7 @@ class ComputationalModels:
 
         # Model type
         self.model_type = model_type
+        self.softmax_ACTR_version = True if model_type == 'ACTR' else False
 
         # Mapping of choice sets to pairs of options
         self.choiceset_mapping = {
@@ -205,7 +206,7 @@ class ComputationalModels:
             self.EVs = np.full(self.num_options, 0)
             self.AV = 0.0
 
-    def update(self, chosen, reward, trial, choiceset=None):
+    def update(self, chosen, reward, trial, choiceset=None, trial_type_encoding="OneDigit"):
         """
         Update EVs based on the choice, received reward, and trial number.
 
@@ -299,8 +300,11 @@ class ComputationalModels:
             self.reward_history_by_option[chosen].append(reward)
 
             # determine the alternative option
-            alt_option = self.choiceset_mapping[choiceset][1] if chosen == self.choiceset_mapping[choiceset][0] else \
-                self.choiceset_mapping[choiceset][0]
+            if trial_type_encoding == "OneDigit":
+                alt_option = self.choiceset_mapping[choiceset][1] if chosen == self.choiceset_mapping[choiceset][0] else \
+                    self.choiceset_mapping[choiceset][0]
+            elif trial_type_encoding == "TwoDigit":
+                alt_option = choiceset[1] if chosen == choiceset[0] else choiceset[0]
 
             # Calculate activation levels for previous occurrences of the current combination
             activations, corresponding_rewards = self.activation_calculation(chosen, current_trial,
@@ -336,9 +340,11 @@ class ComputationalModels:
 
             print(f"Iteration {iteration + 1} of {num_iterations}")
 
-            self.t = np.random.uniform(0, 5)
+            self.t = np.random.uniform(0, 4.9999)
             self.a = np.random.uniform()  # Randomly set decay parameter between 0 and 1
             self.b = np.random.uniform(beta_lower, beta_upper)
+            self.s = np.random.uniform(0.0001, 0.9999)
+            self.tau = np.random.uniform(-1.9999, -0.0001)
             self.choices_count = np.zeros(self.num_options)
 
             EV_history = np.zeros((num_trials, self.num_options))
@@ -360,19 +366,23 @@ class ComputationalModels:
                 if trial < 150:
                     pair = training_trial_sequence[trial]
                     optimal, suboptimal = (pair[0], pair[1])
-                    prob_optimal = self.softmax(self.EVs[optimal], self.EVs[suboptimal])
+                    prob_optimal = self.softmax(self.EVs[optimal], self.EVs[suboptimal], self.softmax_ACTR_version)
                     chosen = optimal if np.random.rand() < prob_optimal else suboptimal
                 else:
                     pair = transfer_trial_sequence[trial - 150]
                     optimal, suboptimal = (pair[0], pair[1])
-                    prob_optimal = self.softmax(self.EVs[optimal], self.EVs[suboptimal])
+                    prob_optimal = self.softmax(self.EVs[optimal], self.EVs[suboptimal], self.softmax_ACTR_version)
                     chosen = optimal if np.random.rand() < prob_optimal else suboptimal
 
                 reward = np.random.normal(reward_means[chosen], reward_sd[chosen])
                 trial_details.append(
                     {"trial": trial + 1, "pair": (chr(65 + pair[0]), chr(65 + pair[1])), "choice": chr(65 + chosen),
                      "reward": reward})
-                EV_history[trial] = self.update(chosen, reward, trial + 1)
+
+                if self.model_type == 'ACTR':
+                    EV_history[trial] = self.update(chosen, reward, trial + 1, pair, "TwoDigit")
+                else:
+                    EV_history[trial] = self.update(chosen, reward, trial + 1)
 
             all_results.append({
                 "simulation_num": iteration + 1,
@@ -380,6 +390,8 @@ class ComputationalModels:
                 "t": self.t,
                 "a": self.a,
                 "b": self.b,
+                "s": self.s,
+                "tau": self.tau,
                 "trial_details": trial_details,
                 "EV_history": EV_history
             })
@@ -397,8 +409,6 @@ class ComputationalModels:
         - choice: List or array of chosen options for each trial.
         """
         self.reset()
-
-        softmax_ACTR = False
 
         if self.model_type in ('decay', 'delta', 'decay_choice', 'decay_win'):
             self.t = params[0]
@@ -427,19 +437,18 @@ class ComputationalModels:
         trial = np.arange(1, self.num_trials + 1)
 
         if self.model_type == 'ACTR':
-            softmax_ACTR = True
             for r, cs, ch, trial in zip(reward, choiceset, choice, trial):
                 # in the ACTR model, we need to update the EVs before calculating the likelihood
                 self.update(ch, r, trial, cs)
                 cs_mapped = self.choiceset_mapping[cs]
-                prob_choice = self.softmax(self.EVs[cs_mapped[0]], self.EVs[cs_mapped[1]], softmax_ACTR)
-                prob_choice_alt = self.softmax(self.EVs[cs_mapped[1]], self.EVs[cs_mapped[0]], softmax_ACTR)
+                prob_choice = self.softmax(self.EVs[cs_mapped[0]], self.EVs[cs_mapped[1]], self.softmax_ACTR_version)
+                prob_choice_alt = self.softmax(self.EVs[cs_mapped[1]], self.EVs[cs_mapped[0]], self.softmax_ACTR_version)
                 nll += -np.log(max(epsilon, prob_choice if ch == cs_mapped[0] else prob_choice_alt))
         else:
             for r, cs, ch, trial in zip(reward, choiceset, choice, trial):
                 cs_mapped = self.choiceset_mapping[cs]
-                prob_choice = self.softmax(self.EVs[cs_mapped[0]], self.EVs[cs_mapped[1]], softmax_ACTR)
-                prob_choice_alt = self.softmax(self.EVs[cs_mapped[1]], self.EVs[cs_mapped[0]], softmax_ACTR)
+                prob_choice = self.softmax(self.EVs[cs_mapped[0]], self.EVs[cs_mapped[1]], self.softmax_ACTR_version)
+                prob_choice_alt = self.softmax(self.EVs[cs_mapped[1]], self.EVs[cs_mapped[0]], self.softmax_ACTR_version)
                 nll += -np.log(max(epsilon, prob_choice if ch == cs_mapped[0] else prob_choice_alt))
                 self.update(ch, r, trial)
         return nll

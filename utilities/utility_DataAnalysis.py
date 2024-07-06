@@ -52,8 +52,8 @@ def create_bayes_matrix(simulations, file_name):
 
     bayes_matrix = bayes_matrix.T
 
-    add_df_to_doc(bayes_matrix.applymap(format_large_numbers), file_name)
-    return bayes_matrix.applymap(format_large_numbers)
+    add_df_to_doc(bayes_matrix.map(format_large_numbers), file_name)
+    return bayes_matrix.map(format_large_numbers)
 
 
 def process_chosen_prop(results, data, sub=False):

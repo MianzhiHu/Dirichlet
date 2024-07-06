@@ -39,11 +39,11 @@ if __name__ == '__main__':
     delta = ComputationalModels("delta")
     actr = ComputationalModels("ACTR")
 
-    # # this is for testing
-    # # select the first 500 rows for testing
-    # testing_data = LV_df.iloc[:10, :]
-    # testing_data = dict_generator(testing_data)
-    # result = actr.fit(testing_data, num_iterations=1)
+    # this is for testing
+    # select the first 500 rows for testing
+    testing_data = LV_df.iloc[:10, :]
+    testing_data = dict_generator(testing_data)
+    result = actr.fit(testing_data, num_iterations=1)
 
     # for model_type in ['Dir', 'Gau', 'Dual', 'Param', 'Multi_Param', 'Recency']:
     #     result = model.fit(HV, model_type, num_iterations=100)
@@ -61,27 +61,27 @@ if __name__ == '__main__':
     #     result = model.fit(uncertainty, model_type, num_iterations=100)
     #     result.to_csv(f'./data/DataFitting/FittingResults/{model_type}Scale_uncertaintyOld_results.csv', index=False)
     #
-    # fit the traditional delta and decay models
+    # fit the traditional delta, decay, and actr models
     # HV_decay = decay.fit(HV, num_iterations=100)
     # HV_delta = delta.fit(HV, num_iterations=100)
-    HV_actr = actr.fit(HV, num_iterations=100)
-    HV_actr.to_csv('./data/DataFitting/actr_HV_results.csv', index=False)
+    # HV_actr = actr.fit(HV, num_iterations=100)
     # MV_decay = decay.fit(MV, num_iterations=100)
     # MV_delta = delta.fit(MV, num_iterations=100)
-    MV_actr = actr.fit(MV, num_iterations=100)
-    MV_actr.to_csv('./data/DataFitting/actr_MV_results.csv', index=False)
+    # MV_actr = actr.fit(MV, num_iterations=100)
     # LV_decay = decay.fit(LV, num_iterations=100)
     # LV_delta = delta.fit(LV, num_iterations=100)
-    LV_actr = actr.fit(LV, num_iterations=100)
-    LV_actr.to_csv('./data/DataFitting/actr_LV_results.csv', index=False)
+    # LV_actr = actr.fit(LV, num_iterations=100)
     # uncertainty_decay = decay.fit(uncertainty, num_iterations=100)
     # uncertainty_delta = delta.fit(uncertainty, num_iterations=100)
     #
     # # save
-    # HV_decay.to_csv('./data/DataFitting/decay_HV_results.csv', index=False)
-    # HV_delta.to_csv('./data/DataFitting/delta_HV_results.csv', index=False)
-    # MV_decay.to_csv('./data/DataFitting/decay_MV_results.csv', index=False)
-    # MV_delta.to_csv('./data/DataFitting/delta_MV_results.csv', index=False)
-    # LV_decay.to_csv('./data/DataFitting/decay_LV_results.csv', index=False)
-    # LV_delta.to_csv('./data/DataFitting/delta_LV_results.csv', index=False)
+    # HV_decay.to_csv('./data/DataFitting/FittingResults/decay_HV_results.csv', index=False)
+    # HV_delta.to_csv('./data/DataFitting/FittingResults/delta_HV_results.csv', index=False)
+    # HV_actr.to_csv('./data/DataFitting/FittingResults/actr_HV_results.csv', index=False)
+    # MV_decay.to_csv('./data/DataFitting/FittingResults/decay_MV_results.csv', index=False)
+    # MV_delta.to_csv('./data/DataFitting/FittingResults/delta_MV_results.csv', index=False)
+    # MV_actr.to_csv('./data/DataFitting/FittingResults/actr_MV_results.csv', index=False)
+    # LV_decay.to_csv('./data/DataFitting/FittingResults/decay_LV_results.csv', index=False)
+    # LV_delta.to_csv('./data/DataFitting/FittingResults/delta_LV_results.csv', index=False)
+    # LV_actr.to_csv('./data/DataFitting/FittingResults/actr_LV_results.csv', index=False)
     # uncertainty_decay.to_csv('./data/DataFitting/FittingResults/decay_uncertaintyOld_results.csv', index=False)
