@@ -4,7 +4,9 @@ import os
 from scipy.stats import ttest_ind, pearsonr, norm
 import statsmodels.formula.api as smf
 from utilities.utility_DataAnalysis import (mean_AIC_BIC, create_bayes_matrix, process_chosen_prop,
-                                            calculate_mean_squared_error)
+                                            calculate_mean_squared_error, fitting_summary_generator,
+                                            save_df_to_word, individual_param_generator, calculate_difference)
+from utilities.utility_DataAnalysis import extract_all_parameters
 import seaborn as sns
 import matplotlib.pyplot as plt
 
@@ -20,14 +22,92 @@ for file in os.listdir(folder_path):
 
 # unnest the dictionary into dfs
 for key in fitting_results:
+    print(key)
+    mean_AIC_BIC(fitting_results[key])
     globals()[key] = fitting_results[key]
 
-# see the average t
+# ======================================================================================================================
+# Generate the fitting summary
+# ======================================================================================================================
+# select the models to be compared
+included_models = ['Dual', 'Dir', 'Gau', 'decay', 'delta', 'actr']
+indices_to_calculate = ['AIC', 'BIC']
+fitting_summary = fitting_summary_generator(fitting_results, included_models, indices_to_calculate)
+fitting_summary = fitting_summary.round(3)
+# if the value is less than 0.001, replace it with <0.001
+numeric_cols = fitting_summary.select_dtypes(include='number').columns
+fitting_summary[numeric_cols] = fitting_summary[numeric_cols].map(
+    lambda x: '<0.001' if x == 0 else x)
+# save_df_to_word(fitting_summary, 'FittingSummary.docx')
+
+# calculate the mean AIC and BIC advantage of dual process model over the other models
+fitting_summary['model'] = fitting_summary['index'].str.split('_').str[0]
+fitting_summary['condition'] = fitting_summary['index'].str.split('_').str[1]
+fitting_summary.drop('index', axis=1, inplace=True)
+
+# Specify the reference model to calculate the difference from
+reference_model = 'Dual'
+
+
+
+# Group by the condition and apply the difference calculation
+fitting_summary_diff = fitting_summary.groupby('condition').apply(calculate_difference, reference_model,
+                                                                  include_groups=False)
+fitting_summary_diff = fitting_summary_diff[
+    (fitting_summary_diff['model'] != reference_model) &
+    (fitting_summary_diff['model'] != "Dir") &
+    (fitting_summary_diff['model'] != "Gau")
+]
+
+# Calculate the average difference for each model
+average_differences = fitting_summary_diff.groupby('condition')[['AIC_diff', 'BIC_diff']].mean().reset_index()
+
+print(average_differences)
+
+
+# ======================================================================================================================
+# Extract the best fitting parameters and analyze the results
+# ======================================================================================================================
+param_cols = ['param_1', 'param_2', 'param_3']
+individual_param_df = individual_param_generator(fitting_results, param_cols)
+
+# filter for the conditions and models
+individual_param_df = individual_param_df[individual_param_df['condition'].isin(['HV', 'MV', 'LV'])]
+individual_param_df = individual_param_df[individual_param_df['model'].isin(included_models)]
+
+# reverse code s parameter because it represents the inverse of the t parameter
+max_s = individual_param_df[individual_param_df['model'] == 'actr']['param_1'].max()
+individual_param_df.loc[individual_param_df['model'] == 'actr', 'param_1'] = max_s - individual_param_df.loc[
+    individual_param_df['model'] == 'actr', 'param_1']
+
+# individual_param_df.to_csv('./data/IndividualParamResults.csv', index=False)
+
+# ======================================================================================================================
+# Extract the individual AIC and BIC values
+# ======================================================================================================================
+# Initialize a list to store individual AIC and BIC values along with the model key
+individual_indices = []
+
 for key in fitting_results:
-    print(f"Model: {key}")
-    mean_AIC_BIC(fitting_results[key])
-    print(fitting_results[key]['best_parameters'].apply(
-            lambda x: float(x.strip('[]').split()[0]) if isinstance(x, str) else np.nan).mean())
+    for i in range(len(fitting_results[key])):
+        individual_indices.append({
+            'index': key,
+            'AIC': fitting_results[key]['AIC'].iloc[i],
+            'BIC': fitting_results[key]['BIC'].iloc[i]
+        })
+
+# Convert the list to a DataFrame
+individual_indices_df = pd.DataFrame(individual_indices)
+
+# filter
+individual_indices_df['condition'] = individual_indices_df['index'].str.split('_').str[1]
+individual_indices_df['model'] = individual_indices_df['index'].str.split('_').str[0]
+individual_indices_df = individual_indices_df[individual_indices_df['condition'].isin(['HV', 'MV', 'LV'])]
+individual_indices_df = individual_indices_df[individual_indices_df['model'].isin(included_models)]
+individual_indices_df.drop('index', axis=1, inplace=True)
+
+individual_indices_df.to_csv('./data/IndividualIndices.csv', index=False)
+
 
 
 # import the data
@@ -48,7 +128,8 @@ dataframes = [LV, MV, HV]
 for i in range(len(dataframes)):
     dataframes[i] = dataframes[i].reset_index(drop=True)
     dataframes[i].iloc[:, 1] = (dataframes[i].index // 250) + 1
-    dataframes[i].rename(columns={'X': 'Subnum', 'setSeen': 'SetSeen.', 'choice': 'KeyResponse', 'points': 'Reward'}, inplace=True)
+    dataframes[i].rename(columns={'X': 'Subnum', 'setSeen': 'SetSeen.', 'choice': 'KeyResponse', 'points': 'Reward'},
+                         inplace=True)
     dataframes[i]['KeyResponse'] = dataframes[i]['KeyResponse'] - 1
     dataframes[i]['SetSeen.'] = dataframes[i]['SetSeen.'] - 1
     dataframes[i]['trial_index'] = dataframes[i].groupby('Subnum').cumcount() + 1
@@ -93,7 +174,8 @@ MV_df, process_chosen_MV = process_chosen_prop(Dual_MV_results, MV_df, sub=True)
 LV_df, process_chosen_LV = process_chosen_prop(Dual_LV_results, LV_df, sub=True)
 uncertainty_uf, process_chosen_uf = process_chosen_prop(Dual_uncertaintyOld_results_S2A1, uncertainty_uf, sub=True)
 uncertainty_uo, process_chosen_uo = process_chosen_prop(Dual_uncertaintyOld_results_S2A2, uncertainty_uo, sub=True)
-uncertainty_data, process_chosen_uncertainty = process_chosen_prop(Dual_uncertaintyOld_results, uncertainty_data, sub=True)
+uncertainty_data, process_chosen_uncertainty = process_chosen_prop(Dual_uncertaintyOld_results, uncertainty_data,
+                                                                   sub=True)
 # uncertainty_data.to_csv('./data/UncertaintyDualProcess.csv', index=False)
 
 dfs = [HV_df, MV_df, LV_df]
@@ -107,7 +189,6 @@ for i in range(len(dfs)):
     df_corr = df_corr[df_corr['TrialType'] == 'CA']
     corr, p = pearsonr(df_corr['bestOption'], df_corr['proportion'])
     print(f"correlation: {corr}, p-value: {p}")
-
 
 # combine the AIC and BIC values
 columns = ['AIC', 'BIC', 'Model']
@@ -193,14 +274,14 @@ print(result.summary())
 
 # Assuming 'result' is the fitted model object
 cov = result.cov_params()
-diff_se = np.sqrt(cov.loc['TrialType[T.CA]', 'TrialType[T.CA]'] + cov.loc['TrialType[T.AD]', 'TrialType[T.AD]'] - 2 * cov.loc['TrialType[T.CA]', 'TrialType[T.AD]'])
+diff_se = np.sqrt(
+    cov.loc['TrialType[T.CA]', 'TrialType[T.CA]'] + cov.loc['TrialType[T.AD]', 'TrialType[T.AD]'] - 2 * cov.loc[
+        'TrialType[T.CA]', 'TrialType[T.AD]'])
 z_score = (-1.5318 - 0.2048) / diff_se
 p_value = norm.sf(abs(z_score)) * 2  # two-tailed p-value
 
 print("Z-score for difference:", z_score)
 print("P-value for difference:", p_value)
-
-
 
 # selected_data = uncertainty_data.iloc[:, 0:21].drop_duplicates()
 # # selected_data = selected_data.merge(uncertaintyPropOptimal[uncertaintyPropOptimal['ChoiceSet'] == 'CA'], on='Subnum')

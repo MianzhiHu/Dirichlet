@@ -5,8 +5,11 @@ import ast
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import seaborn as sns
-from scipy.stats import f_oneway
+from scipy.stats import f_oneway, ttest_1samp
 from statsmodels.stats.multicomp import pairwise_tukeyhsd
+import statsmodels.api as sm
+import statsmodels.formula.api as smf
+from statsmodels.genmod.bayes_mixed_glm import BinomialBayesMixedGLM
 
 # after the simulation has been completed, we can just load the simulated data from the folder
 folder_path = './data/Simulation'
@@ -31,14 +34,52 @@ for key, df in simulations.items():
 for key in simulations:
     globals()[key] = simulations[key]
 
+# ================== Simulation Analysis ==================
+# Observed data
+CA_avg = [0.6154838709677419, 0.5504, 0.4324]  # LV, MV, HV
 
+dual_list = [dual_lv, dual_mv, dual_hv]
+decay_list = [decay_lv, decay_mv, decay_hv]
+delta_list = [delta_lv, delta_mv, delta_hv]
+actr_list = [actr_lv, actr_mv, actr_hv]
+
+# calculate the RMSE for each model
+rmse_list = []
+
+for model in [dual_list, decay_list, delta_list, actr_list]:
+
+    model_name = ['Dual', 'Decay', 'Delta', 'ACTR']
+
+    for i in range(len(model)):
+        CA_trials = model[i][model[i]['pair'] == 'CA']
+        CA_pred = CA_trials.groupby('simulation_num')['BestOptionChosen'].mean()
+        # one sample t-test
+        t, p = ttest_1samp(CA_pred, 0.5)
+        print(f"Model: {model_name[i]}, Condition: {['LV', 'MV', 'HV'][i]}, t-statistic: {t}, p-value: {p}")
+        rmse_val = np.sqrt(np.mean((CA_pred - CA_avg[i]) ** 2))
+        rmse_list.append(rmse_val)
+
+
+# calculate if process is related to the best option chosen
+sim_CA = dual_lv[dual_lv['pair'] == 'CA']
+# convert the process column to numeric
+sim_CA['process'] = sim_CA['process'].map({'Dir': 0, 'Gau': 1})
+sim_CA['BestOptionChosen'] = sim_CA['BestOptionChosen'].astype(int)
+
+# mixed effects model
+model = smf.mixedlm("BestOptionChosen ~ process", sim_CA, groups=sim_CA['simulation_num'])
+result = model.fit()
+print(result.summary())
+
+
+# ================== Visualization ==================
 # visualize the simulation results
 cols_to_mean_dir = ['EV_A_Dir', 'EV_B_Dir', 'EV_C_Dir', 'EV_D_Dir']
 cols_to_mean_gau = ['EV_A_Gau', 'EV_B_Gau', 'EV_C_Gau', 'EV_D_Gau']
 cols_to_mean_mixed = ['EV_A', 'EV_B', 'EV_C', 'EV_D']
-df_avg = dual_uncertainty.groupby('trial_index')[cols_to_mean_dir + cols_to_mean_gau].mean().reset_index()
-propoptimal = dual_uncertainty.groupby('pair')['BestOptionChosen'].mean().reset_index()
-propoptimal_by_trial = dual_uncertainty.groupby(['pair', 'trial_index'])['BestOptionChosen'].mean().reset_index()
+df_avg = dual_hv.groupby('trial_index')[cols_to_mean_dir + cols_to_mean_gau].mean().reset_index()
+propoptimal = dual_hv.groupby('pair')['BestOptionChosen'].mean().reset_index()
+propoptimal_by_trial = dual_hv.groupby(['pair', 'trial_index'])['BestOptionChosen'].mean().reset_index()
 
 fig, ax = plt.subplots(4, 2, figsize=(20, 20))
 for i, col in enumerate(cols_to_mean_dir):
@@ -94,12 +135,9 @@ plt.show()
 # plot the percentage of choosing the best option only for CA pair
 mean_CA = []
 se_CA = []
+upper_CI = []
+lower_CI = []
 
-dual_list = [dual_lv, dual_mv, dual_hv]
-decay_list = [decay_lv, decay_mv, decay_hv]
-delta_list = [delta_lv, delta_mv, delta_hv]
-dir_list = [dir_lv, dir_mv, dir_hv]
-gau_list = [gau_lv, gau_mv, gau_hv]
 
 var_condition = dual_list
 for var in var_condition:
@@ -107,6 +145,10 @@ for var in var_condition:
     mean_CA.append(propoptimal_CA.mean())
     # calculate the standard error
     propoptimal_CA_se = propoptimal_CA.std() / np.sqrt(len(propoptimal_CA))
+    # find the .975 quantile
+    upper_CI.append(propoptimal_CA.quantile(0.975))
+    # find the .025 quantile
+    lower_CI.append(propoptimal_CA.quantile(0.025))
     se_CA.append(propoptimal_CA_se)
 
 # conduct a one-way ANOVA for all the var in the list
@@ -118,7 +160,7 @@ print(f'F-statistic: {f_stat}, p-value: {p_val}')
 # conduct the Tukey HSD test
 df = pd.concat([var[var['pair'] == 'CA'].groupby('simulation_num')['BestOptionChosen'].mean() for var in var_condition])
 df = pd.DataFrame(df)
-df['condition'] = ['LV' for _ in range(5000)] + ['MV' for _ in range(5000)] + ['HV' for _ in range(5000)]
+df['condition'] = ['LV' for _ in range(10000)] + ['MV' for _ in range(10000)] + ['HV' for _ in range(10000)]
 tukey = pairwise_tukeyhsd(endog=df['BestOptionChosen'], groups=df['condition'], alpha=0.05)
 
 
@@ -126,6 +168,7 @@ tukey = pairwise_tukeyhsd(endog=df['BestOptionChosen'], groups=df['condition'], 
 palette = sns.color_palette("pastel", 3)
 
 # Plot the percentage of choosing the best option only for CA pair
+plt.clf()
 plt.bar(['LV', 'MV', 'HV'], mean_CA, yerr=se_CA, color=palette)
 plt.ylim(0, .75)
 # plt.ylabel('Percentage of Selecting C in CA Pair')
@@ -155,12 +198,14 @@ transfer_process_chosen = pd.concat([transfer_process_chosen(df) for df in var_d
 condition_list = ['LV' for _ in range(4)] + ['MV' for _ in range(4)] + ['HV' for _ in range(4)]
 transfer_process_chosen['Condition'] = condition_list
 transfer_process_chosen = transfer_process_chosen[transfer_process_chosen['pair'] == 'CA']
+dir_se = transfer_process_chosen['Dir'].std() / np.sqrt(10000)
 
 # Plot the percentage of process chosen for each pair in the transfer phase
 plt.figure()
-plt.bar(transfer_process_chosen['Condition'], transfer_process_chosen['Dir'], color=palette)
+plt.bar(transfer_process_chosen['Condition'], transfer_process_chosen['Dir'], color=palette, yerr=dir_se)
 # plt.ylabel('Percentage of Dirichlet-Based Decisions')
 plt.gca().yaxis.set_major_formatter(ticker.PercentFormatter(xmax=1))
+plt.axhline(y=0.5, color='black', linestyle='--')
 plt.xticks(fontsize=20)
 plt.yticks(fontsize=20)
 sns.despine()

@@ -340,6 +340,8 @@ class ComputationalModels:
 
             print(f"Iteration {iteration + 1} of {num_iterations}")
 
+            self.reset()
+
             self.t = np.random.uniform(0, 4.9999)
             self.a = np.random.uniform()  # Randomly set decay parameter between 0 and 1
             self.b = np.random.uniform(beta_lower, beta_upper)
@@ -429,7 +431,6 @@ class ComputationalModels:
             self.s = params[0]
             self.a = params[1]
             self.tau = params[2]
-            softmax_ACTR = True
 
         nll = 0
         epsilon = 1e-12
@@ -477,11 +478,24 @@ class ComputationalModels:
     def post_hoc_simulation(self, fitting_result, original_data, reward_mean,
                             reward_sd, num_iterations=1000):
 
-        t_sequence = fitting_result['best_parameters'].apply(
-            lambda x: float(x.strip('[]').split()[0]) if isinstance(x, str) else np.nan)
+        if self.model_type == 'ACTR':
 
-        a_sequence = fitting_result['best_parameters'].apply(
-            lambda x: float(x.strip('[]').split()[1]) if isinstance(x, str) else np.nan)
+            s_sequence = fitting_result['best_parameters'].apply(
+                lambda x: float(x.strip('[]').split()[0]) if isinstance(x, str) else np.nan)
+
+            a_sequence = fitting_result['best_parameters'].apply(
+                lambda x: float(x.strip('[]').split()[1]) if isinstance(x, str) else np.nan)
+
+            tau_sequence = fitting_result['best_parameters'].apply(
+                lambda x: float(x.strip('[]').split()[2]) if isinstance(x, str) else np.nan)
+
+        else:
+
+            t_sequence = fitting_result['best_parameters'].apply(
+                lambda x: float(x.strip('[]').split()[0]) if isinstance(x, str) else np.nan)
+
+            a_sequence = fitting_result['best_parameters'].apply(
+                lambda x: float(x.strip('[]').split()[1]) if isinstance(x, str) else np.nan)
 
         # extract the trial sequence for each participant
         trial_sequence = original_data.groupby('Subnum')['TrialType'].apply(list)
@@ -509,8 +523,14 @@ class ComputationalModels:
 
                 self.reset()
 
-                self.t = t_sequence[participant - 1]
-                self.a = a_sequence[participant - 1]
+                if self.model_type == 'ACTR':
+                    self.s = s_sequence[participant - 1]
+                    self.a = a_sequence[participant - 1]
+                    self.tau = tau_sequence[participant - 1]
+                else:
+                    self.t = t_sequence[participant - 1]
+                    self.a = a_sequence[participant - 1]
+
                 self.iteration = 0
 
                 trial_details = []
@@ -521,7 +541,7 @@ class ComputationalModels:
 
                     optimal, suboptimal = choice_set_mapping[pair]
 
-                    prob_optimal = self.softmax(self.EVs[optimal], self.EVs[suboptimal])
+                    prob_optimal = self.softmax(self.EVs[optimal], self.EVs[suboptimal], self.softmax_ACTR_version)
                     chosen = 1 if np.random.rand() < prob_optimal else 0
 
                     reward = np.random.normal(reward_mean[optimal if chosen == 1 else suboptimal],
@@ -531,40 +551,79 @@ class ComputationalModels:
                         {"pair": pair, "choice": chosen, "reward": reward}
                     )
 
-                    self.update(optimal if chosen == 1 else suboptimal, reward, trial)
+                    if self.model_type == 'ACTR':
+                        self.update(optimal if chosen == 1 else suboptimal, reward, trial, choice_set_mapping[pair], "TwoDigit")
+                    else:
+                        self.update(optimal if chosen == 1 else suboptimal, reward, trial)
 
-                all_results.append({
-                    "Subnum": participant,
-                    "t": self.t,
-                    "a": self.a,
-                    "trial_indices": trial_indices,
-                    "trial_details": trial_details
-                })
+                if self.model_type == 'ACTR':
+                    all_results.append({
+                        "Subnum": participant,
+                        "s": self.s,
+                        "a": self.a,
+                        "tau": self.tau,
+                        "trial_indices": trial_indices,
+                        "trial_details": trial_details
+                    })
+                else:
+
+                    all_results.append({
+                        "Subnum": participant,
+                        "t": self.t,
+                        "a": self.a,
+                        "trial_indices": trial_indices,
+                        "trial_details": trial_details
+                    })
 
         unpacked_results = []
 
         for result in all_results:
             sim_num = result['Subnum']
-            t = result["t"]
-            a = result["a"]
 
-            for trial_idx, trial_detail in zip(result['trial_indices'], result['trial_details']):
-                var = {
-                    "Subnum": sim_num,
-                    "trial_index": trial_idx,
-                    "t": t,
-                    "a": a,
-                    "pair": trial_detail['pair'],
-                    "choice": trial_detail['choice'],
-                    "reward": trial_detail['reward'],
-                }
+            if self.model_type == 'ACTR':
+                s = result["s"]
+                a = result["a"]
+                tau = result["tau"]
 
-                unpacked_results.append(var)
+                for trial_idx, trial_detail in zip(result['trial_indices'], result['trial_details']):
+                    var = {
+                        "Subnum": sim_num,
+                        "trial_index": trial_idx,
+                        "s": s,
+                        "a": a,
+                        "tau": tau,
+                        "pair": trial_detail['pair'],
+                        "choice": trial_detail['choice'],
+                        "reward": trial_detail['reward'],
+                    }
+
+                    unpacked_results.append(var)
+
+            else:
+                t = result["t"]
+                a = result["a"]
+
+                for trial_idx, trial_detail in zip(result['trial_indices'], result['trial_details']):
+                    var = {
+                        "Subnum": sim_num,
+                        "trial_index": trial_idx,
+                        "t": t,
+                        "a": a,
+                        "pair": trial_detail['pair'],
+                        "choice": trial_detail['choice'],
+                        "reward": trial_detail['reward'],
+                    }
+
+                    unpacked_results.append(var)
 
         df = pd.DataFrame(unpacked_results)
 
-        summary = df.groupby(['Subnum', 'trial_index'])[
-            ['t', 'a', 'reward', 'choice']].mean().reset_index()
+        if self.model_type == 'ACTR':
+            summary = df.groupby(['Subnum', 'trial_index'])[
+                ['s', 'a', 'tau', 'reward', 'choice']].mean().reset_index()
+        else:
+            summary = df.groupby(['Subnum', 'trial_index'])[
+                ['t', 'a', 'reward', 'choice']].mean().reset_index()
 
         return summary
 
