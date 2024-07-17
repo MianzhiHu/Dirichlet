@@ -264,6 +264,28 @@ def calculate_difference(group, ref_model):
     return group
 
 
+# ======================================================================================================================
+# Functions for individual parameters
+# ======================================================================================================================
+def option_mean_calculation(data):
+    training_data = data[data['Trial'] <= 150]
+    mean = training_data.groupby('choice')['points'].mean()
+
+    # keep track of the dynamic mean for each participant
+    training_data.loc[:, 'cumulative_mean'] = (training_data.groupby('subnum')['points']
+                                               .expanding().mean().reset_index(level=0, drop=True))
+    training_data.loc[:, 'above_average'] = training_data['points'] > training_data['cumulative_mean']
+
+    # Calculate the percentage of above-average outcomes for each choice
+    above_average_counts = training_data.groupby(['choice', 'above_average']).size().unstack(fill_value=0)
+    above_average_percentage = above_average_counts.div(above_average_counts.sum(axis=1), axis=0)
+
+    result_dict = {'mean': mean, 'above_average_counts': above_average_counts,
+                   'above_average_percentage': above_average_percentage}
+
+    return result_dict
+
+
 
 
 

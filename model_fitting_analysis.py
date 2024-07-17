@@ -38,7 +38,7 @@ fitting_summary = fitting_summary.round(3)
 numeric_cols = fitting_summary.select_dtypes(include='number').columns
 fitting_summary[numeric_cols] = fitting_summary[numeric_cols].map(
     lambda x: '<0.001' if x == 0 else x)
-# save_df_to_word(fitting_summary, 'FittingSummary.docx')
+save_df_to_word(fitting_summary, 'FittingSummary.docx')
 
 # calculate the mean AIC and BIC advantage of dual process model over the other models
 fitting_summary['model'] = fitting_summary['index'].str.split('_').str[0]
@@ -80,7 +80,7 @@ max_s = individual_param_df[individual_param_df['model'] == 'actr']['param_1'].m
 individual_param_df.loc[individual_param_df['model'] == 'actr', 'param_1'] = max_s - individual_param_df.loc[
     individual_param_df['model'] == 'actr', 'param_1']
 
-# individual_param_df.to_csv('./data/IndividualParamResults.csv', index=False)
+individual_param_df.to_csv('./data/IndividualParamResults.csv', index=False)
 
 # ======================================================================================================================
 # Extract the individual AIC and BIC values
@@ -112,17 +112,10 @@ individual_indices_df.to_csv('./data/IndividualIndices.csv', index=False)
 
 # import the data
 data = pd.read_csv("./data/ABCDContRewardsAllData.csv")
-uncertainty_data = pd.read_csv('./data/UncertaintyData.csv')
-uncertaintyPropOptimal = pd.read_csv('./data/UncertaintyPropOptimal.csv')
-condition_assignments = uncertainty_data[['Subnum', 'Condition']].drop_duplicates()
 
 LV = data[data['Condition'] == 'LV']
 MV = data[data['Condition'] == 'MV']
 HV = data[data['Condition'] == 'HV']
-
-uncertainty_uf = uncertainty_data[uncertainty_data['Condition'] == 'S2A1']
-uncertainty_uo = uncertainty_data[uncertainty_data['Condition'] == 'S2A2']
-uncertaintyPropOptimal = uncertaintyPropOptimal.merge(condition_assignments, on='Subnum')
 
 dataframes = [LV, MV, HV]
 for i in range(len(dataframes)):
@@ -136,47 +129,23 @@ for i in range(len(dataframes)):
 
 LV_df, MV_df, HV_df = dataframes
 
-uncertainty_condition_results = {}
-
-for key, results in fitting_results.items():
-    if 'uncertainty' in key:
-        results.rename(columns={'participant_id': 'Subnum'}, inplace=True)
-        # join the condition assignments to the uncertainty data
-        results = results.merge(condition_assignments, on='Subnum')
-        grouped_results = results.groupby('Condition')
-        for condition, group in grouped_results:
-            uncertainty_condition_results[f"{key}_{condition}"] = group
-        print(f"Model: {key}")
-        print(f"Mean AIC: {grouped_results['AIC'].mean()}")
-        print(f"Mean BIC: {grouped_results['BIC'].mean()}")
-
-for key in uncertainty_condition_results:
-    globals()[key] = uncertainty_condition_results[key]
-
 # # create bayes factor matrices
 # # Filter fitting_results for HV, MV, and LV
 fitting_results_HV = {k: v for k, v in fitting_results.items() if 'HV' in k}
 fitting_results_MV = {k: v for k, v in fitting_results.items() if 'MV' in k}
 fitting_results_LV = {k: v for k, v in fitting_results.items() if 'LV' in k}
-uncertainty_frequency_results = {k: v for k, v in uncertainty_condition_results.items() if 'S2A1' in k}
-uncertainty_only_results = {k: v for k, v in uncertainty_condition_results.items() if 'S2A2' in k}
+
 
 # # Create Bayes factor matrices for HV, MV, and LV
 bayes_matrix_HV = create_bayes_matrix(fitting_results_HV, 'HV Bayes Factor Matrix')
 bayes_matrix_MV = create_bayes_matrix(fitting_results_MV, 'MV Bayes Factor Matrix')
 bayes_matrix_LV = create_bayes_matrix(fitting_results_LV, 'LV Bayes Factor Matrix')
-# bayes_matrix_uncertainty_frequency = create_bayes_matrix(uncertainty_frequency_results, 'UF Bayes Factor Matrix')
-# bayes_matrix_uncertainty_only = create_bayes_matrix(uncertainty_only_results, 'UO Bayes Factor Matrix')
 
 # explode ProcessChosen
 HV_df, process_chosen_HV = process_chosen_prop(Dual_HV_results, HV_df, sub=True)
 MV_df, process_chosen_MV = process_chosen_prop(Dual_MV_results, MV_df, sub=True)
 LV_df, process_chosen_LV = process_chosen_prop(Dual_LV_results, LV_df, sub=True)
-uncertainty_uf, process_chosen_uf = process_chosen_prop(Dual_uncertaintyOld_results_S2A1, uncertainty_uf, sub=True)
-uncertainty_uo, process_chosen_uo = process_chosen_prop(Dual_uncertaintyOld_results_S2A2, uncertainty_uo, sub=True)
-uncertainty_data, process_chosen_uncertainty = process_chosen_prop(Dual_uncertaintyOld_results, uncertainty_data,
-                                                                   sub=True)
-# uncertainty_data.to_csv('./data/UncertaintyDualProcess.csv', index=False)
+
 
 dfs = [HV_df, MV_df, LV_df]
 process_chosen_df = [process_chosen_HV, process_chosen_MV, process_chosen_LV]
@@ -231,25 +200,6 @@ combined_LV_results = combine_results(lv_results)
 # plt.show()
 
 
-# test the uncertainty data
-prop_uf = uncertaintyPropOptimal[uncertaintyPropOptimal['Condition'] == 'S2A1']
-prop_uo = uncertaintyPropOptimal[uncertaintyPropOptimal['Condition'] == 'S2A2']
-
-uncertainty_dfs = [uncertainty_uf, uncertainty_uo]
-uncertainty_process_chosen = [process_chosen_uf, process_chosen_uo]
-prop_optimal_dfs = [prop_uf, prop_uo]
-rfile_names = ['uncertainty_uf', 'uncertainty_uo']
-
-for i in range(len(uncertainty_dfs)):
-    prop_optimal = prop_optimal_dfs[i]
-    prop_optimal.rename(columns={'ChoiceSet': 'TrialType'}, inplace=True)
-    process_chosen_Dir = uncertainty_process_chosen[i][uncertainty_process_chosen[i]['best_process_chosen'] == 'Dir']
-    df_corr = pd.merge(prop_optimal, process_chosen_Dir, on=['Subnum', 'TrialType'], how='outer')
-    df_corr.fillna(0, inplace=True)
-    df_corr = df_corr[df_corr['TrialType'] == 'CA']
-    corr, p = pearsonr(df_corr['PropOptimal'], df_corr['proportion'])
-    print(f"correlation: {corr}, p-value: {p}")
-
 # find out the significance of the model
 for df in [HV_df, MV_df, LV_df]:
     df['best_process_chosen'] = (df['best_process_chosen'] == 'Dir').astype(int)
@@ -283,16 +233,6 @@ p_value = norm.sf(abs(z_score)) * 2  # two-tailed p-value
 print("Z-score for difference:", z_score)
 print("P-value for difference:", p_value)
 
-# selected_data = uncertainty_data.iloc[:, 0:21].drop_duplicates()
-# # selected_data = selected_data.merge(uncertaintyPropOptimal[uncertaintyPropOptimal['ChoiceSet'] == 'CA'], on='Subnum')
-#
-# un_df, process_chosen_un = process_chosen_prop(Dual_uncertaintyOld_results, uncertainty_data, sub=True)
-# process_chosen_un_Dir = process_chosen_un[process_chosen_un['best_process_chosen'] == 'Dir']
-# process_chosen_un_Dir.rename(columns={'TrialType': 'ChoiceSet'}, inplace=True)
-# df_corr = pd.merge(uncertaintyPropOptimal, process_chosen_un_Dir, on=['Subnum', 'ChoiceSet'], how='outer')
-# df_corr.fillna(0, inplace=True)
-# df_corr = df_corr.merge(selected_data, on=['Subnum', 'Condition'])
-# df_corr.to_csv('./data/UncertaintyDualProcessParticipant.csv', index=False)
 
 # RT analysis
 # process_rt = LV_df.groupby('best_process_chosen')['RT'].mean().reset_index()
@@ -304,3 +244,80 @@ print("P-value for difference:", p_value)
 # model = smf.mixedlm('RT ~ best_process_chosen', data=LV_df, groups=LV_df['Subnum'] + LV_df['SetSeen.'])
 # result = model.fit()
 # print(result.summary())
+
+
+# # ====================================================================================================================
+# # Below is the code for the uncertainty dataset which is not used in the paper (comment out if not needed)
+# # ====================================================================================================================
+
+# # import the data
+# uncertainty_data = pd.read_csv('./data/UncertaintyData.csv')
+# uncertaintyPropOptimal = pd.read_csv('./data/UncertaintyPropOptimal.csv')
+# condition_assignments = uncertainty_data[['Subnum', 'Condition']].drop_duplicates()
+#
+# uncertainty_uf = uncertainty_data[uncertainty_data['Condition'] == 'S2A1']
+# uncertainty_uo = uncertainty_data[uncertainty_data['Condition'] == 'S2A2']
+# uncertaintyPropOptimal = uncertaintyPropOptimal.merge(condition_assignments, on='Subnum')
+
+# uncertainty_condition_results = {}
+#
+# for key, results in fitting_results.items():
+#     if 'uncertainty' in key:
+#         results.rename(columns={'participant_id': 'Subnum'}, inplace=True)
+#         # join the condition assignments to the uncertainty data
+#         results = results.merge(condition_assignments, on='Subnum')
+#         grouped_results = results.groupby('Condition')
+#         for condition, group in grouped_results:
+#             uncertainty_condition_results[f"{key}_{condition}"] = group
+#         print(f"Model: {key}")
+#         print(f"Mean AIC: {grouped_results['AIC'].mean()}")
+#         print(f"Mean BIC: {grouped_results['BIC'].mean()}")
+#
+# for key in uncertainty_condition_results:
+#     globals()[key] = uncertainty_condition_results[key]
+#
+# # create bayes factor matrices
+# uncertainty_frequency_results = {k: v for k, v in uncertainty_condition_results.items() if 'S2A1' in k}
+# uncertainty_only_results = {k: v for k, v in uncertainty_condition_results.items() if 'S2A2' in k}
+#
+# # explode ProcessChosen
+# uncertainty_uf, process_chosen_uf = process_chosen_prop(Dual_uncertaintyOld_results_S2A1, uncertainty_uf, sub=True)
+# uncertainty_uo, process_chosen_uo = process_chosen_prop(Dual_uncertaintyOld_results_S2A2, uncertainty_uo, sub=True)
+# uncertainty_data, process_chosen_uncertainty = process_chosen_prop(Dual_uncertaintyOld_results, uncertainty_data,
+#                                                                    sub=True)
+#
+# # uncertainty_data.to_csv('./data/UncertaintyDualProcess.csv', index=False)
+#
+# # test the uncertainty data
+# prop_uf = uncertaintyPropOptimal[uncertaintyPropOptimal['Condition'] == 'S2A1']
+# prop_uo = uncertaintyPropOptimal[uncertaintyPropOptimal['Condition'] == 'S2A2']
+#
+# uncertainty_dfs = [uncertainty_uf, uncertainty_uo]
+# uncertainty_process_chosen = [process_chosen_uf, process_chosen_uo]
+# prop_optimal_dfs = [prop_uf, prop_uo]
+# rfile_names = ['uncertainty_uf', 'uncertainty_uo']
+#
+# for i in range(len(uncertainty_dfs)):
+#     prop_optimal = prop_optimal_dfs[i]
+#     prop_optimal.rename(columns={'ChoiceSet': 'TrialType'}, inplace=True)
+#     process_chosen_Dir = uncertainty_process_chosen[i][uncertainty_process_chosen[i]['best_process_chosen'] == 'Dir']
+#     df_corr = pd.merge(prop_optimal, process_chosen_Dir, on=['Subnum', 'TrialType'], how='outer')
+#     df_corr.fillna(0, inplace=True)
+#     df_corr = df_corr[df_corr['TrialType'] == 'CA']
+#     corr, p = pearsonr(df_corr['PropOptimal'], df_corr['proportion'])
+#     print(f"correlation: {corr}, p-value: {p}")
+
+# # tentative analysis
+# selected_data = uncertainty_data.iloc[:, 0:21].drop_duplicates()
+# # selected_data = selected_data.merge(uncertaintyPropOptimal[uncertaintyPropOptimal['ChoiceSet'] == 'CA'], on='Subnum')
+#
+# un_df, process_chosen_un = process_chosen_prop(Dual_uncertaintyOld_results, uncertainty_data, sub=True)
+# process_chosen_un_Dir = process_chosen_un[process_chosen_un['best_process_chosen'] == 'Dir']
+# process_chosen_un_Dir.rename(columns={'TrialType': 'ChoiceSet'}, inplace=True)
+# df_corr = pd.merge(uncertaintyPropOptimal, process_chosen_un_Dir, on=['Subnum', 'ChoiceSet'], how='outer')
+# df_corr.fillna(0, inplace=True)
+# df_corr = df_corr.merge(selected_data, on=['Subnum', 'Condition'])
+# df_corr.to_csv('./data/UncertaintyDualProcessParticipant.csv', index=False)
+
+
+

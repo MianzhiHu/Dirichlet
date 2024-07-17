@@ -31,13 +31,22 @@ uncertainty = [0.43, 0.43, 0.12, 0.12]
 # gau_lv.to_csv('./data/Simulation/gau_lv.csv', index=False)
 #
 # # ========== Dual Process Model ==========
-dual_hv = model.simulate(reward_means, hv, model='Dual', AB_freq=100, CD_freq=50, num_iterations=10000)
-dual_mv = model.simulate(reward_means, mv, model='Dual', AB_freq=100, CD_freq=50, num_iterations=10000)
-dual_lv = model.simulate(reward_means, lv, model='Dual', AB_freq=100, CD_freq=50, num_iterations=10000)
+# dual_hv = model.simulate(reward_means, hv, model='Dual', AB_freq=100, CD_freq=50, num_iterations=10000)
+# dual_mv = model.simulate(reward_means, mv, model='Dual', AB_freq=100, CD_freq=50, num_iterations=10000)
+# dual_lv = model.simulate(reward_means, lv, model='Dual', AB_freq=100, CD_freq=50, num_iterations=10000)
+#
+# dual_hv.to_csv('./data/Simulation/dual_hv.csv', index=False)
+# dual_mv.to_csv('./data/Simulation/dual_mv.csv', index=False)
+# dual_lv.to_csv('./data/Simulation/dual_lv.csv', index=False)
 
-dual_hv.to_csv('./data/Simulation/dual_hv.csv', index=False)
-dual_mv.to_csv('./data/Simulation/dual_mv.csv', index=False)
-dual_lv.to_csv('./data/Simulation/dual_lv.csv', index=False)
+# ========= Dual Process Model with Recency ==========
+# recency_hv = model.simulate(reward_means, hv, model='Recency', AB_freq=100, CD_freq=50, num_iterations=10000)
+# recency_mv = model.simulate(reward_means, mv, model='Recency', AB_freq=100, CD_freq=50, num_iterations=10000)
+# recency_lv = model.simulate(reward_means, lv, model='Recency', AB_freq=100, CD_freq=50, num_iterations=10000)
+#
+# recency_hv.to_csv('./data/Simulation/recency_hv.csv', index=False)
+# recency_mv.to_csv('./data/Simulation/recency_mv.csv', index=False)
+# recency_lv.to_csv('./data/Simulation/recency_lv.csv', index=False)
 
 # ========== Parametric Model ==========
 # mixed_hv = model.simulate(reward_means, hv, model='Param', AB_freq=100, CD_freq=50)
@@ -59,93 +68,93 @@ dual_lv.to_csv('./data/Simulation/dual_lv.csv', index=False)
 # uncertainty_gau.to_csv('./data/Simulation/gau_uncertainty.csv', index=False)
 # uncertainty_mixed.to_csv('./data/Simulation/mixed_uncertainty.csv', index=False)
 
-# ========== Decay and Delta Models ==========
-decay = ComputationalModels("decay")
-delta = ComputationalModels("delta")
-
-# decay_uncertainty = decay.simulate(reward_means, uncertainty, AB_freq=100, CD_freq=50)
-# delta_uncertainty = delta.simulate(reward_means, uncertainty, AB_freq=100, CD_freq=50)
-
-decay_hv = decay.simulate(reward_means, hv, AB_freq=100, CD_freq=50, num_iterations=10000)
-decay_mv = decay.simulate(reward_means, mv, AB_freq=100, CD_freq=50, num_iterations=10000)
-decay_lv = decay.simulate(reward_means, lv, AB_freq=100, CD_freq=50, num_iterations=10000)
-
-delta_hv = delta.simulate(reward_means, hv, AB_freq=100, CD_freq=50, num_iterations=10000)
-delta_mv = delta.simulate(reward_means, mv, AB_freq=100, CD_freq=50, num_iterations=10000)
-delta_lv = delta.simulate(reward_means, lv, AB_freq=100, CD_freq=50, num_iterations=10000)
-
-# unpacking the results
-for i, sim in enumerate([decay_hv, decay_mv, decay_lv, delta_hv, delta_mv, delta_lv]):
-
-    file_name = ['decay_hv', 'decay_mv', 'decay_lv', 'delta_hv', 'delta_mv', 'delta_lv'][i]
-
-    all_data = []
-
-    for res in sim:
-        sim_num = res['simulation_num']
-        a_val = res['a']
-        b_val = res['b']
-        t_val = res['t']
-        for trial_idx, trial_detail, ev in zip(res['trial_indices'], res['trial_details'], res['EV_history']):
-            data_row = {
-                'simulation_num': sim_num,
-                'trial_index': trial_idx,
-                'a': a_val,
-                't': t_val,
-                'pair': trial_detail['pair'],
-                'choice': trial_detail['choice'],
-                'reward': trial_detail['reward'],
-                'EV_A': ev[0],
-                'EV_B': ev[1],
-                'EV_C': ev[2],
-                'EV_D': ev[3]
-            }
-            all_data.append(data_row)
-
-    df = pd.DataFrame(all_data)
-
-    df.to_csv('./data/Simulation/' + file_name + '.csv', index=False)
-
-
-# ========= ACT-R Model ==========
-actr = ComputationalModels("ACTR")
-
-actr_hv = actr.simulate(reward_means, hv, AB_freq=100, CD_freq=50, num_iterations=10000)
-actr_mv = actr.simulate(reward_means, mv, AB_freq=100, CD_freq=50, num_iterations=10000)
-actr_lv = actr.simulate(reward_means, lv, AB_freq=100, CD_freq=50, num_iterations=10000)
-
-# unpacking the results
-for i, sim in enumerate([actr_hv, actr_mv, actr_lv]):
-
-    file_name = ['actr_hv', 'actr_mv', 'actr_lv'][i]
-
-    all_data = []
-
-    for res in sim:
-        sim_num = res['simulation_num']
-        a_val = res['a']
-        s_val = res['s']
-        tau_val = res['tau']
-        for trial_idx, trial_detail, ev in zip(res['trial_indices'], res['trial_details'], res['EV_history']):
-            data_row = {
-                'simulation_num': sim_num,
-                'trial_index': trial_idx,
-                'a': a_val,
-                's': s_val,
-                'tau': tau_val,
-                'pair': trial_detail['pair'],
-                'choice': trial_detail['choice'],
-                'reward': trial_detail['reward'],
-                'EV_A': ev[0],
-                'EV_B': ev[1],
-                'EV_C': ev[2],
-                'EV_D': ev[3]
-            }
-            all_data.append(data_row)
-
-    df = pd.DataFrame(all_data)
-
-    df.to_csv('./data/Simulation/' + file_name + '.csv', index=False)
+# # ========== Decay and Delta Models ==========
+# decay = ComputationalModels("decay")
+# delta = ComputationalModels("delta")
+#
+# # decay_uncertainty = decay.simulate(reward_means, uncertainty, AB_freq=100, CD_freq=50)
+# # delta_uncertainty = delta.simulate(reward_means, uncertainty, AB_freq=100, CD_freq=50)
+#
+# decay_hv = decay.simulate(reward_means, hv, AB_freq=100, CD_freq=50, num_iterations=10000)
+# decay_mv = decay.simulate(reward_means, mv, AB_freq=100, CD_freq=50, num_iterations=10000)
+# decay_lv = decay.simulate(reward_means, lv, AB_freq=100, CD_freq=50, num_iterations=10000)
+#
+# delta_hv = delta.simulate(reward_means, hv, AB_freq=100, CD_freq=50, num_iterations=10000)
+# delta_mv = delta.simulate(reward_means, mv, AB_freq=100, CD_freq=50, num_iterations=10000)
+# delta_lv = delta.simulate(reward_means, lv, AB_freq=100, CD_freq=50, num_iterations=10000)
+#
+# # unpacking the results
+# for i, sim in enumerate([decay_hv, decay_mv, decay_lv, delta_hv, delta_mv, delta_lv]):
+#
+#     file_name = ['decay_hv', 'decay_mv', 'decay_lv', 'delta_hv', 'delta_mv', 'delta_lv'][i]
+#
+#     all_data = []
+#
+#     for res in sim:
+#         sim_num = res['simulation_num']
+#         a_val = res['a']
+#         b_val = res['b']
+#         t_val = res['t']
+#         for trial_idx, trial_detail, ev in zip(res['trial_indices'], res['trial_details'], res['EV_history']):
+#             data_row = {
+#                 'simulation_num': sim_num,
+#                 'trial_index': trial_idx,
+#                 'a': a_val,
+#                 't': t_val,
+#                 'pair': trial_detail['pair'],
+#                 'choice': trial_detail['choice'],
+#                 'reward': trial_detail['reward'],
+#                 'EV_A': ev[0],
+#                 'EV_B': ev[1],
+#                 'EV_C': ev[2],
+#                 'EV_D': ev[3]
+#             }
+#             all_data.append(data_row)
+#
+#     df = pd.DataFrame(all_data)
+#
+#     df.to_csv('./data/Simulation/' + file_name + '.csv', index=False)
+#
+#
+# # ========= ACT-R Model ==========
+# actr = ComputationalModels("ACTR")
+#
+# actr_hv = actr.simulate(reward_means, hv, AB_freq=100, CD_freq=50, num_iterations=10000)
+# actr_mv = actr.simulate(reward_means, mv, AB_freq=100, CD_freq=50, num_iterations=10000)
+# actr_lv = actr.simulate(reward_means, lv, AB_freq=100, CD_freq=50, num_iterations=10000)
+#
+# # unpacking the results
+# for i, sim in enumerate([actr_hv, actr_mv, actr_lv]):
+#
+#     file_name = ['actr_hv', 'actr_mv', 'actr_lv'][i]
+#
+#     all_data = []
+#
+#     for res in sim:
+#         sim_num = res['simulation_num']
+#         a_val = res['a']
+#         s_val = res['s']
+#         tau_val = res['tau']
+#         for trial_idx, trial_detail, ev in zip(res['trial_indices'], res['trial_details'], res['EV_history']):
+#             data_row = {
+#                 'simulation_num': sim_num,
+#                 'trial_index': trial_idx,
+#                 'a': a_val,
+#                 's': s_val,
+#                 'tau': tau_val,
+#                 'pair': trial_detail['pair'],
+#                 'choice': trial_detail['choice'],
+#                 'reward': trial_detail['reward'],
+#                 'EV_A': ev[0],
+#                 'EV_B': ev[1],
+#                 'EV_C': ev[2],
+#                 'EV_D': ev[3]
+#             }
+#             all_data.append(data_row)
+#
+#     df = pd.DataFrame(all_data)
+#
+#     df.to_csv('./data/Simulation/' + file_name + '.csv', index=False)
 
 
 

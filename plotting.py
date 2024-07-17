@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import seaborn as sns
 import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
 from mpl_toolkits.mplot3d import Axes3D
@@ -53,21 +54,12 @@ prop_optimal = data_CA.groupby('Subnum')['bestOption'].mean().reset_index()
 # merge all three dataframes
 df = pd.merge(condition_list, process_chosen, on='Subnum')
 df = pd.merge(df, prop_optimal, on='Subnum')
+df['Condition'] = df['Condition'].astype('category')
 
-# test the correlation between the proportion of choosing the best option and the proportion of choosing the dual process
-
-# Create a scatter plot
-scatter = plt.scatter(df['best_process_chosen'], df['bestOption'], c=df['Condition'].map({'LV': 'g', 'MV': 'b', 'HV': 'r'}), alpha=0.4)
-
-# Create a list of Line2D objects to represent the legend entries
-colors = ['g', 'b', 'r']
-labels = ['LV', 'MV', 'HV']
-lines = [mlines.Line2D([], [], color=c, marker='o', markersize=10, label=l, linestyle='None') for c, l in zip(colors, labels)]
-plt.legend(handles=lines)
-# add linear regression
-m, b = np.polyfit(df['best_process_chosen'], df['bestOption'], 1)
-plt.plot(df['best_process_chosen'], m * df['best_process_chosen'] + b, color='gray')
+# test the correlation between the proportion of choosing the best option and the proportion of choosing Dirichlet
+sns.lmplot(data=df, x='best_process_chosen', y='bestOption', hue='Condition', hue_order=['LV', 'MV', 'HV'],
+           palette='pastel', markers=['o', 's', 'D'], scatter_kws={'alpha': 0.7}, scatter=True, fit_reg=True)
 plt.xlabel('Proportion of Dirichlet-Based Choices')
-plt.ylabel('Proportion of Choosing Best Option')
-plt.title('Correlation Between Process Chosen and Best Option Chosen')
-plt.show()
+plt.ylabel('Proportion of Choosing C in CA')
+plt.legend(title='Condition', loc='lower left')
+plt.show(dp=600)

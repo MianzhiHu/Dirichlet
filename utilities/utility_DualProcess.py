@@ -134,13 +134,13 @@ class DualProcessModel:
             flatten_reward_history = [item for sublist in self.reward_history for item in sublist]
             AV_total = np.mean(flatten_reward_history)
 
+            if self.model == 'Recency':
+                self.alpha = [max(np.finfo(float).tiny, (1 - self.a) * i) for i in self.alpha]  # avoid alpha = 0
+
             if reward > AV_total:
                 self.alpha[chosen] += 1
             else:
                 pass
-
-            if self.model == 'Recency':
-                self.alpha = [max(np.finfo(float).tiny, (1 - self.a) * i) for i in self.alpha]  # avoid alpha = 0
 
             self.EV_Dir = np.mean(dirichlet.rvs(self.alpha, size=self.n_samples), axis=0)
 
@@ -189,6 +189,9 @@ class DualProcessModel:
                 sim_num = result["simulation_num"]
                 t = result["t"]
 
+                if self.model == 'Recency':
+                    a = result["a"]
+
                 for trial_idx, trial_detail, ev_dir, ev_gau in zip(result['trial_indices'],
                                                                    result['trial_details'],
                                                                    result['EV_history_Dir'],
@@ -222,11 +225,12 @@ class DualProcessModel:
                             "EV_D": ev_gau[3]
                         }
 
-                    elif self.model == 'Dual':
+                    elif self.model in ('Dual', 'Recency'):
                         var = {
                             "simulation_num": sim_num,
                             "trial_index": trial_idx,
                             "t": t,
+                            "a": a if self.model == 'Recency' else None,
                             "pair": trial_detail['pair'],
                             "choice": trial_detail['choice'],
                             "reward": trial_detail['reward'],
@@ -280,7 +284,10 @@ class DualProcessModel:
 
             self.reset()
 
-            self.t = np.random.uniform(0, 5)
+            self.t = np.random.uniform(0.0001, 4.9999)
+
+            if self.model == 'Recency':
+                self.a = np.random.uniform(0.0001, .9999)
 
             EV_history_Dir = np.zeros((sim_trials, 4))
             EV_history_Gau = np.zeros((sim_trials, 4))
@@ -314,7 +321,7 @@ class DualProcessModel:
                     prob_optimal = self.softmax(self.EV_Gau[optimal], self.EV_Gau[suboptimal])
                     chosen = optimal if np.random.rand() < prob_optimal else suboptimal
 
-                elif self.model == 'Dual':
+                elif self.model in ('Dual', 'Recency'):
                     prob_optimal_dir = self.softmax(self.EV_Dir[optimal], self.EV_Dir[suboptimal])
                     prob_optimal_gau = self.softmax(self.EV_Gau[optimal], self.EV_Gau[suboptimal])
                     prob_suboptimal_dir = self.softmax(self.EV_Dir[suboptimal], self.EV_Dir[optimal])
@@ -342,7 +349,8 @@ class DualProcessModel:
                     chosen = optimal if np.random.rand() < prob_optimal else suboptimal
 
                 reward = np.random.normal(reward_means[chosen], reward_sd[chosen])
-                if self.model == 'Dual':
+
+                if self.model in ('Dual', 'Recency'):
                     trial_details.append(
                         {"trial": trial + 1, "pair": (chr(65 + pair[0]), chr(65 + pair[1])), "choice": chr(65 + chosen),
                          "reward": reward, "process": process_chosen})
@@ -360,6 +368,7 @@ class DualProcessModel:
                 "simulation_num": iteration + 1,
                 "trial_indices": trial_indices,
                 "t": self.t,
+                "a": self.a if self.model == 'Recency' else None,
                 "trial_details": trial_details,
                 "EV_history_Dir": EV_history_Dir,
                 "EV_history_Gau": EV_history_Gau
@@ -465,14 +474,20 @@ class DualProcessModel:
                 gau_prob = self.softmax(self.EV_Gau[cs_mapped[0]], self.EV_Gau[cs_mapped[1]])
                 gau_prob_alt = self.softmax(self.EV_Gau[cs_mapped[1]], self.EV_Gau[cs_mapped[0]])
 
-                if ch == cs_mapped[0]:
-                    chosen_process = 'Dir' if dir_prob > gau_prob else 'Gau'
+                max_prob = max(dir_prob, dir_prob_alt, gau_prob, gau_prob_alt)
+
+                if max_prob == dir_prob or max_prob == dir_prob_alt:
+                    chosen_process = 'Dir'
                     self.process_chosen.append(chosen_process)
-                    nll += -np.log(dir_prob if dir_prob > gau_prob else gau_prob)
-                elif ch == cs_mapped[1]:
-                    chosen_process = 'Dir' if dir_prob_alt > gau_prob_alt else 'Gau'
+                    prob_choice = dir_prob
+                    prob_choice_alt = dir_prob_alt
+                elif max_prob == gau_prob or max_prob == gau_prob_alt:
+                    chosen_process = 'Gau'
                     self.process_chosen.append(chosen_process)
-                    nll += -np.log(dir_prob_alt if dir_prob_alt > gau_prob_alt else gau_prob_alt)
+                    prob_choice = gau_prob
+                    prob_choice_alt = gau_prob_alt
+
+                nll += -np.log(prob_choice if ch == cs_mapped[0] else prob_choice_alt)
 
                 self.update(ch, r, trial)
 
