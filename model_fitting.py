@@ -39,35 +39,36 @@ if __name__ == '__main__':
     delta = ComputationalModels("delta")
     actr = ComputationalModels("ACTR")
 
-    # this is for testing
-    # select the first 500 rows for testing
-    testing_data = HV_df.iloc[:500, :]
-    testing_data = dict_generator(testing_data)
-    result = model.fit(testing_data, 'Recency', num_iterations=10)
+    # # this is for testing
+    # # select the first 500 rows for testing
+    # testing_data = HV_df.iloc[:500, :]
+    # testing_data = dict_generator(testing_data)
+    # result = model.fit(testing_data, 'Gau', num_iterations=100)
+    # result_delta = delta.fit(testing_data, num_iterations=10)
 
-    # for model_type in ['Dir', 'Gau', 'Dual', 'Param', 'Multi_Param', 'Recency']:
-    #     file_path = f'./data/DataFitting/FittingResults/{model_type}_HV_results.csv'
-    #     if os.path.exists(file_path):
-    #         print(f'{model_type}_HV_results.csv already exists')
-    #     else:
-    #         result = model.fit(HV, model_type, num_iterations=100)
-    #         result.to_csv(file_path, index=False)
-    #
-    # for model_type in ['Dir', 'Gau', 'Dual', 'Param', 'Multi_Param', 'Recency']:
-    #     file_path = f'./data/DataFitting/FittingResults/{model_type}_MV_results.csv'
-    #     if os.path.exists(file_path):
-    #         print(f'{model_type}_MV_results.csv already exists')
-    #     else:
-    #         result = model.fit(MV, model_type, num_iterations=100)
-    #         result.to_csv(file_path, index=False)
-    #
-    # for model_type in ['Dir', 'Gau', 'Dual', 'Param', 'Multi_Param', 'Recency']:
-    #     file_path = f'./data/DataFitting/FittingResults/{model_type}_LV_results.csv'
-    #     if os.path.exists(file_path):
-    #         print(f'{model_type}_LV_results.csv already exists')
-    #     else:
-    #         result = model.fit(LV, model_type, num_iterations=100)
-    #         result.to_csv(file_path, index=False)
+    for model_type in ['Dir', 'Gau', 'Dual', 'Param', 'Multi_Param', 'Recency', 'Threshold']:
+        file_path = f'./data/DataFitting/FittingResults/{model_type}_HV_results.csv'
+        if os.path.exists(file_path):
+            print(f'{model_type}_HV_results.csv already exists')
+        else:
+            result = model.fit(HV, model_type, num_iterations=100)
+            result.to_csv(file_path, index=False)
+
+    for model_type in ['Dir', 'Gau', 'Dual', 'Param', 'Multi_Param', 'Recency', 'Threshold']:
+        file_path = f'./data/DataFitting/FittingResults/{model_type}_MV_results.csv'
+        if os.path.exists(file_path):
+            print(f'{model_type}_MV_results.csv already exists')
+        else:
+            result = model.fit(MV, model_type, num_iterations=100)
+            result.to_csv(file_path, index=False)
+
+    for model_type in ['Dir', 'Gau', 'Dual', 'Param', 'Multi_Param', 'Recency', 'Threshold']:
+        file_path = f'./data/DataFitting/FittingResults/{model_type}_LV_results.csv'
+        if os.path.exists(file_path):
+            print(f'{model_type}_LV_results.csv already exists')
+        else:
+            result = model.fit(LV, model_type, num_iterations=100)
+            result.to_csv(file_path, index=False)
 
     # for model_type in ['Dir', 'Gau', 'Dual', 'Param', 'Multi_Param', 'Recency']:
     #     file_path = f'./data/DataFitting/FittingResults/{model_type}_uncertaintyOld_results.csv'

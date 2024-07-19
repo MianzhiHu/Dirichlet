@@ -28,12 +28,29 @@ training_data.loc[:, 'cumulative_mean'] = (training_data.groupby('subnum')['poin
                                            .expanding().mean().reset_index(level=0, drop=True))
 training_data.loc[:, 'above_average'] = training_data['points'] > training_data['cumulative_mean']
 
+var_condition = [LV, MV, HV]
 
-# calculate the proportion of above average choices
-prop_above_avg = training_data.groupby(['Condition', 'choice'])['above_average'].mean().reset_index()
+propoptimal_mean = pd.DataFrame()
+se = pd.DataFrame()
+
+propoptimal = LV.groupby(['subnum', 'TrialType'])['bestOption'].mean()
+
+for condition in var_condition:
+    propoptimal = condition.groupby(['subnum', 'TrialType'])['bestOption'].mean()
+    if propoptimal_mean.empty:
+        propoptimal_mean = propoptimal.reset_index().groupby('TrialType')['bestOption'].mean()
+        se = propoptimal.reset_index().groupby('TrialType')['bestOption'].std() / np.sqrt(len(propoptimal))
+    else:
+        propoptimal_mean = pd.concat([propoptimal_mean, propoptimal.reset_index().groupby('TrialType')['bestOption'].mean()],
+                                     axis=1)
+        se = pd.concat([se, propoptimal.reset_index().groupby('TrialType')['bestOption'].std() / np.sqrt(len(propoptimal))],
+                       axis=1)
+
+# put the data in the right format
+propoptimal_mean.columns = ['LV', 'MV', 'HV']
+se.columns = ['LV', 'MV', 'HV']
 
 
-# var_condition = [LV, MV, HV]
 #
 # mean_CA = []
 # se_CA = []

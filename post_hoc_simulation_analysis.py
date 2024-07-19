@@ -90,20 +90,26 @@ all_posthoc['correct'] = np.where(all_posthoc['bestOption'] == all_posthoc['pred
 proportion_correct = all_posthoc.groupby(['Condition', 'model', 'Subnum', 'TrialType'])['correct'].mean().reset_index()
 proportion_correct_CA = proportion_correct[proportion_correct['TrialType'] == 'CA']
 
+proportion_correct.to_csv('./data/proportion_correct.csv', index=False)
+
 # calculate the proportion of best option chosen
 proportion_best_option = all_posthoc.groupby(['Condition', 'model', 'Subnum', 'TrialType'])[
     'choice'].mean().reset_index()
+proportion_best_option_by_trial = all_posthoc.groupby(['Condition', 'model', 'TrialType'])[
+    'choice'].mean().reset_index()
+proportion_best_option_by_trial_AD = proportion_best_option_by_trial[proportion_best_option_by_trial['TrialType'] == 'AD']
+
 proportion_best_option_CA = proportion_best_option[proportion_best_option['TrialType'] == 'CA']
-proportion_best_option_CA = proportion_best_option_CA[proportion_best_option_CA['model'].isin([
-    'Dual', 'actr', 'decay', 'delta', 'Recency'])]
+proportion_best_option_CA = proportion_best_option_CA[proportion_best_option_CA['model'].isin(included_models)]
 proportion_best_option_CA['Condition'] = pd.Categorical(proportion_best_option_CA['Condition'],
                                                         categories=['LV', 'MV', 'HV'], ordered=True)
+
 
 # plot the proportion of correctly predicting the best option
 palette = sns.color_palette("pastel", 4)
 sns.set_theme(style='white')
 plt.figure(figsize=(10, 6))
-sns.barplot(data=proportion_best_option_CA, x='model', y='choice', hue='Condition', palette=palette)
+sns.barplot(data=proportion_correct_CA, x='model', y='correct', hue='Condition', palette=palette)
 plt.title('Proportion of correctly predicting the best option')
 plt.ylabel('Proportion')
 plt.xlabel('Model')

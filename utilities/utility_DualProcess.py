@@ -20,6 +20,10 @@ def fit_participant(model, participant_id, pdata, model_type, num_iterations=100
 
     if model_type in ('Param', 'Recency'):
         k = 2
+    elif model_type == 'Threshold':
+        k = 3
+    elif model_type == 'Recency-Threshold':
+        k = 4
     elif model_type == 'Multi_Param':
         k = 7
     else:
@@ -41,6 +45,14 @@ def fit_participant(model, participant_id, pdata, model_type, num_iterations=100
         if model_type in ('Param', 'Recency'):
             initial_guess = [np.random.uniform(0.0001, 4.9999), np.random.uniform(0.0001, 0.9999)]
             bounds = [(0.0001, 4.9999), (0.0001, 0.9999)]
+        elif model_type == 'Threshold':
+            initial_guess = [np.random.uniform(0.0001, 4.9999), np.random.uniform(0.0001, 0.9999),
+                             np.random.uniform(0.5001, 0.9999)]
+            bounds = [(0.0001, 4.9999), (0.0001, 0.9999), (0.5001, 0.9999)]
+        elif model_type == 'Recency-Threshold':
+            initial_guess = [np.random.uniform(0.0001, 4.9999), np.random.uniform(0.0001, 0.9999),
+                                np.random.uniform(0.0001, 0.9999), np.random.uniform(0.5001, 0.9999)]
+            bounds = [(0.0001, 4.9999), (0.0001, 0.9999), (0.0001, 0.9999), (0.5001, 0.9999)]
         elif model_type == 'Multi_Param':
             initial_guess = [np.random.uniform(0.0001, 4.9999), np.random.uniform(0.0001, 0.9999),
                              np.random.uniform(0.0001, 0.9999), np.random.uniform(0.0001, 0.9999),
@@ -86,6 +98,15 @@ def EV_calculation(EV_Dir, EV_Gau, weight):
     return EVs
 
 
+def bayesian_update(prior_mean, prior_var, reward_mean, reward_var, n):
+    if n == 0:
+        return prior_mean, prior_var
+
+    AV = (prior_mean * reward_var + reward_mean * n * prior_var) / (prior_var + reward_var * n)
+    var = (prior_var * reward_var) / (n * prior_var + reward_var)
+    return AV, var
+
+
 class DualProcessModel:
     def __init__(self, n_samples=1000, num_trials=250):
         self.iteration = None
@@ -103,8 +124,12 @@ class DualProcessModel:
         self.t = None
         self.a = None
         self.b = None
+        self.tau = None
         self.model = None
         self.sim_type = None
+
+        self.prior_mean = 0.5
+        self.prior_var = 1 / 12
 
     def reset(self):
         self.EV_Dir = np.full(4, 0.5)
@@ -121,6 +146,18 @@ class DualProcessModel:
         denom = num + np.exp(min(700, c * alt1))
         return num / denom
 
+    def arbitration_mechanism(self, max_prob, dir_prob, dir_prob_alt, gau_prob, gau_prob_alt):
+        if max_prob == dir_prob or max_prob == dir_prob_alt:
+            chosen_process = 'Dir'
+            prob_choice = dir_prob
+            prob_choice_alt = dir_prob_alt
+        elif max_prob == gau_prob or max_prob == gau_prob_alt:
+            chosen_process = 'Gau'
+            prob_choice = gau_prob
+            prob_choice_alt = gau_prob_alt
+
+        return chosen_process, prob_choice, prob_choice_alt
+
     def update(self, chosen, reward, trial):
 
         if trial > 150:
@@ -134,24 +171,30 @@ class DualProcessModel:
             flatten_reward_history = [item for sublist in self.reward_history for item in sublist]
             AV_total = np.mean(flatten_reward_history)
 
-            if self.model == 'Recency':
-                self.alpha = [max(np.finfo(float).tiny, (1 - self.a) * i) for i in self.alpha]  # avoid alpha = 0
-
             if reward > AV_total:
                 self.alpha[chosen] += 1
             else:
                 pass
 
+            if self.model in ('Recency', 'Recency-Threshold'):
+                self.alpha = [max(np.finfo(float).tiny, (1 - self.a) * i) for i in self.alpha]  # avoid alpha = 0
+
             self.EV_Dir = np.mean(dirichlet.rvs(self.alpha, size=self.n_samples), axis=0)
 
             # Gaussian process
-            if self.model == 'Recency':
-                self.var[chosen] = self.var[chosen] + self.a * ((reward - self.AV[chosen]) ** 2 - self.var[chosen])
+            if self.model in ('Recency', 'Recency-Threshold'):
+                self.var[chosen] += self.a * ((reward - self.AV[chosen]) ** 2 - self.var[chosen])
                 self.AV[chosen] += self.a * (reward - self.AV[chosen])
 
             else:
                 self.AV = [np.mean(hist) if len(hist) > 0 else 0.5 for hist in self.reward_history]
-                self.var = [np.var(hist) if len(hist) > 0 else 0 for hist in self.reward_history]
+                self.var = [(np.var(hist) / len(hist)) if len(hist) > 0 else 0 for hist in self.reward_history]
+
+                # # With prior
+                # AV = [np.mean(hist) if len(hist) > 0 else 0.5 for hist in self.reward_history]
+                # var = [(np.var(hist, ddof=1) / len(hist)) if len(hist) > 1 else 0 for hist in self.reward_history]
+                # for i, hist in enumerate(self.reward_history):
+                #     self.AV[i], self.var[i] = bayesian_update(self.prior_mean, self.prior_var, AV[i], var[i], len(hist))
 
             # The four options are independent, so the covariance matrix is diagonal
             cov_matrix = np.diag(self.var)
@@ -457,7 +500,7 @@ class DualProcessModel:
                 nll += -np.log(prob_choice if ch == cs_mapped[0] else prob_choice_alt)
                 self.update(ch, r, trial)
 
-        elif self.model in ('Dual', 'Recency'):
+        elif self.model in ('Dual', 'Recency', 'Threshold', 'Recency-Threshold'):
             # Calculate the nll for two processes individually
             # Choose the process with the lowest nll for each trial
 
@@ -465,6 +508,11 @@ class DualProcessModel:
 
             if self.model == 'Recency':
                 self.a = params[1]
+            elif self.model == 'Threshold':
+                self.tau = params[2]
+            elif self.model == 'Recency-Threshold':
+                self.a = params[2]
+                self.tau = params[3]
 
             for r, cs, ch, trial in zip(reward, choiceset, choice, trial):
                 cs_mapped = choiceset_mapping[cs]
@@ -476,16 +524,36 @@ class DualProcessModel:
 
                 max_prob = max(dir_prob, dir_prob_alt, gau_prob, gau_prob_alt)
 
-                if max_prob == dir_prob or max_prob == dir_prob_alt:
-                    chosen_process = 'Dir'
+                if self.model == 'Threshold':
+                    if max_prob > self.tau:
+                        chosen_process, prob_choice, prob_choice_alt = self.arbitration_mechanism(max_prob, dir_prob,
+                                                                                                  dir_prob_alt,
+                                                                                                  gau_prob, gau_prob_alt)
+                        self.process_chosen.append(chosen_process)
+                    else:
+                        chosen_process = 'Param'
+                        self.process_chosen.append(chosen_process)
+
+                        default_EVs = np.full(4, 0.5)
+                        if (self.EV_Dir == default_EVs).all() and (self.EV_Gau == default_EVs).all():
+                            self.EVs = default_EVs
+                        else:
+                            # Standardize the EVs
+                            EV_Dir = (self.EV_Dir - np.mean(self.EV_Dir)) / np.std(self.EV_Dir)
+                            EV_Gau = (self.EV_Gau - np.mean(self.EV_Gau)) / np.std(self.EV_Gau)
+
+                            # Calculate the expected value of the model
+                            self.EVs = params[1] * EV_Dir + (1 - params[1]) * EV_Gau
+
+                        cs_mapped = choiceset_mapping[cs]
+                        prob_choice = self.softmax(self.EVs[cs_mapped[0]], self.EVs[cs_mapped[1]])
+                        prob_choice_alt = self.softmax(self.EVs[cs_mapped[1]], self.EVs[cs_mapped[0]])
+
+                else:
+                    chosen_process, prob_choice, prob_choice_alt = self.arbitration_mechanism(max_prob, dir_prob,
+                                                                                              dir_prob_alt,
+                                                                                              gau_prob, gau_prob_alt)
                     self.process_chosen.append(chosen_process)
-                    prob_choice = dir_prob
-                    prob_choice_alt = dir_prob_alt
-                elif max_prob == gau_prob or max_prob == gau_prob_alt:
-                    chosen_process = 'Gau'
-                    self.process_chosen.append(chosen_process)
-                    prob_choice = gau_prob
-                    prob_choice_alt = gau_prob_alt
 
                 nll += -np.log(prob_choice if ch == cs_mapped[0] else prob_choice_alt)
 

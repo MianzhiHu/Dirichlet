@@ -30,7 +30,7 @@ for key in fitting_results:
 # Generate the fitting summary
 # ======================================================================================================================
 # select the models to be compared
-included_models = ['Dual', 'Dir', 'Gau', 'decay', 'delta', 'actr']
+included_models = ['Dual', 'Dir', 'Gau', 'decay', 'delta', 'actr', 'Recency']
 indices_to_calculate = ['AIC', 'BIC']
 fitting_summary = fitting_summary_generator(fitting_results, included_models, indices_to_calculate)
 fitting_summary = fitting_summary.round(3)
@@ -80,7 +80,7 @@ max_s = individual_param_df[individual_param_df['model'] == 'actr']['param_1'].m
 individual_param_df.loc[individual_param_df['model'] == 'actr', 'param_1'] = max_s - individual_param_df.loc[
     individual_param_df['model'] == 'actr', 'param_1']
 
-individual_param_df.to_csv('./data/IndividualParamResults.csv', index=False)
+# individual_param_df.to_csv('./data/IndividualParamResults.csv', index=False)
 
 # ======================================================================================================================
 # Extract the individual AIC and BIC values
@@ -106,7 +106,7 @@ individual_indices_df = individual_indices_df[individual_indices_df['condition']
 individual_indices_df = individual_indices_df[individual_indices_df['model'].isin(included_models)]
 individual_indices_df.drop('index', axis=1, inplace=True)
 
-individual_indices_df.to_csv('./data/IndividualIndices.csv', index=False)
+# individual_indices_df.to_csv('./data/IndividualIndices.csv', index=False)
 
 
 
