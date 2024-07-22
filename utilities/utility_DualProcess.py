@@ -107,6 +107,7 @@ class DualProcessModel:
         self.iteration = None
         self.num_trials = num_trials
         self.EVs = np.full(4, 0.5)
+        self.default_EVs = np.full(4, 0.5)
         self.EV_Dir = np.full(4, 0.5)
         self.EV_Gau = np.full(4, 0.5)
         self.AV = np.full(4, 0.5)
@@ -274,15 +275,26 @@ class DualProcessModel:
             self.updating_function(chosen, reward)
 
             # Use the updated parameters to get the posterior Dirichlet distribution
+
             # Sample from the posterior distribution to get the expected value
-            self.EV_Dir = np.mean(dirichlet.rvs(self.alpha, size=self.n_samples), axis=0)
+            # self.EV_Dir = np.mean(dirichlet.rvs(self.alpha, size=self.n_samples), axis=0)
+
+            # Otherwise, according to the central limit theorem, the sample mean for n samples randomly drawn from a
+            # Dirichlet distribution also follows a Dirichlet distribution with alpha equal to alpha * n
+
+            # So, we can directly sample from a Dirichlet distribution with alpha * n to get the expected value
+            sample_mean_alpha = [i * self.n_samples for i in self.alpha]
+            self.EV_Dir = dirichlet.rvs(sample_mean_alpha, size=1)[0]
 
             # Use the updated parameters to get the posterior Gaussian distribution
             # The four options are independent, so the covariance matrix is diagonal
             cov_matrix = np.diag(self.var)
 
             # Sample from the posterior distribution to get the expected value
-            self.EV_Gau = np.mean(multivariate_normal.rvs(self.AV, cov_matrix, size=self.n_samples), axis=0)
+            # self.EV_Gau = np.mean(multivariate_normal.rvs(self.AV, cov_matrix, size=self.n_samples),axis=0)
+
+            # Same logic as above
+            self.EV_Gau = multivariate_normal.rvs(self.AV, cov_matrix / self.n_samples, size=1)
 
         return self.EV_Dir, self.EV_Gau
 
@@ -515,14 +527,18 @@ class DualProcessModel:
         weight = params[1]
 
         for r, cs, ch, t in zip(reward, choiceset, choice, trial):
+
             cs_mapped = self.choiceset_mapping[cs]
 
-            # Standardize the EVs
-            EV_Dir = (self.EV_Dir - np.mean(self.EV_Dir)) / np.std(self.EV_Dir)
-            EV_Gau = (self.EV_Gau - np.mean(self.EV_Gau)) / np.std(self.EV_Gau)
+            if np.std(self.EV_Dir) == 0 and np.std(self.EV_Gau) == 0:
+                self.EVs = self.default_EVs
+            else:
+                # Standardize the EVs
+                EV_Dir = (self.EV_Dir - np.mean(self.EV_Dir)) / np.std(self.EV_Dir)
+                EV_Gau = (self.EV_Gau - np.mean(self.EV_Gau)) / np.std(self.EV_Gau)
 
-            # Calculate the expected value as a weighted sum of the two processes
-            self.EVs = weight * EV_Dir + (1 - weight) * EV_Gau
+                # Calculate the expected value as a weighted sum of the two processes
+                self.EVs = weight * EV_Dir + (1 - weight) * EV_Gau
 
             # Calculate the probability of choosing the optimal option
             prob_choice = self.softmax(self.EVs[cs_mapped[0]], self.EVs[cs_mapped[1]])
@@ -551,14 +567,17 @@ class DualProcessModel:
         for r, cs, ch, t in zip(reward, choiceset, choice, trial):
             cs_mapped = self.choiceset_mapping[cs]
 
-            # Standardize the EVs
-            EV_Dir = (self.EV_Dir - np.mean(self.EV_Dir)) / np.std(self.EV_Dir)
-            EV_Gau = (self.EV_Gau - np.mean(self.EV_Gau)) / np.std(self.EV_Gau)
+            if np.std(self.EV_Dir) == 0 and np.std(self.EV_Gau) == 0:
+                self.EVs = self.default_EVs
+            else:
+                # Standardize the EVs
+                EV_Dir = (self.EV_Dir - np.mean(self.EV_Dir)) / np.std(self.EV_Dir)
+                EV_Gau = (self.EV_Gau - np.mean(self.EV_Gau)) / np.std(self.EV_Gau)
 
-            weight = weight_mapping[cs]
+                weight = weight_mapping[cs]
 
-            # Calculate the expected value of the model
-            self.EVs = weight * EV_Dir + (1 - weight) * EV_Gau
+                # Calculate the expected value of the model
+                self.EVs = weight * EV_Dir + (1 - weight) * EV_Gau
 
             prob_choice = self.softmax(self.EVs[cs_mapped[0]], self.EVs[cs_mapped[1]])
             nll += -np.log(prob_choice if ch == cs_mapped[0] else 1 - prob_choice)
@@ -659,7 +678,6 @@ class DualProcessModel:
 
         weight = params[1]
         self.tau = params[2]
-        default_EVs = np.full(4, 0.5)
 
         self.process_chosen = []
 
@@ -683,8 +701,8 @@ class DualProcessModel:
                 chosen_process = 'Param'
                 self.process_chosen.append(chosen_process)
 
-                if (self.EV_Dir == default_EVs).all() and (self.EV_Gau == default_EVs).all():
-                    self.EVs = default_EVs
+                if np.std(self.EV_Dir) == 0 and np.std(self.EV_Gau) == 0:
+                    self.EVs = self.default_EVs
                 else:
                     EV_Dir = (self.EV_Dir - np.mean(self.EV_Dir)) / np.std(self.EV_Dir)
                     EV_Gau = (self.EV_Gau - np.mean(self.EV_Gau)) / np.std(self.EV_Gau)
@@ -696,7 +714,7 @@ class DualProcessModel:
 
             nll += -np.log(prob_choice if ch == cs_mapped[0] else 1 - prob_choice)
 
-            self.update(ch, r, trial)
+            self.update(ch, r, t)
 
         return nll
 
@@ -707,7 +725,6 @@ class DualProcessModel:
         weight = params[1]
         self.a = params[2]
         self.tau = params[3]
-        default_EVs = np.full(4, 0.5)
 
         self.process_chosen = []
 
@@ -731,8 +748,8 @@ class DualProcessModel:
                 chosen_process = 'Param'
                 self.process_chosen.append(chosen_process)
 
-                if (self.EV_Dir == default_EVs).all() and (self.EV_Gau == default_EVs).all():
-                    self.EVs = default_EVs
+                if np.std(self.EV_Dir) == 0 and np.std(self.EV_Gau) == 0:
+                    self.EVs = self.default_EVs
                 else:
                     EV_Dir = (self.EV_Dir - np.mean(self.EV_Dir)) / np.std(self.EV_Dir)
                     EV_Gau = (self.EV_Gau - np.mean(self.EV_Gau)) / np.std(self.EV_Gau)
@@ -744,7 +761,7 @@ class DualProcessModel:
 
             nll += -np.log(prob_choice if ch == cs_mapped[0] else 1 - prob_choice)
 
-            self.update(ch, r, trial)
+            self.update(ch, r, t)
 
         return nll
 
