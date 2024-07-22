@@ -1,7 +1,8 @@
 import numpy as np
 import pandas as pd
+import time
 from scipy.optimize import minimize
-from scipy.stats import chi2, dirichlet, multivariate_normal
+from scipy.stats import dirichlet, multivariate_normal
 from concurrent.futures import ProcessPoolExecutor
 
 
@@ -14,6 +15,7 @@ from concurrent.futures import ProcessPoolExecutor
 
 def fit_participant(model, participant_id, pdata, model_type, num_iterations=1000):
     print(f"Fitting participant {participant_id}...")
+    start_time = time.time()
 
     total_nll = 0
     total_n = model.num_trials
@@ -51,7 +53,7 @@ def fit_participant(model, participant_id, pdata, model_type, num_iterations=100
             bounds = [(0.0001, 4.9999), (0.0001, 0.9999), (0.5001, 0.9999)]
         elif model_type == 'Recency-Threshold':
             initial_guess = [np.random.uniform(0.0001, 4.9999), np.random.uniform(0.0001, 0.9999),
-                                np.random.uniform(0.0001, 0.9999), np.random.uniform(0.5001, 0.9999)]
+                             np.random.uniform(0.0001, 0.9999), np.random.uniform(0.5001, 0.9999)]
             bounds = [(0.0001, 4.9999), (0.0001, 0.9999), (0.0001, 0.9999), (0.5001, 0.9999)]
         elif model_type == 'Multi_Param':
             initial_guess = [np.random.uniform(0.0001, 4.9999), np.random.uniform(0.0001, 0.9999),
@@ -90,21 +92,14 @@ def fit_participant(model, participant_id, pdata, model_type, num_iterations=100
         'BIC': bic
     }
 
+    print(f"Participant {participant_id} fitted in {(time.time() - start_time) / 60} minutes.")
+
     return result_dict
 
 
 def EV_calculation(EV_Dir, EV_Gau, weight):
     EVs = weight * EV_Dir + (1 - weight) * EV_Gau
     return EVs
-
-
-def bayesian_update(prior_mean, prior_var, reward_mean, reward_var, n):
-    if n == 0:
-        return prior_mean, prior_var
-
-    AV = (prior_mean * reward_var + reward_mean * n * prior_var) / (prior_var + reward_var * n)
-    var = (prior_var * reward_var) / (n * prior_var + reward_var)
-    return AV, var
 
 
 class DualProcessModel:
@@ -115,8 +110,10 @@ class DualProcessModel:
         self.EV_Dir = np.full(4, 0.5)
         self.EV_Gau = np.full(4, 0.5)
         self.AV = np.full(4, 0.5)
-        self.var = np.full(4, 0.0)
+        self.var = np.full(4, 1 / 12)
         self.alpha = np.full(4, 1.0)
+        self.gamma_a = np.full(4, 0.5)
+        self.gamma_b = np.full(4, 0.0)
         self.n_samples = n_samples
         self.reward_history = [[0] for _ in range(4)]
         self.process_chosen = []
@@ -127,16 +124,57 @@ class DualProcessModel:
         self.tau = None
         self.model = None
         self.sim_type = None
+        self.arbitration_function = None
+        self.updating_function = None
 
         self.prior_mean = 0.5
         self.prior_var = 1 / 12
+
+        # Define the mapping between model parameters and input features
+        self.choiceset_mapping = {
+            0: (0, 1),
+            1: (2, 3),
+            2: (2, 0),
+            3: (2, 1),
+            4: (0, 3),
+            5: (1, 3)
+        }
+
+        self.model_mapping = {
+            'Dir': self.dir_nll,
+            'Gau': self.gau_nll,
+            'Dual': self.dual_nll,
+            'Recency': self.recency_nll,
+            'Threshold': self.threshold_nll,
+            'Recency-Threshold': self.recency_threshold_nll,
+            'Param': self.param_nll,
+            'Multi_Param': self.multi_param_nll
+        }
+
+        self.updating_mapping = {
+            'Dir': self.normal_update,
+            'Gau': self.normal_update,
+            'Dual': self.normal_update,
+            'Recency': self.recency_update,
+            'Threshold': self.normal_update,
+            'Recency-Threshold': self.recency_update,
+            'Param': self.normal_update,
+            'Multi_Param': self.normal_update
+        }
+
+        self.arbitration_mapping = {
+            'Original': self.original_arbitration_mechanism,
+            'Max Prob': self.max_prob_arbitration_mechanism
+        }
 
     def reset(self):
         self.EV_Dir = np.full(4, 0.5)
         self.EV_Gau = np.full(4, 0.5)
         self.AV = np.full(4, 0.5)
-        self.var = np.full(4, 0.0)
+        self.var = np.full(4, 1 / 12)
         self.alpha = np.full(4, 1.0)
+        self.gamma_a = np.full(4, 0.5)
+        self.gamma_b = np.full(4, 0.0)
         self.reward_history = [[] for _ in range(4)]
         self.process_chosen = []
 
@@ -144,9 +182,23 @@ class DualProcessModel:
         c = 3 ** self.t - 1
         num = np.exp(min(700, c * chosen))
         denom = num + np.exp(min(700, c * alt1))
-        return num / denom
+        return min(.9999, num / denom)
 
-    def arbitration_mechanism(self, max_prob, dir_prob, dir_prob_alt, gau_prob, gau_prob_alt):
+    def original_arbitration_mechanism(self, max_prob, dir_prob, dir_prob_alt, gau_prob, gau_prob_alt, trial_type=None,
+                                       chosen=None):
+        if chosen == trial_type[0]:
+            chosen_process = 'Dir' if dir_prob > gau_prob else 'Gau'
+            prob_choice = dir_prob if dir_prob > gau_prob else gau_prob
+            prob_choice_alt = 1 - prob_choice
+        elif chosen == trial_type[1]:
+            chosen_process = 'Dir' if dir_prob_alt > gau_prob_alt else 'Gau'
+            prob_choice = dir_prob_alt if dir_prob_alt > gau_prob_alt else gau_prob_alt
+            prob_choice_alt = 1 - prob_choice
+
+        return chosen_process, prob_choice, prob_choice_alt
+
+    def max_prob_arbitration_mechanism(self, max_prob, dir_prob, dir_prob_alt, gau_prob, gau_prob_alt, trial_type=None,
+                                       chosen=None):
         if max_prob == dir_prob or max_prob == dir_prob_alt:
             chosen_process = 'Dir'
             prob_choice = dir_prob
@@ -158,47 +210,78 @@ class DualProcessModel:
 
         return chosen_process, prob_choice, prob_choice_alt
 
+    def Gau_bayesian_update(self, prior_mean, prior_var, reward, chosen, n=1):
+        # since we are conducting sequential Bayesian updating with a batch size of 1, the sample variance needs to be
+        # estimated with an inverse gamma distribution
+
+        self.gamma_a[chosen] += n / 2
+        self.gamma_b[chosen] += (reward - prior_mean) ** 2 / 2
+
+        if self.gamma_a[chosen] <= 1:
+            self.AV[chosen] = reward
+            self.var[chosen] = prior_var
+        else:
+            # sample variance can be directly calculated using a / (b - 1)
+            sample_var = self.gamma_b[chosen] / (self.gamma_a[chosen] - 1)
+
+            self.AV[chosen] = (prior_mean * sample_var + reward * n * prior_var) / (prior_var + sample_var * n)
+            self.var[chosen] = (prior_var * sample_var) / (n * prior_var + sample_var)
+
+    def normal_update(self, chosen, reward):
+        self.reward_history[chosen].append(reward)
+
+        # for every trial, we need to update the EV for both the Dirichlet and Gaussian processes
+        # Dirichlet process
+        flatten_reward_history = [item for sublist in self.reward_history for item in sublist]
+        AV_total = np.mean(flatten_reward_history)
+
+        if reward > AV_total:
+            self.alpha[chosen] += 1
+        else:
+            pass
+
+        # Gaussian process
+        # self.AV[chosen] = np.mean(self.reward_history[chosen])
+        # self.var[chosen] = np.var(self.reward_history[chosen]) / len(self.reward_history[chosen])
+
+        self.Gau_bayesian_update(self.AV[chosen], self.var[chosen], reward, chosen)
+
+    def recency_update(self, chosen, reward):
+        self.reward_history[chosen].append(reward)
+
+        # for every trial, we need to update the EV for both the Dirichlet and Gaussian processes
+        # Dirichlet process
+        flatten_reward_history = [item for sublist in self.reward_history for item in sublist]
+        AV_total = np.mean(flatten_reward_history)
+
+        if reward > AV_total:
+            self.alpha[chosen] += 1
+        else:
+            pass
+
+        self.alpha = [max(np.finfo(float).tiny, (1 - self.a) * i) for i in self.alpha]
+
+        # Gaussian process
+        self.var[chosen] += self.a * ((reward - self.AV[chosen]) ** 2 - self.var[chosen])
+        self.AV[chosen] += self.a * (reward - self.AV[chosen])
+
     def update(self, chosen, reward, trial):
 
         if trial > 150:
             return self.EV_Dir, self.EV_Gau
 
         else:
-            self.reward_history[chosen].append(reward)
+            self.updating_function(chosen, reward)
 
-            # for every trial, we need to update the EV for both the Dirichlet and Gaussian processes
-            # Dirichlet process
-            flatten_reward_history = [item for sublist in self.reward_history for item in sublist]
-            AV_total = np.mean(flatten_reward_history)
-
-            if reward > AV_total:
-                self.alpha[chosen] += 1
-            else:
-                pass
-
-            if self.model in ('Recency', 'Recency-Threshold'):
-                self.alpha = [max(np.finfo(float).tiny, (1 - self.a) * i) for i in self.alpha]  # avoid alpha = 0
-
+            # Use the updated parameters to get the posterior Dirichlet distribution
+            # Sample from the posterior distribution to get the expected value
             self.EV_Dir = np.mean(dirichlet.rvs(self.alpha, size=self.n_samples), axis=0)
 
-            # Gaussian process
-            if self.model in ('Recency', 'Recency-Threshold'):
-                self.var[chosen] += self.a * ((reward - self.AV[chosen]) ** 2 - self.var[chosen])
-                self.AV[chosen] += self.a * (reward - self.AV[chosen])
-
-            else:
-                self.AV = [np.mean(hist) if len(hist) > 0 else 0.5 for hist in self.reward_history]
-                self.var = [(np.var(hist) / len(hist)) if len(hist) > 0 else 0 for hist in self.reward_history]
-
-                # # With prior
-                # AV = [np.mean(hist) if len(hist) > 0 else 0.5 for hist in self.reward_history]
-                # var = [(np.var(hist, ddof=1) / len(hist)) if len(hist) > 1 else 0 for hist in self.reward_history]
-                # for i, hist in enumerate(self.reward_history):
-                #     self.AV[i], self.var[i] = bayesian_update(self.prior_mean, self.prior_var, AV[i], var[i], len(hist))
-
+            # Use the updated parameters to get the posterior Gaussian distribution
             # The four options are independent, so the covariance matrix is diagonal
             cov_matrix = np.diag(self.var)
 
+            # Sample from the posterior distribution to get the expected value
             self.EV_Gau = np.mean(multivariate_normal.rvs(self.AV, cov_matrix, size=self.n_samples), axis=0)
 
         return self.EV_Dir, self.EV_Gau
@@ -319,6 +402,8 @@ class DualProcessModel:
                  sim_trials=250, num_iterations=1000):
 
         self.model = model
+        self.updating_function = self.updating_mapping[self.model]
+
         all_results = []
 
         for iteration in range(num_iterations):
@@ -419,151 +504,266 @@ class DualProcessModel:
 
         return self.unpack_simulation_results(all_results)
 
+    # =============================================================================
+    # Define the negative log likelihood function for each single model
+    # This is to reduce the number of if-else statements in the main function and improve time complexity
+    # =============================================================================
+    def param_nll(self, params, reward, choiceset, choice, trial):
+
+        nll = 0
+
+        weight = params[1]
+
+        for r, cs, ch, t in zip(reward, choiceset, choice, trial):
+            cs_mapped = self.choiceset_mapping[cs]
+
+            # Standardize the EVs
+            EV_Dir = (self.EV_Dir - np.mean(self.EV_Dir)) / np.std(self.EV_Dir)
+            EV_Gau = (self.EV_Gau - np.mean(self.EV_Gau)) / np.std(self.EV_Gau)
+
+            # Calculate the expected value as a weighted sum of the two processes
+            self.EVs = weight * EV_Dir + (1 - weight) * EV_Gau
+
+            # Calculate the probability of choosing the optimal option
+            prob_choice = self.softmax(self.EVs[cs_mapped[0]], self.EVs[cs_mapped[1]])
+
+            nll += -np.log(prob_choice if ch == cs_mapped[0] else 1 - prob_choice)
+
+            # Update the EVs
+            self.update(ch, r, t)
+
+        return nll
+
+    def multi_param_nll(self, params, reward, choiceset, choice, trial):
+
+        nll = 0
+
+        # Decide which trial type it is
+        weight_mapping = {
+            0: params[1],
+            1: params[2],
+            2: params[3],
+            3: params[4],
+            4: params[5],
+            5: params[6]
+        }
+
+        for r, cs, ch, t in zip(reward, choiceset, choice, trial):
+            cs_mapped = self.choiceset_mapping[cs]
+
+            # Standardize the EVs
+            EV_Dir = (self.EV_Dir - np.mean(self.EV_Dir)) / np.std(self.EV_Dir)
+            EV_Gau = (self.EV_Gau - np.mean(self.EV_Gau)) / np.std(self.EV_Gau)
+
+            weight = weight_mapping[cs]
+
+            # Calculate the expected value of the model
+            self.EVs = weight * EV_Dir + (1 - weight) * EV_Gau
+
+            prob_choice = self.softmax(self.EVs[cs_mapped[0]], self.EVs[cs_mapped[1]])
+            nll += -np.log(prob_choice if ch == cs_mapped[0] else 1 - prob_choice)
+
+            self.update(ch, r, t)
+
+        return nll
+
+    def dir_nll(self, params, reward, choiceset, choice, trial):
+
+        nll = 0
+
+        for r, cs, ch, t in zip(reward, choiceset, choice, trial):
+            cs_mapped = self.choiceset_mapping[cs]
+
+            prob_choice = self.softmax(self.EV_Dir[cs_mapped[0]], self.EV_Dir[cs_mapped[1]])
+            nll += -np.log(prob_choice if ch == cs_mapped[0] else 1 - prob_choice)
+
+            self.update(ch, r, t)
+
+        return nll
+
+    def gau_nll(self, params, reward, choiceset, choice, trial):
+
+        nll = 0
+
+        for r, cs, ch, t in zip(reward, choiceset, choice, trial):
+            cs_mapped = self.choiceset_mapping[cs]
+
+            prob_choice = self.softmax(self.EV_Gau[cs_mapped[0]], self.EV_Gau[cs_mapped[1]])
+            nll += -np.log(prob_choice if ch == cs_mapped[0] else 1 - prob_choice)
+
+            self.update(ch, r, t)
+
+        return nll
+
+    def dual_nll(self, params, reward, choiceset, choice, trial):
+
+        nll = 0
+
+        self.process_chosen = []
+
+        for r, cs, ch, t in zip(reward, choiceset, choice, trial):
+            cs_mapped = self.choiceset_mapping[cs]
+
+            dir_prob = self.softmax(self.EV_Dir[cs_mapped[0]], self.EV_Dir[cs_mapped[1]])
+            dir_prob_alt = 1 - dir_prob
+            gau_prob = self.softmax(self.EV_Gau[cs_mapped[0]], self.EV_Gau[cs_mapped[1]])
+            gau_prob_alt = 1 - gau_prob
+
+            max_prob = max(dir_prob, dir_prob_alt, gau_prob, gau_prob_alt)
+
+            chosen_process, prob_choice, prob_choice_alt = self.arbitration_function(max_prob, dir_prob,
+                                                                                      dir_prob_alt,
+                                                                                      gau_prob, gau_prob_alt,
+                                                                                      cs_mapped, ch)
+            self.process_chosen.append(chosen_process)
+
+            nll += -np.log(prob_choice if ch == cs_mapped[0] else prob_choice_alt)
+
+            self.update(ch, r, t)
+
+        return nll
+
+    def recency_nll(self, params, reward, choiceset, choice, trial):
+
+        nll = 0
+
+        self.a = params[1]
+
+        self.process_chosen = []
+
+        for r, cs, ch, t in zip(reward, choiceset, choice, trial):
+            cs_mapped = self.choiceset_mapping[cs]
+
+            dir_prob = self.softmax(self.EV_Dir[cs_mapped[0]], self.EV_Dir[cs_mapped[1]])
+            dir_prob_alt = 1 - dir_prob
+            gau_prob = self.softmax(self.EV_Gau[cs_mapped[0]], self.EV_Gau[cs_mapped[1]])
+            gau_prob_alt = 1 - gau_prob
+
+            max_prob = max(dir_prob, dir_prob_alt, gau_prob, gau_prob_alt)
+
+            chosen_process, prob_choice, prob_choice_alt = self.arbitration_function(max_prob, dir_prob,
+                                                                                      dir_prob_alt,
+                                                                                      gau_prob, gau_prob_alt,
+                                                                                      cs_mapped, ch)
+            self.process_chosen.append(chosen_process)
+
+            nll += -np.log(prob_choice if ch == cs_mapped[0] else prob_choice_alt)
+
+            self.update(ch, r, t)
+
+        return nll
+
+    def threshold_nll(self, params, reward, choiceset, choice, trial):
+
+        nll = 0
+
+        weight = params[1]
+        self.tau = params[2]
+        default_EVs = np.full(4, 0.5)
+
+        self.process_chosen = []
+
+        for r, cs, ch, t in zip(reward, choiceset, choice, trial):
+            cs_mapped = self.choiceset_mapping[cs]
+
+            dir_prob = self.softmax(self.EV_Dir[cs_mapped[0]], self.EV_Dir[cs_mapped[1]])
+            dir_prob_alt = 1 - dir_prob
+            gau_prob = self.softmax(self.EV_Gau[cs_mapped[0]], self.EV_Gau[cs_mapped[1]])
+            gau_prob_alt = 1 - gau_prob
+
+            max_prob = max(dir_prob, dir_prob_alt, gau_prob, gau_prob_alt)
+
+            if max_prob > self.tau:
+                chosen_process, prob_choice, prob_choice_alt = self.arbitration_function(max_prob, dir_prob,
+                                                                                          dir_prob_alt,
+                                                                                          gau_prob,
+                                                                                          gau_prob_alt)
+                self.process_chosen.append(chosen_process)
+            else:
+                chosen_process = 'Param'
+                self.process_chosen.append(chosen_process)
+
+                if (self.EV_Dir == default_EVs).all() and (self.EV_Gau == default_EVs).all():
+                    self.EVs = default_EVs
+                else:
+                    EV_Dir = (self.EV_Dir - np.mean(self.EV_Dir)) / np.std(self.EV_Dir)
+                    EV_Gau = (self.EV_Gau - np.mean(self.EV_Gau)) / np.std(self.EV_Gau)
+
+                    self.EVs = weight * EV_Dir + (1 - weight) * EV_Gau
+
+                cs_mapped = self.choiceset_mapping[cs]
+                prob_choice = self.softmax(self.EVs[cs_mapped[0]], self.EVs[cs_mapped[1]])
+
+            nll += -np.log(prob_choice if ch == cs_mapped[0] else 1 - prob_choice)
+
+            self.update(ch, r, trial)
+
+        return nll
+
+    def recency_threshold_nll(self, params, reward, choiceset, choice, trial):
+
+        nll = 0
+
+        weight = params[1]
+        self.a = params[2]
+        self.tau = params[3]
+        default_EVs = np.full(4, 0.5)
+
+        self.process_chosen = []
+
+        for r, cs, ch, t in zip(reward, choiceset, choice, trial):
+            cs_mapped = self.choiceset_mapping[cs]
+
+            dir_prob = self.softmax(self.EV_Dir[cs_mapped[0]], self.EV_Dir[cs_mapped[1]])
+            dir_prob_alt = 1 - dir_prob
+            gau_prob = self.softmax(self.EV_Gau[cs_mapped[0]], self.EV_Gau[cs_mapped[1]])
+            gau_prob_alt = 1 - gau_prob
+
+            max_prob = max(dir_prob, dir_prob_alt, gau_prob, gau_prob_alt)
+
+            if max_prob > self.tau:
+                chosen_process, prob_choice, prob_choice_alt = self.arbitration_function(max_prob, dir_prob,
+                                                                                          dir_prob_alt,
+                                                                                          gau_prob,
+                                                                                          gau_prob_alt)
+                self.process_chosen.append(chosen_process)
+            else:
+                chosen_process = 'Param'
+                self.process_chosen.append(chosen_process)
+
+                if (self.EV_Dir == default_EVs).all() and (self.EV_Gau == default_EVs).all():
+                    self.EVs = default_EVs
+                else:
+                    EV_Dir = (self.EV_Dir - np.mean(self.EV_Dir)) / np.std(self.EV_Dir)
+                    EV_Gau = (self.EV_Gau - np.mean(self.EV_Gau)) / np.std(self.EV_Gau)
+
+                    self.EVs = weight * EV_Dir + (1 - weight) * EV_Gau
+
+                cs_mapped = self.choiceset_mapping[cs]
+                prob_choice = self.softmax(self.EVs[cs_mapped[0]], self.EVs[cs_mapped[1]])
+
+            nll += -np.log(prob_choice if ch == cs_mapped[0] else 1 - prob_choice)
+
+            self.update(ch, r, trial)
+
+        return nll
+
     def negative_log_likelihood(self, params, reward, choiceset, choice):
 
         self.reset()
 
         self.t = params[0]
 
-        nll = 0
-
-        choiceset_mapping = {
-            0: (0, 1),
-            1: (2, 3),
-            2: (2, 0),
-            3: (2, 1),
-            4: (0, 3),
-            5: (1, 3)
-        }
-
         trial = np.arange(1, self.num_trials + 1)
 
-        # the most complicated model
-        if self.model == 'Multi_Param':
+        return self.model_mapping[self.model](params, reward, choiceset, choice, trial)
 
-            # Decide which trial type it is
-            weight_mapping = {
-                0: params[1],
-                1: params[2],
-                2: params[3],
-                3: params[4],
-                4: params[5],
-                5: params[6]
-            }
-
-            for r, cs, ch, t in zip(reward, choiceset, choice, trial):
-                # Standardize the EVs
-                EV_Dir = (self.EV_Dir - np.mean(self.EV_Dir)) / np.std(self.EV_Dir)
-                EV_Gau = (self.EV_Gau - np.mean(self.EV_Gau)) / np.std(self.EV_Gau)
-
-                weight = weight_mapping[cs]
-
-                # Calculate the expected value of the model
-                self.EVs = weight * EV_Dir + (1 - weight) * EV_Gau
-
-                cs_mapped = choiceset_mapping[cs]
-                prob_choice = self.softmax(self.EVs[cs_mapped[0]], self.EVs[cs_mapped[1]])
-                prob_choice_alt = self.softmax(self.EVs[cs_mapped[1]], self.EVs[cs_mapped[0]])
-
-                nll += -np.log(prob_choice if ch == cs_mapped[0] else prob_choice_alt)
-                self.update(ch, r, t)
-
-        if self.model == 'Param':
-
-            for r, cs, ch, trial in zip(reward, choiceset, choice, trial):
-                # Standardize the EVs
-                EV_Dir = (self.EV_Dir - np.mean(self.EV_Dir)) / np.std(self.EV_Dir)
-                EV_Gau = (self.EV_Gau - np.mean(self.EV_Gau)) / np.std(self.EV_Gau)
-
-                # Calculate the expected value of the model
-                self.EVs = params[1] * EV_Dir + (1 - params[1]) * EV_Gau
-
-                cs_mapped = choiceset_mapping[cs]
-                prob_choice = self.softmax(self.EVs[cs_mapped[0]], self.EVs[cs_mapped[1]])
-                prob_choice_alt = self.softmax(self.EVs[cs_mapped[1]], self.EVs[cs_mapped[0]])
-                nll += -np.log(prob_choice if ch == cs_mapped[0] else prob_choice_alt)
-                self.update(ch, r, trial)
-
-        elif self.model == 'Dir':
-            for r, cs, ch, trial in zip(reward, choiceset, choice, trial):
-                cs_mapped = choiceset_mapping[cs]
-                prob_choice = self.softmax(self.EV_Dir[cs_mapped[0]], self.EV_Dir[cs_mapped[1]])
-                prob_choice_alt = self.softmax(self.EV_Dir[cs_mapped[1]], self.EV_Dir[cs_mapped[0]])
-                nll += -np.log(prob_choice if ch == cs_mapped[0] else prob_choice_alt)
-                self.update(ch, r, trial)
-
-        elif self.model == 'Gau':
-            for r, cs, ch, trial in zip(reward, choiceset, choice, trial):
-                cs_mapped = choiceset_mapping[cs]
-                prob_choice = self.softmax(self.EV_Gau[cs_mapped[0]], self.EV_Gau[cs_mapped[1]])
-                prob_choice_alt = self.softmax(self.EV_Gau[cs_mapped[1]], self.EV_Gau[cs_mapped[0]])
-                nll += -np.log(prob_choice if ch == cs_mapped[0] else prob_choice_alt)
-                self.update(ch, r, trial)
-
-        elif self.model in ('Dual', 'Recency', 'Threshold', 'Recency-Threshold'):
-            # Calculate the nll for two processes individually
-            # Choose the process with the lowest nll for each trial
-
-            self.process_chosen = []
-
-            if self.model == 'Recency':
-                self.a = params[1]
-            elif self.model == 'Threshold':
-                self.tau = params[2]
-            elif self.model == 'Recency-Threshold':
-                self.a = params[2]
-                self.tau = params[3]
-
-            for r, cs, ch, trial in zip(reward, choiceset, choice, trial):
-                cs_mapped = choiceset_mapping[cs]
-
-                dir_prob = self.softmax(self.EV_Dir[cs_mapped[0]], self.EV_Dir[cs_mapped[1]])
-                dir_prob_alt = self.softmax(self.EV_Dir[cs_mapped[1]], self.EV_Dir[cs_mapped[0]])
-                gau_prob = self.softmax(self.EV_Gau[cs_mapped[0]], self.EV_Gau[cs_mapped[1]])
-                gau_prob_alt = self.softmax(self.EV_Gau[cs_mapped[1]], self.EV_Gau[cs_mapped[0]])
-
-                max_prob = max(dir_prob, dir_prob_alt, gau_prob, gau_prob_alt)
-
-                if self.model == 'Threshold':
-                    if max_prob > self.tau:
-                        chosen_process, prob_choice, prob_choice_alt = self.arbitration_mechanism(max_prob, dir_prob,
-                                                                                                  dir_prob_alt,
-                                                                                                  gau_prob, gau_prob_alt)
-                        self.process_chosen.append(chosen_process)
-                    else:
-                        chosen_process = 'Param'
-                        self.process_chosen.append(chosen_process)
-
-                        default_EVs = np.full(4, 0.5)
-                        if (self.EV_Dir == default_EVs).all() and (self.EV_Gau == default_EVs).all():
-                            self.EVs = default_EVs
-                        else:
-                            # Standardize the EVs
-                            EV_Dir = (self.EV_Dir - np.mean(self.EV_Dir)) / np.std(self.EV_Dir)
-                            EV_Gau = (self.EV_Gau - np.mean(self.EV_Gau)) / np.std(self.EV_Gau)
-
-                            # Calculate the expected value of the model
-                            self.EVs = params[1] * EV_Dir + (1 - params[1]) * EV_Gau
-
-                        cs_mapped = choiceset_mapping[cs]
-                        prob_choice = self.softmax(self.EVs[cs_mapped[0]], self.EVs[cs_mapped[1]])
-                        prob_choice_alt = self.softmax(self.EVs[cs_mapped[1]], self.EVs[cs_mapped[0]])
-
-                else:
-                    chosen_process, prob_choice, prob_choice_alt = self.arbitration_mechanism(max_prob, dir_prob,
-                                                                                              dir_prob_alt,
-                                                                                              gau_prob, gau_prob_alt)
-                    self.process_chosen.append(chosen_process)
-
-                nll += -np.log(prob_choice if ch == cs_mapped[0] else prob_choice_alt)
-
-                self.update(ch, r, trial)
-
-        return nll
-
-    def fit(self, data, model, num_iterations=1000):
+    def fit(self, data, model, num_iterations=100, arbi_option='Max Prob'):
 
         self.model = model
+        self.arbitration_function = self.arbitration_mapping[arbi_option]
+
+        self.updating_function = self.updating_mapping[self.model]
 
         # Creating a list to hold the future results
         futures = []

@@ -109,7 +109,6 @@ individual_indices_df.drop('index', axis=1, inplace=True)
 # individual_indices_df.to_csv('./data/IndividualIndices.csv', index=False)
 
 
-
 # import the data
 data = pd.read_csv("./data/ABCDContRewardsAllData.csv")
 
