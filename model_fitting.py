@@ -48,9 +48,7 @@ if __name__ == '__main__':
     # print(result['AIC'].mean())
     # print(result['BIC'].mean())
 
-
     fitting_models = ['Dir', 'Gau', 'Dual', 'Param', 'Multi_Param', 'Recency', 'Threshold', 'Recency-Threshold']
-
 
     for model_type in fitting_models:
         file_path = f'./data/DataFitting/FittingResults/{model_type}_HV_results.csv'
