@@ -47,8 +47,8 @@ model_delta = ComputationalModels(model_type='delta')
 model_actr = ComputationalModels(model_type='ACTR')
 
 # simulate the data
-LV_results = [Dual_LV_results, Recency_LV_results]
-MV_results = [Dual_MV_results, Recency_MV_results]
+# LV_results = [Dual_LV_results, Recency_LV_results]
+# MV_results = [Dual_MV_results, Recency_MV_results]
 HV_results = [Dual_HV_results, Recency_HV_results]
 models = ['Dual', 'Recency']
 decay_results = [decay_LV_results, decay_MV_results, decay_HV_results]
@@ -83,37 +83,37 @@ df = [LV_df, MV_df, HV_df]
 #     else:
 #         print(f"{models[i]}_posthoc_MV.csv already exists")
 #
-# for i in range(len(HV_results)):
-#     file_name = f'./data/Post_hoc/{models[i]}_posthoc_HV.csv'
-#     if not os.path.exists(file_name):
-#         print(f"Simulating {models[i]}_posthoc_HV.csv")
-#         simulated_data = model.post_hoc_simulation(HV_results[i], HV_df, models[i],
-#                                                    reward_means, hv, num_iterations=1000)
-#         simulated_data.to_csv(file_name, index=False)
+for i in range(len(HV_results)):
+    file_name = f'./data/Post_hoc/{models[i]}_posthoc_HV.csv'
+    if not os.path.exists(file_name):
+        print(f"Simulating {models[i]}_posthoc_HV.csv")
+        simulated_data = model.post_hoc_simulation(HV_results[i], HV_df, models[i],
+                                                   reward_means, hv, num_iterations=1000)
+        simulated_data.to_csv(file_name, index=False)
+    else:
+        print(f"{models[i]}_posthoc_HV.csv already exists")
+
+
+# # decay model
+# for i in range(len(decay_results)):
+#     file_name = f'./data/Post_hoc/decay_posthoc_{df[i]["Condition"].unique()[0]}.csv'
+#     if os.path.exists(file_name):
+#         print(f"decay_posthoc_{df[i]['Condition'].unique()[0]}.csv already exists")
 #     else:
-#         print(f"{models[i]}_posthoc_HV.csv already exists")
-
-
-# decay model
-for i in range(len(decay_results)):
-    file_name = f'./data/Post_hoc/decay_posthoc_{df[i]["Condition"].unique()[0]}.csv'
-    if os.path.exists(file_name):
-        print(f"decay_posthoc_{df[i]['Condition'].unique()[0]}.csv already exists")
-    else:
-        simulated_data = model_decay.post_hoc_simulation(decay_results[i], df[i], reward_means,
-                                                        sd[i], num_iterations=1000)
-        simulated_data.to_csv(file_name, index=False)
-
-# delta rule model
-for i in range(len(delta_results)):
-    file_name = f'./data/Post_hoc/delta_posthoc_{df[i]["Condition"].unique()[0]}.csv'
-    if os.path.exists(file_name):
-        print(f"delta_posthoc_{df[i]['Condition'].unique()[0]}.csv already exists")
-    else:
-        print(f"Simulating delta_posthoc_{df[i]['Condition'].unique()[0]}.csv")
-        simulated_data = model_delta.post_hoc_simulation(delta_results[i], df[i], reward_means,
-                                                            sd[i], num_iterations=1000)
-        simulated_data.to_csv(file_name, index=False)
+#         simulated_data = model_decay.post_hoc_simulation(decay_results[i], df[i], reward_means,
+#                                                         sd[i], num_iterations=1000)
+#         simulated_data.to_csv(file_name, index=False)
+#
+# # delta rule model
+# for i in range(len(delta_results)):
+#     file_name = f'./data/Post_hoc/delta_posthoc_{df[i]["Condition"].unique()[0]}.csv'
+#     if os.path.exists(file_name):
+#         print(f"delta_posthoc_{df[i]['Condition'].unique()[0]}.csv already exists")
+#     else:
+#         print(f"Simulating delta_posthoc_{df[i]['Condition'].unique()[0]}.csv")
+#         simulated_data = model_delta.post_hoc_simulation(delta_results[i], df[i], reward_means,
+#                                                             sd[i], num_iterations=1000)
+#         simulated_data.to_csv(file_name, index=False)
 #
 # # actr model
 # for i in range(len(actr_results)):

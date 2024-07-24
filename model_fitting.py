@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 import os
 from utilities.utility_DualProcess import DualProcessModel
@@ -41,21 +42,30 @@ if __name__ == '__main__':
 
     # # this is for testing
     # # select the first 500 rows for testing
-    # testing_data = HV_df.iloc[:100, :]
+    # testing_data = HV_df.iloc[:10, :]
+    # # testing_data = HV_df
     # testing_data = dict_generator(testing_data)
-    # result = model.fit(testing_data, 'Recency-Threshold', num_iterations=10)
-    # # result_delta = delta.fit(testing_data, num_iterations=100)
+    # result = model.fit(testing_data, 'Confidence_Recency', num_iterations=1)
+    # # result_delta = delta.fit(testing_data, num_iterations=10)
     # print(result['AIC'].mean())
     # print(result['BIC'].mean())
 
-    fitting_models = ['Dir', 'Gau', 'Dual', 'Param', 'Multi_Param', 'Recency', 'Threshold', 'Recency-Threshold']
+    # result.to_csv('./data/DataFitting/FittingResults/Dual_HV_results.csv', index=False)
+
+    # from scipy.stats import dirichlet
+    #
+    # x = np.mean(dirichlet.rvs([0.0005, 0.0005, 0.0005, 0.0005], size=1000), axis=0)
+    # y = dirichlet.rvs([0.0005, 0.0005, 0.0005, 0.0005], size=1000)
+
+    # fitting_models = ['Dir', 'Gau', 'Dual', 'Param', 'Multi_Param', 'Recency', 'Threshold', 'Recency_Threshold']
+    fitting_models = ['Entropy', 'Entropy_Recency', 'Confidence', 'Confidence_Recency']
 
     for model_type in fitting_models:
         file_path = f'./data/DataFitting/FittingResults/{model_type}_HV_results.csv'
         if os.path.exists(file_path):
             print(f'{model_type}_HV_results.csv already exists')
         else:
-            result = model.fit(HV, model_type, num_iterations=200)
+            result = model.fit(HV, model_type, num_iterations=150)
             result.to_csv(file_path, index=False)
 
     for model_type in fitting_models:
@@ -63,7 +73,7 @@ if __name__ == '__main__':
         if os.path.exists(file_path):
             print(f'{model_type}_MV_results.csv already exists')
         else:
-            result = model.fit(MV, model_type, num_iterations=200)
+            result = model.fit(MV, model_type, num_iterations=150)
             result.to_csv(file_path, index=False)
 
     for model_type in fitting_models:
@@ -71,8 +81,26 @@ if __name__ == '__main__':
         if os.path.exists(file_path):
             print(f'{model_type}_LV_results.csv already exists')
         else:
-            result = model.fit(LV, model_type, num_iterations=200)
+            result = model.fit(LV, model_type, num_iterations=150)
             result.to_csv(file_path, index=False)
+
+    # ============== Naive =================
+    for model_type in ['Entropy', 'Confidence']:
+        file_path = f'./data/DataFitting/FittingResults/{model_type}_HV_Naive_results.csv'
+        if os.path.exists(file_path):
+            print(f'{model_type}_HV_Naive_results.csv already exists')
+        else:
+            result = model.fit(HV, model_type, num_iterations=150, Gau_fun='Naive')
+            result.to_csv(file_path, index=False)
+
+    for model_type in ['Entropy_Recency', 'Confidence_Recency']:
+        file_path = f'./data/DataFitting/FittingResults/{model_type}_HV_NaiveR_results.csv'
+        if os.path.exists(file_path):
+            print(f'{model_type}_HV_NaiveR_results.csv already exists')
+        else:
+            result = model.fit(HV, model_type, num_iterations=150, Gau_fun='Naive_Recency', Dir_fun='Recency')
+            result.to_csv(file_path, index=False)
+    # ============================================
 
     # ============== Uncertainty =================
     # for model_type in fitting_models:
