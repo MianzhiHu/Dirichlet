@@ -38,7 +38,7 @@ for key in simulations:
 # Observed data
 CA_avg = [0.6154838709677419, 0.5504, 0.4324]  # LV, MV, HV
 
-dual_list = [dual_lv, dual_mv, dual_hv]
+dual_list = [recency_lv, recency_mv, recency_hv]
 decay_list = [decay_lv, decay_mv, decay_hv]
 delta_list = [delta_lv, delta_mv, delta_hv]
 actr_list = [actr_lv, actr_mv, actr_hv]
@@ -63,8 +63,8 @@ for model in [dual_list, decay_list, delta_list, actr_list]:
 # calculate if process is related to the best option chosen
 sim_CA = dual_lv[dual_lv['pair'] == 'CA']
 # convert the process column to numeric
-sim_CA['process'] = sim_CA['process'].map({'Dir': 0, 'Gau': 1})
-sim_CA['BestOptionChosen'] = sim_CA['BestOptionChosen'].astype(int)
+sim_CA.loc[:, 'process'] = sim_CA['process'].map({'Dir': 0, 'Gau': 1})
+sim_CA.loc[:, 'BestOptionChosen'] = sim_CA['BestOptionChosen'].astype(int)
 
 # mixed effects model
 model = smf.mixedlm("BestOptionChosen ~ process", sim_CA, groups=sim_CA['simulation_num'])
@@ -180,17 +180,27 @@ sns.despine()
 plt.show()
 
 # calculate the percentage of process chosen
-process_chosen = dual_hv.groupby('trial_index')['process'].value_counts(normalize=True).unstack().reset_index()
-process_chosen_percentage = dual_hv['process'].value_counts(normalize=True).reset_index()
+process_chosen = recency_hv.groupby('trial_index')['process'].value_counts(normalize=True).unstack().reset_index()
+process_chosen_percentage = recency_hv['process'].value_counts(normalize=True).reset_index()
 
 
 # take only trial 151 to 250
 def transfer_process_chosen(df):
     transfer_trials = df[df['trial_index'] > 150]
-    transfer_process_chosen_df = transfer_trials.groupby('pair')['process'].value_counts(normalize=True).unstack().reset_index()
-    return transfer_process_chosen_df
+    if 'process' in df.columns:
+        transfer_process_chosen_df = transfer_trials.groupby('pair')['process'].value_counts(normalize=True).unstack().reset_index()
+    if 'weight_Dir' in df.columns:
+        transfer_weight_df = transfer_trials.groupby('pair')['weight_Dir'].mean().reset_index()
 
-var_df = [dual_lv, dual_mv, dual_hv]
+    if ('process' in df.columns) and ('weight_Dir' in df.columns):
+        return transfer_process_chosen_df, transfer_weight_df
+    elif 'process' in df.columns:
+        return transfer_process_chosen_df
+    elif 'weight_Dir' in df.columns:
+        return transfer_weight_df
+
+
+var_df = [recency_lv, recency_mv, recency_hv]
 
 transfer_process_chosen = pd.concat([transfer_process_chosen(df) for df in var_df])
 # create a new column to indicate the condition
@@ -199,6 +209,12 @@ condition_list = ['LV' for _ in range(4)] + ['MV' for _ in range(4)] + ['HV' for
 transfer_process_chosen['Condition'] = condition_list
 transfer_process_chosen = transfer_process_chosen[transfer_process_chosen['pair'] == 'CA']
 dir_se = transfer_process_chosen['Dir'].std() / np.sqrt(10000)
+
+# calculate the weight of the process
+transfer_weight = pd.concat([transfer_weight(df) for df in var_df])
+transfer_weight['Condition'] = condition_list
+transfer_weight = transfer_weight[transfer_weight['pair'] == 'CA']
+
 
 # Plot the percentage of process chosen for each pair in the transfer phase
 plt.figure()

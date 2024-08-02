@@ -47,9 +47,9 @@ def fit_participant(model, participant_id, pdata, model_type, num_iterations=100
                                  np.random.uniform(0.0001, 0.9999)]
                 bounds = ((0.0001, 4.9999), (0.0001, 0.9999), (0, 1))
         elif model_type == 'ACTR':
-            initial_guess = [np.random.uniform(0.0001, 0.9999), np.random.uniform(0.0001, 0.9999),
+            initial_guess = [np.random.uniform(0.0001, 4.9999), np.random.uniform(0.0001, 0.9999),
                              np.random.uniform(-1.9999, -0.0001)]
-            bounds = ((0.0001, 0.9999), (0.0001, 0.9999), (-1.9999, -0.0001))
+            bounds = ((0.0001, 4.9999), (0.0001, 0.9999), (-1.9999, -0.0001))
 
         result = minimize(model.negative_log_likelihood, initial_guess,
                           args=(pdata['reward'], pdata['choiceset'], pdata['choice']),
@@ -109,7 +109,6 @@ class ComputationalModels:
         self.t = None
         self.a = None
         self.b = None
-        self.s = None
         self.tau = None
         self.iteration = 0
 
@@ -122,7 +121,6 @@ class ComputationalModels:
 
         # Model type
         self.model_type = model_type
-        self.softmax_ACTR_version = True if model_type == 'ACTR' else False
 
         # Mapping of choice sets to pairs of options
         self.choiceset_mapping = {
@@ -135,25 +133,22 @@ class ComputationalModels:
         }
 
     def calculate_activation(self, appearances, current_trial):
+        s = 1 / (np.sqrt(2) * (3 ** self.t - 1))
         sum_tk = np.sum([(current_trial - t) ** (-self.a) for t in appearances])
-        activation = np.log(sum_tk) + np.random.logistic(0, self.s)
+        activation = np.log(sum_tk) + np.random.logistic(0, s)
         return activation
 
-    def softmax(self, chosen, alt1, ACTR=False):
+    def softmax(self, chosen, alt1, x=None, ACTR=False):
+
+        c = 3 ** self.t - 1
+
         if not ACTR:
-            c = 3 ** self.t - 1
             num = np.exp(min(700, c * chosen))
             denom = num + np.exp(min(700, c * alt1))
+            return num / denom
         if ACTR:
-            t = np.sqrt(2) * self.s
-            num = np.exp(min(700, chosen / t))
-            denom = num + np.exp(min(700, alt1 / t))
-        return num / denom
-
-    def softmax_ACTR(self, x):
-        t = np.sqrt(2) * self.s
-        e_x = np.exp(np.clip(x / t, -700, 700))
-        return e_x / e_x.sum()
+            e_x = np.exp(np.clip(c * x, -700, 700))
+            return e_x / e_x.sum()
 
     def activation_calculation(self, option, current_trial, exclude_current_trial=False):
         # initialize lists to store activations and corresponding rewards
@@ -174,7 +169,7 @@ class ComputationalModels:
         # check if the option has been chosen before
         if len(self.chosen_history[option]) > 0:
             if len(activations) > 0:
-                probabilities = self.softmax_ACTR(np.array(activations))
+                probabilities = self.softmax(None, None, np.array(activations), ACTR=True)
                 # Calculate the expected value as the weighted mean of rewards
                 self.EVs[option] = np.dot(probabilities, rewards)
             else:
@@ -345,7 +340,6 @@ class ComputationalModels:
             self.t = np.random.uniform(0, 4.9999)
             self.a = np.random.uniform()  # Randomly set decay parameter between 0 and 1
             self.b = np.random.uniform(beta_lower, beta_upper)
-            self.s = np.random.uniform(0.0001, 0.9999)
             self.tau = np.random.uniform(-1.9999, -0.0001)
             self.choices_count = np.zeros(self.num_options)
 
@@ -392,7 +386,6 @@ class ComputationalModels:
                 "t": self.t,
                 "a": self.a,
                 "b": self.b,
-                "s": self.s,
                 "tau": self.tau,
                 "trial_details": trial_details,
                 "EV_history": EV_history
@@ -428,7 +421,7 @@ class ComputationalModels:
                 self.a = params[1]
                 self.b = params[2]
         elif self.model_type == 'ACTR':
-            self.s = params[0]
+            self.t = params[0]
             self.a = params[1]
             self.tau = params[2]
 
@@ -442,14 +435,14 @@ class ComputationalModels:
                 # in the ACTR model, we need to update the EVs before calculating the likelihood
                 self.update(ch, r, trial, cs)
                 cs_mapped = self.choiceset_mapping[cs]
-                prob_choice = self.softmax(self.EVs[cs_mapped[0]], self.EVs[cs_mapped[1]], self.softmax_ACTR_version)
-                prob_choice_alt = self.softmax(self.EVs[cs_mapped[1]], self.EVs[cs_mapped[0]], self.softmax_ACTR_version)
+                prob_choice = self.softmax(self.EVs[cs_mapped[0]], self.EVs[cs_mapped[1]], None, ACTR=False)
+                prob_choice_alt = self.softmax(self.EVs[cs_mapped[1]], self.EVs[cs_mapped[0]], None, ACTR=False)
                 nll += -np.log(max(epsilon, prob_choice if ch == cs_mapped[0] else prob_choice_alt))
         else:
             for r, cs, ch, trial in zip(reward, choiceset, choice, trial):
                 cs_mapped = self.choiceset_mapping[cs]
-                prob_choice = self.softmax(self.EVs[cs_mapped[0]], self.EVs[cs_mapped[1]], self.softmax_ACTR_version)
-                prob_choice_alt = self.softmax(self.EVs[cs_mapped[1]], self.EVs[cs_mapped[0]], self.softmax_ACTR_version)
+                prob_choice = self.softmax(self.EVs[cs_mapped[0]], self.EVs[cs_mapped[1]], ACTR=False)
+                prob_choice_alt = self.softmax(self.EVs[cs_mapped[1]], self.EVs[cs_mapped[0]], ACTR=False)
                 nll += -np.log(max(epsilon, prob_choice if ch == cs_mapped[0] else prob_choice_alt))
                 self.update(ch, r, trial)
         return nll
@@ -524,7 +517,7 @@ class ComputationalModels:
                 self.reset()
 
                 if self.model_type == 'ACTR':
-                    self.s = s_sequence[participant - 1]
+                    self.t = t_sequence[participant - 1]
                     self.a = a_sequence[participant - 1]
                     self.tau = tau_sequence[participant - 1]
                 else:
@@ -559,7 +552,7 @@ class ComputationalModels:
                 if self.model_type == 'ACTR':
                     all_results.append({
                         "Subnum": participant,
-                        "s": self.s,
+                        "t": self.t,
                         "a": self.a,
                         "tau": self.tau,
                         "trial_indices": trial_indices,

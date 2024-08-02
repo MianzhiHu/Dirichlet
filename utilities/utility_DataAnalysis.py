@@ -168,7 +168,7 @@ def fitting_summary_generator(results, models, indices):
                                       ~fitting_summary['index'].str.contains('uncertainty')]
 
     # divide by condition
-    fitting_summary['condition'] = fitting_summary['index'].str.split('_').str[1]
+    fitting_summary['condition'] = fitting_summary['index'].str.split('_').str[-2]
 
     result = fitting_summary.groupby('condition', group_keys=False).apply(weight_calculation, indices)
 
@@ -242,7 +242,7 @@ def individual_param_generator(results, param_cols):
     expanded_df = expanded_df.dropna(axis=1, how='all')
 
     # separate the index to get condition and model
-    expanded_df['condition'] = expanded_df['index'].str.split('_').str[1]
+    expanded_df['condition'] = expanded_df['index'].str.split('_').str[-2]
     expanded_df['model'] = expanded_df['index'].str.split('_').str[0]
     expanded_df = expanded_df.drop(columns=['index'])
 

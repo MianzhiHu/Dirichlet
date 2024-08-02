@@ -11,7 +11,8 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 # after the simulation has been completed, we can just load the simulated data from the folder
-folder_path = './data/DataFitting/FittingResults'
+# folder_path = './data/DataFitting/FittingResults/DirWeightGauSoftmax/'
+folder_path = './data/DataFitting/FittingResults/'
 fitting_results = {}
 
 for file in os.listdir(folder_path):
@@ -30,7 +31,7 @@ for key in fitting_results:
 # Generate the fitting summary
 # ======================================================================================================================
 # select the models to be compared
-included_models = ['Dual', 'Dir', 'Gau', 'decay', 'delta', 'actr', 'Recency']
+included_models = ['Dir', 'Gau', 'decay', 'delta', 'actr', 'RecencyEntropy', 'BayesianRecencySW']
 indices_to_calculate = ['AIC', 'BIC']
 fitting_summary = fitting_summary_generator(fitting_results, included_models, indices_to_calculate)
 fitting_summary = fitting_summary.round(3)
@@ -41,7 +42,7 @@ fitting_summary[numeric_cols] = fitting_summary[numeric_cols].map(
 save_df_to_word(fitting_summary, 'FittingSummary.docx')
 
 # calculate the mean AIC and BIC advantage of dual process model over the other models
-fitting_summary['model'] = fitting_summary['index'].str.split('_').str[0]
+fitting_summary['model'] = fitting_summary['index'].str.split('_').str[-2]
 fitting_summary['condition'] = fitting_summary['index'].str.split('_').str[1]
 fitting_summary.drop('index', axis=1, inplace=True)
 
@@ -75,10 +76,15 @@ individual_param_df = individual_param_generator(fitting_results, param_cols)
 individual_param_df = individual_param_df[individual_param_df['condition'].isin(['HV', 'MV', 'LV'])]
 individual_param_df = individual_param_df[individual_param_df['model'].isin(included_models)]
 
-# reverse code s parameter because it represents the inverse of the t parameter
-max_s = individual_param_df[individual_param_df['model'] == 'actr']['param_1'].max()
-individual_param_df.loc[individual_param_df['model'] == 'actr', 'param_1'] = max_s - individual_param_df.loc[
-    individual_param_df['model'] == 'actr', 'param_1']
+individual_param_df = individual_param_df[individual_param_df['model'] != 'actr']
+
+# plot the distribution of the first parameter as a histogram
+sns.set_theme(style='white')
+sns.displot(data=individual_param_df, x='param_1', hue='model', col='condition', kind='kde', fill=True)
+plt.show()
+
+print(individual_param_df.groupby(['model', 'condition'])['param_1'].mean())
+print(individual_param_df.groupby(['model', 'condition'])['param_1'].std())
 
 # individual_param_df.to_csv('./data/IndividualParamResults.csv', index=False)
 
@@ -141,9 +147,13 @@ bayes_matrix_MV = create_bayes_matrix(fitting_results_MV, 'MV Bayes Factor Matri
 bayes_matrix_LV = create_bayes_matrix(fitting_results_LV, 'LV Bayes Factor Matrix')
 
 # explode ProcessChosen
-HV_df, process_chosen_HV = process_chosen_prop(Dual_HV_results, HV_df, sub=True)
+HV_df, process_chosen_HV = process_chosen_prop(Recency_HV_results, HV_df, sub=True)
 MV_df, process_chosen_MV = process_chosen_prop(Dual_MV_results, MV_df, sub=True)
 LV_df, process_chosen_LV = process_chosen_prop(Dual_LV_results, LV_df, sub=True)
+
+# the proportion of choosing the Dirichlet process
+HV_df['best_process_chosen'] = (HV_df['best_process_chosen'] == 'Dir').astype(int)
+print(HV_df.groupby('TrialType')['best_process_chosen'].mean())
 
 
 dfs = [HV_df, MV_df, LV_df]

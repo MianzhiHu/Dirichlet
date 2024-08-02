@@ -1,7 +1,8 @@
 from utilities.utility_DualProcess import DualProcessModel
 from utilities.utility_ComputationalModeling import ComputationalModels
 import pandas as pd
-
+import numpy as np
+import ast
 
 model = DualProcessModel()
 reward_means = [0.65, 0.35, 0.75, 0.25]
@@ -40,13 +41,71 @@ uncertainty = [0.43, 0.43, 0.12, 0.12]
 # dual_lv.to_csv('./data/Simulation/dual_lv.csv', index=False)
 
 # ========= Dual Process Model with Recency ==========
-# recency_hv = model.simulate(reward_means, hv, model='Recency', AB_freq=100, CD_freq=50, num_iterations=10000)
-# recency_mv = model.simulate(reward_means, mv, model='Recency', AB_freq=100, CD_freq=50, num_iterations=10000)
-# recency_lv = model.simulate(reward_means, lv, model='Recency', AB_freq=100, CD_freq=50, num_iterations=10000)
-#
+recency_hv = model.simulate(reward_means, hv, model='Threshold', AB_freq=100, CD_freq=50, num_iterations=1000,
+                            weight_Gau='weight_softmax', weight_Dir='weight', arbi_option='Entropy', Dir_fun='Normal',
+                            Gau_fun='Naive')
+recency_mv = model.simulate(reward_means, mv, model='Threshold', AB_freq=100, CD_freq=50, num_iterations=1000,
+                            weight_Gau='weight_softmax', weight_Dir='weight', arbi_option='Entropy', Dir_fun='Normal',
+                            Gau_fun='Naive')
+recency_lv = model.simulate(reward_means, lv, model='Threshold', AB_freq=100, CD_freq=50, num_iterations=1000,
+                            weight_Gau='weight_softmax', weight_Dir='weight', arbi_option='Entropy', Dir_fun='Normal',
+                            Gau_fun='Naive')
+
+
 # recency_hv.to_csv('./data/Simulation/recency_hv.csv', index=False)
 # recency_mv.to_csv('./data/Simulation/recency_mv.csv', index=False)
 # recency_lv.to_csv('./data/Simulation/recency_lv.csv', index=False)
+
+# =================================================================================
+# Preliminary Analysis
+# =================================================================================
+def transfer_process_chosen(df):
+    transfer_trials = df[df['trial_index'] > 150]
+    if 'process' in df.columns:
+        transfer_process_chosen_df = transfer_trials.groupby('pair')['process'].value_counts(
+            normalize=True).unstack().reset_index()
+    if 'weight_Dir' in df.columns:
+        transfer_weight_df = transfer_trials.groupby('pair')['weight_Dir'].mean().reset_index()
+
+    if ('process' in df.columns) and ('weight_Dir' in df.columns):
+        return pd.merge(transfer_process_chosen_df, transfer_weight_df, on='pair')
+    elif 'process' in df.columns:
+        return transfer_process_chosen_df
+    elif 'weight_Dir' in df.columns:
+        return transfer_weight_df
+
+
+mean_CA = []
+se_CA = []
+upper_CI = []
+lower_CI = []
+
+# Directly join the elements of the tuple
+var_condition = [recency_hv, recency_mv, recency_lv]
+for var in var_condition:
+    # create a new column to indicate the best option
+    var['pair'] = var['pair'].map(lambda x: ''.join(x))
+    best_option_dict = {'AB': 'A', 'CA': 'C', 'AD': 'A',
+                        'CB': 'C', 'BD': 'B', 'CD': 'C'}
+    var['BestOption'] = var['pair'].map(best_option_dict)
+    var['BestOptionChosen'] = var['choice'] == var['BestOption']
+    propoptimal_CA = var[var['pair'] == 'CA'].groupby('simulation_num')['BestOptionChosen'].mean()
+    mean_CA.append(propoptimal_CA.mean())
+    # calculate the standard error
+    propoptimal_CA_se = propoptimal_CA.std() / np.sqrt(len(propoptimal_CA))
+    # find the .975 quantile
+    upper_CI.append(propoptimal_CA.quantile(0.975))
+    # find the .025 quantile
+    lower_CI.append(propoptimal_CA.quantile(0.025))
+    se_CA.append(propoptimal_CA_se)
+
+transfer_process_chosen = pd.concat([transfer_process_chosen(df) for df in var_condition])
+# create a new column to indicate the condition
+# the first 6 pairs are from the low variance condition
+condition_list = ['LV' for _ in range(4)] + ['MV' for _ in range(4)] + ['HV' for _ in range(4)]
+transfer_process_chosen['Condition'] = condition_list
+transfer_process_chosen = transfer_process_chosen[transfer_process_chosen['pair'] == 'CA']
+
 
 # ========== Parametric Model ==========
 # mixed_hv = model.simulate(reward_means, hv, model='Param', AB_freq=100, CD_freq=50)
@@ -155,6 +214,3 @@ uncertainty = [0.43, 0.43, 0.12, 0.12]
 #     df = pd.DataFrame(all_data)
 #
 #     df.to_csv('./data/Simulation/' + file_name + '.csv', index=False)
-
-
-
