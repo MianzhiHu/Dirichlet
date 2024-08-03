@@ -17,11 +17,10 @@ def fit_participant(model, participant_id, pdata, model_type, weight_fun, num_it
     print(f"Fitting participant {participant_id}...")
     start_time = time.time()
 
-    total_nll = 0
     total_n = model.num_trials
 
     if model_type in ('Param', 'Recency', 'Param_Dynamic', 'Param_Dynamic', 'Param_Dynamic_Recency', 'Entropy_Recency',
-                      'Confidence_Recency', 'Threshold'):
+                      'Confidence_Recency', 'Threshold', 'Entropy_Dis'):
         k = 2
     elif model_type == 'Threshold_Recency':
         k = 3
@@ -38,6 +37,7 @@ def fit_participant(model, participant_id, pdata, model_type, weight_fun, num_it
     best_nll = 100000
     best_initial_guess = None
     best_parameters = None
+    best_weight = None
 
     for _ in range(num_iterations):
 
@@ -47,7 +47,7 @@ def fit_participant(model, participant_id, pdata, model_type, weight_fun, num_it
                                                           num_iterations))
 
         if model_type in ('Dir', 'Gau', 'Param', 'Recency', 'Param_Dynamic', 'Param_Dynamic', 'Param_Dynamic_Recency',
-                          'Entropy_Recency', 'Confidence_Recency'):
+                          'Entropy_Recency', 'Confidence_Recency', 'Entropy_Dis'):
             initial_guess = [np.random.uniform(0.0001, 4.9999), np.random.uniform(0.0001, 0.9999)]
             bounds = [(0.0001, 4.9999), (0.0001, 0.9999)]
         elif model_type == 'Threshold':
@@ -101,18 +101,16 @@ def fit_participant(model, participant_id, pdata, model_type, weight_fun, num_it
     aic = 2 * k + 2 * best_nll
     bic = k * np.log(total_n) + 2 * best_nll
 
-    total_nll += best_nll
 
     result_dict = {
         'participant_id': participant_id,
-        'best_nll': best_nll,
         'best_initial_guess': best_initial_guess,
         'best_parameters': best_parameters,
         'best_process_chosen': best_process_chosen if model_type in ('Dual', 'Recency', 'Threshold',
                                                                      'Threshold_Recency') else None,
         'best_weight': best_weight if model_type in ('Entropy', 'Entropy_Recency', 'Confidence', 'Confidence_Recency',
-                                                     'Threshold', 'Threshold_Recency') else None,
-        'total_nll': total_nll,
+                                                     'Threshold', 'Threshold_Recency', 'Entropy_Dis') else None,
+        'total_nll': best_nll,
         'AIC': aic,
         'BIC': bic
     }
@@ -146,6 +144,7 @@ class DualProcessModel:
         self.weight_history = []
 
         self.t = None
+        self.beta = None
         self.a = None
         self.b = None
         self.tau = None
@@ -179,6 +178,7 @@ class DualProcessModel:
             'Recency': self.recency_nll,
             'Entropy': self.entropy_nll,
             'Entropy_Recency': self.entropy_recency_nll,
+            'Entropy_Dis': self.distribution_entropy_nll,
             'Confidence': self.confidence_nll,
             'Confidence_Recency': self.confidence_recency_nll,
             'Threshold': self.threshold_nll,
@@ -193,6 +193,7 @@ class DualProcessModel:
             'Dual': self.dual_process_sim,
             'Recency': self.dual_process_sim,
             'Entropy': self.entropy_sim,
+            'Entropy_Dis': self.distribution_entropy_sim,
             'Threshold': self.threshold_sim,
             'Threshold_Recency': self.threshold_sim,
             'Param': self.param_sim,
@@ -205,6 +206,7 @@ class DualProcessModel:
             'Recency': self.Gau_bayesian_update_with_recency,
             'Entropy': self.Gau_bayesian_update,
             'Entropy_Recency': self.Gau_bayesian_update_with_recency,
+            'Entropy_Dis': self.Gau_bayesian_update,
             'Confidence': self.Gau_bayesian_update,
             'Confidence_Recency': self.Gau_bayesian_update_with_recency,
             'Threshold': self.Gau_bayesian_update,
@@ -220,6 +222,7 @@ class DualProcessModel:
             'Recency': self.Dir_update_with_linear_recency,
             'Entropy': self.Dir_update,
             'Entropy_Recency': self.Dir_update_with_linear_recency,
+            'Entropy_Dis': self.Dir_update,
             'Confidence': self.Dir_update,
             'Confidence_Recency': self.Dir_update_with_linear_recency,
             'Threshold': self.Dir_update,
@@ -236,15 +239,30 @@ class DualProcessModel:
 
         self.selection_mapping_Dir = {
             'softmax': self.softmax,
+            'softmax_beta': self.softmax_beta,
             'weight': self.weight,
             'weight_softmax': self.weight_softmax
         }
 
         self.selection_mapping_Gau = {
             'softmax': self.softmax,
+            'softmax_beta': self.softmax_beta,
             'weight': self.weight,
             'weight_Gau': self.weight_Gau,
             'weight_softmax': self.weight_softmax
+        }
+
+        self.Gau_fun_customized = {
+            'Naive': self.Gau_naive_update,
+            'Bayesian': self.Gau_bayesian_update,
+            'Naive_Recency': self.Gau_naive_update_with_recency,
+            'Bayesian_Recency': self.Gau_bayesian_update_with_recency
+        }
+
+        self.Dir_fun_customized = {
+            'Normal': self.Dir_update,
+            'Linear_Recency': self.Dir_update_with_linear_recency,
+            'Exp_Recency': self.Dir_update_with_exp_recency
         }
 
     def reset(self):
@@ -263,6 +281,11 @@ class DualProcessModel:
         c = 3 ** self.t - 1
         num = np.exp(min(700, c * chosen_prob))
         denom = num + np.exp(min(700, c * alt1_prob))
+        return np.clip(num / denom, 0.0001, 0.9999)
+
+    def softmax_beta(self, chosen_prob, alt1_prob, chosen, alt1, n1, n2):
+        num = np.exp(min(700, self.beta * chosen_prob))
+        denom = num + np.exp(min(700, self.beta * alt1_prob))
         return np.clip(num / denom, 0.0001, 0.9999)
 
     def weight(self, chosen_prob, alt1_prob, chosen, alt1, n1, n2):
@@ -350,19 +373,18 @@ class DualProcessModel:
         self.gamma_b[chosen] += (reward - prior_mean) ** 2 / 2
 
         if self.gamma_a[chosen] <= 1:
-            self.AV[chosen] = reward
-            self.var[chosen] = prior_var
+            sample_var = (reward - self.AV[chosen]) ** 2
         else:
             # sample variance can be directly calculated using a / (b - 1)
             sample_var = self.gamma_b[chosen] / (self.gamma_a[chosen] - 1)
 
-            self.AV[chosen] = ((prior_mean * sample_var + self.a * reward * n * prior_var) /
-                               (self.a * prior_var * n + sample_var))
-            self.var[chosen] = (prior_var * sample_var) / (self.a * n * prior_var + sample_var)
+        self.AV[chosen] = ((prior_mean * sample_var + self.a * reward * n * prior_var) /
+                           (self.a * prior_var * n + sample_var))
+        self.var[chosen] = (prior_var * sample_var) / (self.a * n * prior_var + sample_var)
 
     def Gau_naive_update(self, prior_mean, prior_var, reward, chosen, n=1):
         self.AV[chosen] = np.mean(self.reward_history[chosen])
-        self.var[chosen] = np.var(self.reward_history[chosen])
+        self.var[chosen] = np.var(self.reward_history[chosen]) if len(self.reward_history[chosen]) > 1 else (reward - self.prior_mean) ** 2
 
     def Gau_naive_update_with_recency(self, prior_mean, prior_var, reward, chosen, n=1):
         self.var[chosen] += self.a * ((reward - self.AV[chosen]) ** 2 - self.var[chosen])
@@ -535,6 +557,40 @@ class DualProcessModel:
 
         return trial_details
 
+    def distribution_entropy_sim(self, optimal, suboptimal, reward_means, reward_sd, trial_details, pair, trial,
+                                 weight=None, process=None):
+
+        trial_av = [self.AV[optimal], self.AV[suboptimal]]
+        trial_var = [self.var[optimal], self.var[suboptimal]]
+        trial_cov = np.diag(trial_var)
+
+        gau_entropy = 2 ** (multivariate_normal.entropy(trial_av, trial_cov))
+
+
+        trial_alphas = [self.alpha[optimal], self.alpha[suboptimal]]
+        dir_entropy = 2 ** (dirichlet.entropy(trial_alphas))
+
+        weight_dir = gau_entropy / (dir_entropy + gau_entropy)
+
+        prob_optimal_dir = self.action_selection_Dir(self.EV_Dir[optimal], self.EV_Dir[suboptimal],
+                                             optimal, suboptimal, len(self.reward_history[optimal]),
+                                             len(self.reward_history[suboptimal]))
+        prob_optimal_gau = self.action_selection_Gau(self.EV_Gau[optimal], self.EV_Gau[suboptimal],
+                                             optimal, suboptimal, len(self.reward_history[optimal]),
+                                             len(self.reward_history[suboptimal]))
+
+        prob_optimal = EV_calculation(prob_optimal_dir, prob_optimal_gau, weight_dir)
+
+        chosen = optimal if np.random.rand() < prob_optimal else suboptimal
+
+        reward = np.random.normal(reward_means[chosen], reward_sd[chosen])
+
+        trial_details.append(
+            {"pair": (chr(65 + pair[0]), chr(65 + pair[1])), "choice": chr(65 + chosen),
+             "reward": reward, "weight": weight_dir})
+
+        self.update(chosen, reward, trial)
+
     def threshold_sim(self, optimal, suboptimal, reward_means, reward_sd, trial_details, pair, trial, weight=None,
                       process=None):
         prob_optimal_dir = self.action_selection_Dir(self.EV_Dir[optimal], self.EV_Dir[suboptimal],
@@ -661,9 +717,9 @@ class DualProcessModel:
                         "simulation_num": sim_num,
                         "trial_index": trial_idx,
                         "t": t,
-                        "a": a if self.model in ('Recency', 'Threshold_Recency') else None,
+                        "a": a if self.model in ('Recency', 'Threshold_Recency', 'Entropy_Dis') else None,
                         "weight": weight if self.model in ('Param', 'Threshold', 'Threshold_Recency') else None,
-                        "weight_Dir": trial_detail['weight'] if self.model in ('Entropy', 'Threshold') else None,
+                        "weight_Dir": trial_detail['weight'] if self.model in ('Entropy', 'Threshold', 'Entropy_Dis') else None,
                         "tau": tau if self.model in ('Threshold', 'Threshold_Recency') else None,
                         "pair": trial_detail['pair'],
                         "choice": trial_detail['choice'],
@@ -734,25 +790,8 @@ class DualProcessModel:
         self.action_selection_Dir = self.selection_mapping_Dir.get(weight_Dir)
         self.action_selection_Gau = self.selection_mapping_Gau.get(weight_Gau)
 
-        if Gau_fun is None:
-            self.Gau_update_fun = self.Gau_fun_mapping[self.model]
-        elif Gau_fun == 'Bayesian':
-            self.Gau_update_fun = self.Gau_bayesian_update
-        elif Gau_fun == 'Bayesian_Recency':
-            self.Gau_update_fun = self.Gau_bayesian_update_with_recency
-        elif Gau_fun == 'Naive':
-            self.Gau_update_fun = self.Gau_naive_update
-        elif Gau_fun == 'Naive_Recency':
-            self.Gau_update_fun = self.Gau_naive_update_with_recency
-
-        if Dir_fun is None:
-            self.Dir_update_fun = self.Dir_fun_mapping[self.model]
-        elif Dir_fun == 'Normal':
-            self.Dir_update_fun = self.Dir_update
-        elif Dir_fun == 'Linear_Recency':
-            self.Dir_update_fun = self.Dir_update_with_linear_recency
-        elif Dir_fun == 'Exp_Recency':
-            self.Dir_update_fun = self.Dir_update_with_exp_recency
+        self.Gau_update_fun = self.Gau_fun_customized.get(Gau_fun, self.Gau_fun_mapping[self.model])
+        self.Dir_update_fun = self.Dir_fun_customized.get(Dir_fun, self.Dir_fun_mapping[self.model])
 
         print(f'============================================================')
         print(f'In the current model, the Dirichlet process is updated using {self.Dir_update_fun.__name__} '
@@ -776,7 +815,11 @@ class DualProcessModel:
                 process = None
 
             # Randomly sample the parameters for the model
-            self.t = np.random.uniform(0.0001, 4.9999)
+            if self.action_selection_Gau or self.action_selection_Dir == self.softmax_beta:
+                self.beta = np.random.uniform(0.0001, 9.9999)
+                self.t = self.beta
+            else:
+                self.t = np.random.uniform(0.0001, 4.9999)
 
             if self.Dir_update_fun in (self.Dir_update_with_linear_recency, self.Dir_update_with_exp_recency) or \
                     self.Gau_update_fun in (self.Gau_bayesian_update_with_recency, self.Gau_naive_update_with_recency):
@@ -820,8 +863,9 @@ class DualProcessModel:
                 "simulation_num": iteration + 1,
                 "trial_indices": trial_indices,
                 "t": self.t,
-                "a": self.a if self.model in ('Recency', 'Threshold_Recency') else None,
-                "weight": weight if self.model in ('Param', 'Threshold', 'Threshold_Recency', 'Entropy') else None,
+                "a": self.a if self.model in ('Recency', 'Threshold_Recency', 'Entropy_Dis') else None,
+                "weight": weight if self.model in ('Param', 'Threshold', 'Threshold_Recency', 'Entropy',
+                                                   'Entropy_Dis') else None,
                 "tau": self.tau if self.model in ('Threshold', 'Threshold_Recency') else None,
                 "trial_details": trial_details,
                 "EV_history_Dir": EV_history_Dir,
@@ -1022,7 +1066,8 @@ class DualProcessModel:
             cs_mapped = self.choiceset_mapping[cs]
 
             dir_prob = self.action_selection_Dir(self.EV_Dir[cs_mapped[0]], self.EV_Dir[cs_mapped[1]],
-                                                 cs_mapped[0], cs_mapped[1])
+                                                 cs_mapped[0], cs_mapped[1], len(self.reward_history[cs_mapped[0]]),
+                                                 len(self.reward_history[cs_mapped[1]]))
             dir_prob_alt = 1 - dir_prob
             gau_prob = self.action_selection_Gau(self.EV_Gau[cs_mapped[0]], self.EV_Gau[cs_mapped[1]],
                                                  cs_mapped[0], cs_mapped[1], len(self.reward_history[cs_mapped[0]]),
@@ -1055,7 +1100,8 @@ class DualProcessModel:
             cs_mapped = self.choiceset_mapping[cs]
 
             dir_prob = self.action_selection_Dir(self.EV_Dir[cs_mapped[0]], self.EV_Dir[cs_mapped[1]],
-                                                 cs_mapped[0], cs_mapped[1])
+                                                 cs_mapped[0], cs_mapped[1], len(self.reward_history[cs_mapped[0]]),
+                                                 len(self.reward_history[cs_mapped[1]]))
             dir_prob_alt = 1 - dir_prob
             gau_prob = self.action_selection_Gau(self.EV_Gau[cs_mapped[0]], self.EV_Gau[cs_mapped[1]],
                                                  cs_mapped[0], cs_mapped[1], len(self.reward_history[cs_mapped[0]]),
@@ -1067,6 +1113,53 @@ class DualProcessModel:
 
             weight_dir = gau_entropy / (dir_entropy + gau_entropy)
             self.weight_history.append(weight_dir)
+
+            prob_choice = EV_calculation(dir_prob, gau_prob, weight_dir)
+
+            nll += -np.log(prob_choice if ch == cs_mapped[0] else 1 - prob_choice)
+
+            print(f'Trial: {t}, Trial Type: {cs_mapped}, Choice: {ch}, Reward: {r}')
+            print(f'AV: {self.AV[cs_mapped[0]], self.AV[cs_mapped[1]]}')
+            print(f'Var: {self.var[cs_mapped[0]], self.var[cs_mapped[1]]}')
+            print(f'Alpha: {self.alpha}')
+            print(f'Trial Alpha: {self.alpha[cs_mapped[0]], self.alpha[cs_mapped[1]]}')
+            print(f'Weight: {weight_dir}, Prob_Choice: {prob_choice}')
+
+            self.update(ch, r, t)
+
+        return nll
+
+    def distribution_entropy_nll(self, params, reward, choiceset, choice, trial):
+
+        nll = 0
+
+        self.weight_history = []
+
+        self.a = params[self.param_start + 1]
+
+        for r, cs, ch, t in zip(reward, choiceset, choice, trial):
+
+            cs_mapped = self.choiceset_mapping[cs]
+
+            trial_av = [self.AV[cs_mapped[0]], self.AV[cs_mapped[1]]]
+            trial_var = [self.var[cs_mapped[0]], self.var[cs_mapped[1]]]
+            trial_cov = np.diag(trial_var)
+
+            gau_entropy = 2 ** (multivariate_normal.entropy(trial_av, trial_cov))
+
+
+            trial_alphas = [self.alpha[cs_mapped[0]], self.alpha[cs_mapped[1]]]
+            dir_entropy = 2 ** (dirichlet.entropy(trial_alphas))
+
+            weight_dir = gau_entropy / (dir_entropy + gau_entropy)
+            self.weight_history.append(weight_dir)
+
+            dir_prob = self.action_selection_Dir(self.EV_Dir[cs_mapped[0]], self.EV_Dir[cs_mapped[1]],
+                                                 cs_mapped[0], cs_mapped[1], len(self.reward_history[cs_mapped[0]]),
+                                                 len(self.reward_history[cs_mapped[1]]))
+            gau_prob = self.action_selection_Gau(self.EV_Gau[cs_mapped[0]], self.EV_Gau[cs_mapped[1]],
+                                                 cs_mapped[0], cs_mapped[1], len(self.reward_history[cs_mapped[0]]),
+                                                 len(self.reward_history[cs_mapped[1]]))
 
             prob_choice = EV_calculation(dir_prob, gau_prob, weight_dir)
 
@@ -1242,7 +1335,7 @@ class DualProcessModel:
 
         self.reset()
 
-        self.t = params[self.param_start]
+        self.a = params[self.param_start]
 
         trial = np.arange(1, self.num_trials + 1)
 
@@ -1275,25 +1368,8 @@ class DualProcessModel:
         else:
             self.weight_fun = 'mixed_weight'
 
-        if Gau_fun is None:
-            self.Gau_update_fun = self.Gau_fun_mapping[self.model]
-        elif Gau_fun == 'Bayesian':
-            self.Gau_update_fun = self.Gau_bayesian_update
-        elif Gau_fun == 'Bayesian_Recency':
-            self.Gau_update_fun = self.Gau_bayesian_update_with_recency
-        elif Gau_fun == 'Naive':
-            self.Gau_update_fun = self.Gau_naive_update
-        elif Gau_fun == 'Naive_Recency':
-            self.Gau_update_fun = self.Gau_naive_update_with_recency
-
-        if Dir_fun is None:
-            self.Dir_update_fun = self.Dir_fun_mapping[self.model]
-        elif Dir_fun == 'Normal':
-            self.Dir_update_fun = self.Dir_update
-        elif Dir_fun == 'Linear_Recency':
-            self.Dir_update_fun = self.Dir_update_with_linear_recency
-        elif Dir_fun == 'Exp_Recency':
-            self.Dir_update_fun = self.Dir_update_with_exp_recency
+        self.Gau_update_fun = self.Gau_fun_customized.get(Gau_fun, self.Gau_fun_mapping[self.model])
+        self.Dir_update_fun = self.Dir_fun_customized.get(Dir_fun, self.Dir_fun_mapping[self.model])
 
         print(f'============================================================')
         print(f'In the current model, the Dirichlet process is updated using {self.Dir_update_fun.__name__} '

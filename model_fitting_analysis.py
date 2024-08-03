@@ -11,8 +11,8 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 # after the simulation has been completed, we can just load the simulated data from the folder
-# folder_path = './data/DataFitting/FittingResults/DirWeightGauSoftmax/'
-folder_path = './data/DataFitting/FittingResults/'
+folder_path = './data/DataFitting/FittingResults/AllCombinations/'
+# folder_path = './data/DataFitting/FittingResults/'
 fitting_results = {}
 
 for file in os.listdir(folder_path):

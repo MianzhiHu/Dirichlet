@@ -41,15 +41,15 @@ uncertainty = [0.43, 0.43, 0.12, 0.12]
 # dual_lv.to_csv('./data/Simulation/dual_lv.csv', index=False)
 
 # ========= Dual Process Model with Recency ==========
-recency_hv = model.simulate(reward_means, hv, model='Threshold', AB_freq=100, CD_freq=50, num_iterations=1000,
-                            weight_Gau='weight_softmax', weight_Dir='weight', arbi_option='Entropy', Dir_fun='Normal',
-                            Gau_fun='Naive')
-recency_mv = model.simulate(reward_means, mv, model='Threshold', AB_freq=100, CD_freq=50, num_iterations=1000,
-                            weight_Gau='weight_softmax', weight_Dir='weight', arbi_option='Entropy', Dir_fun='Normal',
-                            Gau_fun='Naive')
-recency_lv = model.simulate(reward_means, lv, model='Threshold', AB_freq=100, CD_freq=50, num_iterations=1000,
-                            weight_Gau='weight_softmax', weight_Dir='weight', arbi_option='Entropy', Dir_fun='Normal',
-                            Gau_fun='Naive')
+recency_hv = model.simulate(reward_means, hv, model='Entropy_Dis', AB_freq=100, CD_freq=50, num_iterations=2000,
+                            weight_Gau='softmax_beta', weight_Dir='softmax_beta', arbi_option='Entropy', Dir_fun='Normal',
+                            Gau_fun='Bayesian_Recency')
+recency_mv = model.simulate(reward_means, mv, model='Entropy_Dis', AB_freq=100, CD_freq=50, num_iterations=2000,
+                            weight_Gau='softmax_beta', weight_Dir='softmax_beta', arbi_option='Entropy', Dir_fun='Normal',
+                            Gau_fun='Bayesian_Recency')
+recency_lv = model.simulate(reward_means, lv, model='Entropy_Dis', AB_freq=100, CD_freq=50, num_iterations=2000,
+                            weight_Gau='softmax_beta', weight_Dir='softmax_beta', arbi_option='Entropy', Dir_fun='Normal',
+                            Gau_fun='Bayesian_Recency')
 
 
 # recency_hv.to_csv('./data/Simulation/recency_hv.csv', index=False)
@@ -81,7 +81,7 @@ upper_CI = []
 lower_CI = []
 
 # Directly join the elements of the tuple
-var_condition = [recency_hv, recency_mv, recency_lv]
+var_condition = [recency_lv, recency_mv, recency_hv]
 for var in var_condition:
     # create a new column to indicate the best option
     var['pair'] = var['pair'].map(lambda x: ''.join(x))

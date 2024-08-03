@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import os
-from scipy.stats import dirichlet, multivariate_normal, entropy, norm
+from scipy.stats import dirichlet, multivariate_normal, entropy, norm, differential_entropy
 from utilities.utility_DualProcess import DualProcessModel
 from utilities.utility_ComputationalModeling import dict_generator, ComputationalModels, bayes_factor
 
@@ -43,17 +43,20 @@ if __name__ == '__main__':
 
     # this is for testing
     # select the first 500 rows for testing
-    # testing_data = HV_df.iloc[:10, :]
+    # testing_data = HV_df.iloc[:250, :]
     # testing_data = HV_df.iloc[501:510, :]
-    # testing_data = HV_df
-    # testing_data = dict_generator(testing_data)
-    # result = model.fit(testing_data, 'Recency', num_iterations=100, weight_Gau='softmax', weight_Dir='weight',
-    #                    arbi_option='Entropy', Dir_fun='Linear_Recency', Gau_fun='Bayesian_Recency')
-    # # result = model.fit(testing_data, 'Recency', num_iterations=300, weight_Gau='softmax', arbi_option='Entropy',
-    # #                    weight_Dir='weight', Dir_fun='Normal', Gau_fun='Naive_Recency')
-    # # result_delta = actr.fit(testing_data, num_iterations=10)
-    # print(result['AIC'].mean())
-    # print(result['BIC'].mean())
+    testing_data = HV_df
+    testing_data = dict_generator(testing_data)
+    result = model.fit(testing_data, 'Entropy_Dis', num_iterations=150, weight_Gau='softmax', weight_Dir='softmax',
+                       arbi_option='Entropy', Dir_fun='Normal', Gau_fun='Bayesian_Recency')
+    # result = model.fit(testing_data, 'Recency', num_iterations=300, weight_Gau='softmax', arbi_option='Entropy',
+    #                    weight_Dir='weight', Dir_fun='Normal', Gau_fun='Naive_Recency')
+    # result_delta = delta.fit(testing_data, num_iterations=1)
+    print(result['AIC'].mean())
+    print(result['BIC'].mean())
+
+    # print(result_delta['AIC'].mean())
+    # print(result_delta['BIC'].mean())
 
     # result.to_csv('./data/DataFitting/FittingResults/BayesianRecencySW_HV_results.csv', index=False)
 
@@ -61,25 +64,25 @@ if __name__ == '__main__':
     # Model fitting starts here
     # ==================================================================================================================
     # fitting_models = ['Dir', 'Gau', 'Dual', 'Param', 'Multi_Param', 'Recency', 'Threshold', 'Recency_Threshold']
-    fitting_models = ['Recency']
-    Gau_fun = ['Naive', 'Naive_Recency', 'Bayesian', 'Bayesian_Recency']
-    Dir_fun = ['Normal', 'Linear_Recency']
-    Gau_weight = ['softmax']
-    Dir_weight = ['weight']
-
-    for model_type in fitting_models:
-        for gau_fun in Gau_fun:
-            for dir_fun in Dir_fun:
-                for gau_weight in Gau_weight:
-                    for dir_weight in Dir_weight:
-                        file_path = (f'./data/DataFitting/FittingResults/AllCombinations/{model_type}{gau_fun}{dir_fun}'
-                                     f'{gau_weight}{dir_weight}_HV_results.csv')
-                        if os.path.exists(file_path):
-                            print(f'{model_type}_{gau_fun}_{dir_fun}_{gau_weight}_{dir_weight}_HV_results.csv already exists')
-                        else:
-                            result = model.fit(HV, model_type, num_iterations=100, weight_Gau=gau_weight, weight_Dir=dir_weight,
-                                               arbi_option='Entropy', Dir_fun=dir_fun, Gau_fun=gau_fun)
-                            result.to_csv(file_path, index=False)
+    # fitting_models = ['Recency']
+    # Gau_fun = ['Bayesian_Recency', 'Naive_Recency', 'Bayesian', 'Naive']
+    # Dir_fun = ['Linear_Recency', 'Normal']
+    # Gau_weight = ['softmax']
+    # Dir_weight = ['weight', 'softmax']
+    #
+    # for model_type in fitting_models:
+    #     for gau_fun in Gau_fun:
+    #         for dir_fun in Dir_fun:
+    #             for gau_weight in Gau_weight:
+    #                 for dir_weight in Dir_weight:
+    #                     file_path = (f'./data/DataFitting/FittingResults/AllCombinations/{model_type}{gau_fun}{dir_fun}'
+    #                                  f'{gau_weight}{dir_weight}_HV_results.csv')
+    #                     if os.path.exists(file_path):
+    #                         print(f'{model_type}_{gau_fun}_{dir_fun}_{gau_weight}_{dir_weight}_HV_results.csv already exists')
+    #                     else:
+    #                         result = model.fit(HV, model_type, num_iterations=100, weight_Gau=gau_weight, weight_Dir=dir_weight,
+    #                                            arbi_option='Entropy', Dir_fun=dir_fun, Gau_fun=gau_fun)
+    #                         result.to_csv(file_path, index=False)
 
     # for model_type in fitting_models:
     #     file_path = f'./data/DataFitting/FittingResults/DirWeightGauWeight/{model_type}_MV_results.csv'
