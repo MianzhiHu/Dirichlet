@@ -57,18 +57,6 @@ decay = ComputationalModels("decay")
 delta = ComputationalModels("delta")
 actr = ComputationalModels("ACTR")
 
-# testing
-reward_means = [0.65, 0.35, 0.75, 0.25]
-reward_means_uncertainty = [0.70, 0.30, 0.70, 0.30]
-hv = [0.48, 0.48, 0.43, 0.43]
-mv = [0.24, 0.24, 0.22, 0.22]
-lv = [0.12, 0.12, 0.11, 0.11]
-uncertainty = [0.43, 0.43, 0.12, 0.12]
-decay_hv = decay.simulate(reward_means, hv, AB_freq=100, CD_freq=50, num_iterations=10)
-
-# unpack the results
-df = simulation_unpacker(decay_hv)
-
 # ======================================================================================================================
 #                              Simulation for randomly drawn reward values and variances
 # ======================================================================================================================
