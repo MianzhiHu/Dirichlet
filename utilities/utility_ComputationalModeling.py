@@ -362,12 +362,12 @@ class ComputationalModels:
                 if trial < 150:
                     pair = training_trial_sequence[trial]
                     optimal, suboptimal = (pair[0], pair[1])
-                    prob_optimal = self.softmax(self.EVs[optimal], self.EVs[suboptimal], self.softmax_ACTR_version)
+                    prob_optimal = self.softmax(self.EVs[optimal], self.EVs[suboptimal], ACTR=False)
                     chosen = optimal if np.random.rand() < prob_optimal else suboptimal
                 else:
                     pair = transfer_trial_sequence[trial - 150]
                     optimal, suboptimal = (pair[0], pair[1])
-                    prob_optimal = self.softmax(self.EVs[optimal], self.EVs[suboptimal], self.softmax_ACTR_version)
+                    prob_optimal = self.softmax(self.EVs[optimal], self.EVs[suboptimal], ACTR=False)
                     chosen = optimal if np.random.rand() < prob_optimal else suboptimal
 
                 reward = np.random.normal(reward_means[chosen], reward_sd[chosen])
@@ -534,7 +534,7 @@ class ComputationalModels:
 
                     optimal, suboptimal = choice_set_mapping[pair]
 
-                    prob_optimal = self.softmax(self.EVs[optimal], self.EVs[suboptimal], self.softmax_ACTR_version)
+                    prob_optimal = self.softmax(self.EVs[optimal], self.EVs[suboptimal], ACTR=False)
                     chosen = 1 if np.random.rand() < prob_optimal else 0
 
                     reward = np.random.normal(reward_mean[optimal if chosen == 1 else suboptimal],

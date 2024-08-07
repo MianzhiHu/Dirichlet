@@ -11,8 +11,8 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 # after the simulation has been completed, we can just load the simulated data from the folder
-folder_path = './data/DataFitting/FittingResults/AllCombinations/'
-# folder_path = './data/DataFitting/FittingResults/'
+# folder_path = './data/DataFitting/FittingResults/AllCombinations/'
+folder_path = './data/DataFitting/FittingResults/'
 fitting_results = {}
 
 for file in os.listdir(folder_path):
@@ -31,7 +31,7 @@ for key in fitting_results:
 # Generate the fitting summary
 # ======================================================================================================================
 # select the models to be compared
-included_models = ['Dir', 'Gau', 'decay', 'delta', 'actr', 'RecencyEntropy', 'BayesianRecencySW']
+included_models = ['decay', 'delta', 'actr', 'Dual']
 indices_to_calculate = ['AIC', 'BIC']
 fitting_summary = fitting_summary_generator(fitting_results, included_models, indices_to_calculate)
 fitting_summary = fitting_summary.round(3)
@@ -75,16 +75,17 @@ individual_param_df = individual_param_generator(fitting_results, param_cols)
 # filter for the conditions and models
 individual_param_df = individual_param_df[individual_param_df['condition'].isin(['HV', 'MV', 'LV'])]
 individual_param_df = individual_param_df[individual_param_df['model'].isin(included_models)]
-
 individual_param_df = individual_param_df[individual_param_df['model'] != 'actr']
 
-# plot the distribution of the first parameter as a histogram
+# plot the distribution of the parameters
 sns.set_theme(style='white')
-sns.displot(data=individual_param_df, x='param_1', hue='model', col='condition', kind='kde', fill=True)
+sns.displot(data=individual_param_df, x='param_2', hue='model', col='condition', kind='kde', fill=True)
+# set the x-axis limit
+plt.xlim(0, 1)
 plt.show()
 
-print(individual_param_df.groupby(['model', 'condition'])['param_1'].mean())
-print(individual_param_df.groupby(['model', 'condition'])['param_1'].std())
+print(individual_param_df.groupby(['model', 'condition'])['param_2'].mean())
+print(individual_param_df.groupby(['model', 'condition'])['param_2'].std())
 
 # individual_param_df.to_csv('./data/IndividualParamResults.csv', index=False)
 

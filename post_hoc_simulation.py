@@ -24,7 +24,6 @@ if __name__ == '__main__':
 
     LV_df, MV_df, HV_df = dataframes
 
-
 # after the simulation has been completed, we can just load the simulated data from the folder
 folder_path = './data/DataFitting/FittingResults'
 fitting_results = {}
@@ -38,7 +37,6 @@ for file in os.listdir(folder_path):
 # unnest the dictionary into dfs
 for key in fitting_results:
     globals()[key] = fitting_results[key]
-
 
 # post hoc simulation
 model = DualProcessModel()
@@ -62,7 +60,6 @@ lv = [0.12, 0.12, 0.11, 0.11]
 sd = [lv, mv, hv]
 df = [LV_df, MV_df, HV_df]
 
-
 # for i in range(len(LV_results)):
 #     file_name = f'./data/Post_hoc/{models[i]}_posthoc_LV.csv'
 #     if not os.path.exists(file_name):
@@ -83,15 +80,15 @@ df = [LV_df, MV_df, HV_df]
 #     else:
 #         print(f"{models[i]}_posthoc_MV.csv already exists")
 #
-for i in range(len(HV_results)):
-    file_name = f'./data/Post_hoc/{models[i]}_posthoc_HV.csv'
-    if not os.path.exists(file_name):
-        print(f"Simulating {models[i]}_posthoc_HV.csv")
-        simulated_data = model.post_hoc_simulation(HV_results[i], HV_df, models[i],
-                                                   reward_means, hv, num_iterations=1000)
-        simulated_data.to_csv(file_name, index=False)
-    else:
-        print(f"{models[i]}_posthoc_HV.csv already exists")
+# for i in range(len(HV_results)):
+#     file_name = f'./data/Post_hoc/{models[i]}_posthoc_HV.csv'
+#     if not os.path.exists(file_name):
+#         print(f"Simulating {models[i]}_posthoc_HV.csv")
+#         simulated_data = model.post_hoc_simulation(HV_results[i], HV_df, models[i],
+#                                                    reward_means, hv, num_iterations=1000)
+#         simulated_data.to_csv(file_name, index=False)
+#     else:
+#         print(f"{models[i]}_posthoc_HV.csv already exists")
 
 
 # # decay model

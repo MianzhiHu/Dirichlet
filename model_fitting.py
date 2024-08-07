@@ -45,15 +45,15 @@ if __name__ == '__main__':
     # select the first 500 rows for testing
     # testing_data = HV_df.iloc[:250, :]
     # testing_data = HV_df.iloc[501:510, :]
-    testing_data = HV_df
-    testing_data = dict_generator(testing_data)
-    result = model.fit(testing_data, 'Entropy_Dis', num_iterations=150, weight_Gau='softmax', weight_Dir='softmax',
-                       arbi_option='Entropy', Dir_fun='Normal', Gau_fun='Bayesian_Recency')
-    # result = model.fit(testing_data, 'Recency', num_iterations=300, weight_Gau='softmax', arbi_option='Entropy',
-    #                    weight_Dir='weight', Dir_fun='Normal', Gau_fun='Naive_Recency')
-    # result_delta = delta.fit(testing_data, num_iterations=1)
-    print(result['AIC'].mean())
-    print(result['BIC'].mean())
+    # testing_data = HV_df
+    # testing_data = dict_generator(testing_data)
+    # result = model.fit(testing_data, 'Entropy', num_iterations=1, weight_Gau='softmax', weight_Dir='weight',
+    #                    arbi_option='Entropy', Dir_fun='Linear_Recency', Gau_fun='Naive_Recency')
+    # # result = model.fit(testing_data, 'Recency', num_iterations=300, weight_Gau='softmax', arbi_option='Entropy',
+    # #                    weight_Dir='weight', Dir_fun='Normal', Gau_fun='Naive_Recency')
+    # # result_delta = delta.fit(testing_data, num_iterations=1)
+    # print(result['AIC'].mean())
+    # print(result['BIC'].mean())
 
     # print(result_delta['AIC'].mean())
     # print(result_delta['BIC'].mean())
@@ -63,60 +63,54 @@ if __name__ == '__main__':
     # ==================================================================================================================
     # Model fitting starts here
     # ==================================================================================================================
-    # fitting_models = ['Dir', 'Gau', 'Dual', 'Param', 'Multi_Param', 'Recency', 'Threshold', 'Recency_Threshold']
-    # fitting_models = ['Recency']
-    # Gau_fun = ['Bayesian_Recency', 'Naive_Recency', 'Bayesian', 'Naive']
-    # Dir_fun = ['Linear_Recency', 'Normal']
-    # Gau_weight = ['softmax']
-    # Dir_weight = ['weight', 'softmax']
-    #
-    # for model_type in fitting_models:
-    #     for gau_fun in Gau_fun:
-    #         for dir_fun in Dir_fun:
-    #             for gau_weight in Gau_weight:
-    #                 for dir_weight in Dir_weight:
-    #                     file_path = (f'./data/DataFitting/FittingResults/AllCombinations/{model_type}{gau_fun}{dir_fun}'
-    #                                  f'{gau_weight}{dir_weight}_HV_results.csv')
-    #                     if os.path.exists(file_path):
-    #                         print(f'{model_type}_{gau_fun}_{dir_fun}_{gau_weight}_{dir_weight}_HV_results.csv already exists')
-    #                     else:
-    #                         result = model.fit(HV, model_type, num_iterations=100, weight_Gau=gau_weight, weight_Dir=dir_weight,
-    #                                            arbi_option='Entropy', Dir_fun=dir_fun, Gau_fun=gau_fun)
-    #                         result.to_csv(file_path, index=False)
+    # # # fitting_models = ['Dir', 'Gau', 'Dual', 'Param', 'Multi_Param', 'Recency', 'Threshold', 'Recency_Threshold']
+    fitting_models = ['Entropy_Dis_ID']
+    Gau_fun = ['Naive_Recency']
+    Dir_fun = ['Linear_Recency']
+    Dir_weight = ['softmax']
+    Gau_weight = ['softmax']
 
-    # for model_type in fitting_models:
-    #     file_path = f'./data/DataFitting/FittingResults/DirWeightGauWeight/{model_type}_MV_results.csv'
-    #     if os.path.exists(file_path):
-    #         print(f'{model_type}_MV_results.csv already exists')
-    #     else:
-    #         result = model.fit(MV, model_type, num_iterations=300)
-    #         result.to_csv(file_path, index=False)
-    #
-    # for model_type in fitting_models:
-    #     file_path = f'./data/DataFitting/FittingResults/DirWeightGauWeight/{model_type}_LV_results.csv'
-    #     if os.path.exists(file_path):
-    #         print(f'{model_type}_LV_results.csv already exists')
-    #     else:
-    #         result = model.fit(LV, model_type, num_iterations=300)
-    #         result.to_csv(file_path, index=False)
+    for model_type in fitting_models:
+        for gau_fun in Gau_fun:
+            for dir_fun in Dir_fun:
+                for gau_weight in Gau_weight:
+                    for dir_weight in Dir_weight:
+                        file_path = (f'./data/DataFitting/FittingResults/{model_type}{gau_fun}{dir_fun}'
+                                     f'{gau_weight}{dir_weight}_HV_results.csv')
+                        if os.path.exists(file_path):
+                            print(f'{model_type}_{gau_fun}_{dir_fun}_{gau_weight}_{dir_weight}_HV_results.csv already exists')
+                        else:
+                            result = model.fit(HV, model_type, num_iterations=200, weight_Gau=gau_weight, weight_Dir=dir_weight,
+                                               arbi_option='Entropy', Dir_fun=dir_fun, Gau_fun=gau_fun)
+                            result.to_csv(file_path, index=False)
 
-    # # ============== Naive =================
-    # for model_type in ['Entropy', 'Confidence']:
-    #     file_path = f'./data/DataFitting/FittingResults/{model_type}_HV_Naive_results.csv'
-    #     if os.path.exists(file_path):
-    #         print(f'{model_type}_HV_Naive_results.csv already exists')
-    #     else:
-    #         result = model.fit(HV, model_type, num_iterations=150, Gau_fun='Naive')
-    #         result.to_csv(file_path, index=False)
-    #
-    # for model_type in ['Entropy_Recency', 'Confidence_Recency']:
-    #     file_path = f'./data/DataFitting/FittingResults/{model_type}_HV_NaiveR_results.csv'
-    #     if os.path.exists(file_path):
-    #         print(f'{model_type}_HV_NaiveR_results.csv already exists')
-    #     else:
-    #         result = model.fit(HV, model_type, num_iterations=150, Gau_fun='Naive_Recency', Dir_fun='Recency')
-    #         result.to_csv(file_path, index=False)
-    # ============================================
+    for model_type in fitting_models:
+        for gau_fun in Gau_fun:
+            for dir_fun in Dir_fun:
+                for gau_weight in Gau_weight:
+                    for dir_weight in Dir_weight:
+                        file_path = (f'./data/DataFitting/FittingResults/{model_type}{gau_fun}{dir_fun}'
+                                     f'{gau_weight}{dir_weight}_MV_results.csv')
+                        if os.path.exists(file_path):
+                            print(f'{model_type}_{gau_fun}_{dir_fun}_{gau_weight}_{dir_weight}_MV_results.csv already exists')
+                        else:
+                            result = model.fit(MV, model_type, num_iterations=200, weight_Gau=gau_weight, weight_Dir=dir_weight,
+                                               arbi_option='Entropy', Dir_fun=dir_fun, Gau_fun=gau_fun)
+                            result.to_csv(file_path, index=False)
+
+    for model_type in fitting_models:
+        for gau_fun in Gau_fun:
+            for dir_fun in Dir_fun:
+                for gau_weight in Gau_weight:
+                    for dir_weight in Dir_weight:
+                        file_path = (f'./data/DataFitting/FittingResults/{model_type}{gau_fun}{dir_fun}'
+                                     f'{gau_weight}{dir_weight}_LV_results.csv')
+                        if os.path.exists(file_path):
+                            print(f'{model_type}_{gau_fun}_{dir_fun}_{gau_weight}_{dir_weight}_LV_results.csv already exists')
+                        else:
+                            result = model.fit(LV, model_type, num_iterations=200, weight_Gau=gau_weight, weight_Dir=dir_weight,
+                                               arbi_option='Entropy', Dir_fun=dir_fun, Gau_fun=gau_fun)
+                            result.to_csv(file_path, index=False)
 
     # ============== Uncertainty =================
     # for model_type in fitting_models:
@@ -132,21 +126,18 @@ if __name__ == '__main__':
     # ============================================
 
     # # fit the traditional delta, decay, and actr models
-    # HV_decay = decay.fit(HV, num_iterations=100)
-    # HV_delta = delta.fit(HV, num_iterations=100)
-    # HV_actr = actr.fit(HV, num_iterations=150)
-    # HV_actr.to_csv('./data/DataFitting/FittingResults/actr_HV_results.csv', index=False)
-    #
-    # # MV_decay = decay.fit(MV, num_iterations=100)
-    # # MV_delta = delta.fit(MV, num_iterations=100)
-    # MV_actr = actr.fit(MV, num_iterations=150)
-    # MV_actr.to_csv('./data/DataFitting/FittingResults/actr_MV_results.csv', index=False)
-    # # LV_decay = decay.fit(LV, num_iterations=100)
-    # # LV_delta = delta.fit(LV, num_iterations=100)
-    # LV_actr = actr.fit(LV, num_iterations=150)
-    # LV_actr.to_csv('./data/DataFitting/FittingResults/actr_LV_results.csv', index=False)
+    # HV_decay = decay.fit(HV, num_iterations=200)
+    # HV_delta = delta.fit(HV, num_iterations=200)
+    # HV_actr = actr.fit(HV, num_iterations=200)
 
-    #
+    # MV_decay = decay.fit(MV, num_iterations=200)
+    # MV_delta = delta.fit(MV, num_iterations=200)
+    # MV_actr = actr.fit(MV, num_iterations=200)
+
+    # LV_decay = decay.fit(LV, num_iterations=200)
+    # LV_delta = delta.fit(LV, num_iterations=200)
+    # LV_actr = actr.fit(LV, num_iterations=200)
+
     # # save
     # HV_decay.to_csv('./data/DataFitting/FittingResults/decay_HV_results.csv', index=False)
     # HV_delta.to_csv('./data/DataFitting/FittingResults/delta_HV_results.csv', index=False)
