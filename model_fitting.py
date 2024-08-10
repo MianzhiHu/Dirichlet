@@ -64,7 +64,7 @@ if __name__ == '__main__':
     # Model fitting starts here
     # ==================================================================================================================
     # # # fitting_models = ['Dir', 'Gau', 'Dual', 'Param', 'Multi_Param', 'Recency', 'Threshold', 'Recency_Threshold']
-    fitting_models = ['Entropy_Dis_ID']
+    fitting_models = ['Entropy_Dis']
     Gau_fun = ['Naive_Recency']
     Dir_fun = ['Linear_Recency']
     Dir_weight = ['softmax']
@@ -75,7 +75,7 @@ if __name__ == '__main__':
             for dir_fun in Dir_fun:
                 for gau_weight in Gau_weight:
                     for dir_weight in Dir_weight:
-                        file_path = (f'./data/DataFitting/FittingResults/{model_type}{gau_fun}{dir_fun}'
+                        file_path = (f'./data/DataFitting/FittingResults/AlternativeModels/{model_type}{gau_fun}{dir_fun}'
                                      f'{gau_weight}{dir_weight}_HV_results.csv')
                         if os.path.exists(file_path):
                             print(f'{model_type}_{gau_fun}_{dir_fun}_{gau_weight}_{dir_weight}_HV_results.csv already exists')
@@ -89,7 +89,7 @@ if __name__ == '__main__':
             for dir_fun in Dir_fun:
                 for gau_weight in Gau_weight:
                     for dir_weight in Dir_weight:
-                        file_path = (f'./data/DataFitting/FittingResults/{model_type}{gau_fun}{dir_fun}'
+                        file_path = (f'./data/DataFitting/FittingResults/AlternativeModels/{model_type}{gau_fun}{dir_fun}'
                                      f'{gau_weight}{dir_weight}_MV_results.csv')
                         if os.path.exists(file_path):
                             print(f'{model_type}_{gau_fun}_{dir_fun}_{gau_weight}_{dir_weight}_MV_results.csv already exists')
@@ -103,7 +103,7 @@ if __name__ == '__main__':
             for dir_fun in Dir_fun:
                 for gau_weight in Gau_weight:
                     for dir_weight in Dir_weight:
-                        file_path = (f'./data/DataFitting/FittingResults/{model_type}{gau_fun}{dir_fun}'
+                        file_path = (f'./data/DataFitting/FittingResults/AlternativeModels/{model_type}{gau_fun}{dir_fun}'
                                      f'{gau_weight}{dir_weight}_LV_results.csv')
                         if os.path.exists(file_path):
                             print(f'{model_type}_{gau_fun}_{dir_fun}_{gau_weight}_{dir_weight}_LV_results.csv already exists')

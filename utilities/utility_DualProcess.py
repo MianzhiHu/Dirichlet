@@ -343,7 +343,7 @@ class DualProcessModel:
             trial_type[1]: (dir_prob_alt, gau_prob_alt)
         }
 
-        # Retrieve the appropriate probabilities based on the chosen trial type
+        # Retrieve the appropriate probabilities based on the chosen trial plot_type
         dir_prob_selected, gau_prob_selected = trial_mapping[chosen]
 
         # Determine the chosen process and probabilities
@@ -925,19 +925,19 @@ class DualProcessModel:
         self.Gau_update_fun = self.Gau_fun_customized.get(Gau_fun, self.Gau_fun_mapping[self.model])
         self.Dir_update_fun = self.Dir_fun_customized.get(Dir_fun, self.Dir_fun_mapping[self.model])
 
-        print(f'============================================================')
-        print(f'In the current model, the Dirichlet process is updated using {self.Dir_update_fun.__name__} '
-              f'and the Gaussian process is updated using {self.Gau_update_fun.__name__}')
-        print(f'Dirichlet process is selected using {self.action_selection_Dir.__name__} and '
-              f'Gaussian process is selected using {self.action_selection_Gau.__name__}')
-        print(f'The arbitration mechanism used is {self.arbitration_function.__name__}')
-        print(f'============================================================')
+        # print(f'============================================================')
+        # print(f'In the current model, the Dirichlet process is updated using {self.Dir_update_fun.__name__} '
+        #       f'and the Gaussian process is updated using {self.Gau_update_fun.__name__}')
+        # print(f'Dirichlet process is selected using {self.action_selection_Dir.__name__} and '
+        #       f'Gaussian process is selected using {self.action_selection_Gau.__name__}')
+        # print(f'The arbitration mechanism used is {self.arbitration_function.__name__}')
+        # print(f'============================================================')
 
         all_results = []
 
         for iteration in range(num_iterations):
 
-            print(f"Iteration {iteration + 1} of {num_iterations}")
+            # print(f"Iteration {iteration + 1} of {num_iterations}")
 
             self.reset()
 
@@ -1051,7 +1051,7 @@ class DualProcessModel:
 
         nll = 0
 
-        # Decide which trial type it is
+        # Decide which trial plot_type it is
         weight_mapping = {
             0: params[1],
             1: params[2],
@@ -1265,13 +1265,8 @@ class DualProcessModel:
 
             gau_entropy = 2 ** (multivariate_normal.entropy(trial_av, trial_cov))
 
-            # cov = np.diag(self.var)
-            # gau_entropy = 2 ** (multivariate_normal.entropy(self.AV, cov))
-
             trial_alphas = [self.alpha[cs_mapped[0]], self.alpha[cs_mapped[1]]]
             dir_entropy = 2 ** (dirichlet.entropy(trial_alphas))
-
-            # dir_entropy = 2 ** (dirichlet.entropy(self.alpha))
 
             weight_dir = gau_entropy / (dir_entropy + gau_entropy)
             self.weight_history.append(weight_dir)

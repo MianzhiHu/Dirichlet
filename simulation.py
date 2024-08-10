@@ -2,23 +2,47 @@ from utilities.utility_DualProcess import DualProcessModel
 from utilities.utility_ComputationalModeling import ComputationalModels
 import pandas as pd
 import numpy as np
-import ast
 import time
+import gc
+import logging
+from tqdm import tqdm
+from concurrent.futures import ProcessPoolExecutor, as_completed
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
 def proportion_chosen(x):
     return (x == 'C').sum() / len(x)
 
 
-def value_generator(min_value, max_value, ref_val, epsilon, option=None):
-    value = np.random.uniform(min_value, max_value)
-    if option == 'C':
-        while value <= ref_val + epsilon:
-            value = np.random.uniform(min_value, max_value)
-    elif option == 'D':
-        while value >= ref_val - epsilon:
-            value = np.random.uniform(min_value, max_value)
-    return value
+def value_generator(epsilon=0.01):
+    while True:
+        # Randomly generate A such that 0.5 <= A <= 1
+        A = np.random.uniform(0.5, 1)
+
+        # Calculate B such that A + B = 1
+        B = 1 - A
+
+        # Ensure B is between 0 and 0.5
+        if not (0 <= B <= 0.5):
+            continue
+
+        # Randomly generate C such that C > A + 0.01 and 0.5 <= C <= 1
+        C = np.random.uniform(max(0.5, A + epsilon), 1)
+
+        # Calculate D as 1 - C to ensure C + D = 1
+        D = 1 - C
+
+        # Ensure D is between 0 and 0.5 and D < B - 0.01
+        if not (0 <= D <= 0.5 and D < B - epsilon):
+            continue
+
+        # If all conditions are met, break the loop and return the values
+        if C > A + epsilon and D < B - epsilon:
+            break
+
+    return A, B, C, D
 
 
 def simulation_unpacker(dict):
@@ -29,7 +53,7 @@ def simulation_unpacker(dict):
         a_val = res['a']
         t_val = res['t']
         tau_val = res['tau']
-        for trial_idx, trial_detail, ev in zip(res['trial_indices'], res['trial_details'], res['EV_history']):
+        for trial_idx, trial_detail in zip(res['trial_indices'], res['trial_details']):
             data_row = {
                 'simulation_num': sim_num,
                 'trial_index': trial_idx,
@@ -39,10 +63,6 @@ def simulation_unpacker(dict):
                 'pair': trial_detail['pair'],
                 'choice': trial_detail['choice'],
                 'reward': trial_detail['reward'],
-                'EV_A': ev[0],
-                'EV_B': ev[1],
-                'EV_C': ev[2],
-                'EV_D': ev[3]
             }
             all_sims.append(data_row)
 
@@ -61,58 +81,38 @@ actr = ComputationalModels("ACTR")
 #                              Simulation for randomly drawn reward values and variances
 # ======================================================================================================================
 # randomly draw reward values and variances
-n = 2000
+n = 5000
 epsilon = 0.01
-start_time = time.time()
 
-for i in range(n):
 
-    print(f'====================================')
-    print(f'Simulation {i + 1}')
-    print(f'====================================')
+# Define the simulation function
+def run_simulation(i):
 
-    # randomly draw the reward values
-    a_val = np.random.uniform(0.5, 1)
-    b_val = np.random.uniform(0, 0.5)
-    c_val = value_generator(0.5, 1, a_val, epsilon, option='C')
-    d_val = value_generator(0, 0.5, b_val, epsilon, option='D')
+    logging.info(f'Simulation {i + 1}/{n}')
 
-    # randomly draw the variance
+    # Randomly draw the reward values
+    a_val, b_val, c_val, d_val = value_generator(epsilon)
+
+    # Randomly draw the variance
     var_val = np.random.uniform(0.11, 0.48)
     var = [var_val, var_val, var_val, var_val]
 
-    # simulate the data
-    # dual process model
-    print(f'------------------------------------')
-    print(f'Dual Process Model')
-    print(f'------------------------------------')
+    # Simulate the data
     dual_simulation = model.simulate([a_val, b_val, c_val, d_val], var, model='Entropy_Dis_ID',
                                      AB_freq=100, CD_freq=50, num_iterations=1000, weight_Gau='softmax',
                                      weight_Dir='softmax', arbi_option='Entropy', Dir_fun='Linear_Recency',
                                      Gau_fun='Naive_Recency')
 
-    # decay model
-    print(f'------------------------------------')
-    print(f'Decay Model')
-    print(f'------------------------------------')
     decay_simulation = simulation_unpacker(decay.simulate([a_val, b_val, c_val, d_val], var,
                                                           AB_freq=100, CD_freq=50, num_iterations=1000))
 
-    # delta model
-    print(f'------------------------------------')
-    print(f'Delta Model')
-    print(f'------------------------------------')
     delta_simulation = simulation_unpacker(delta.simulate([a_val, b_val, c_val, d_val], var,
                                                           AB_freq=100, CD_freq=50, num_iterations=1000))
 
-    # actr model
-    print(f'------------------------------------')
-    print(f'ACT-R Model')
-    print(f'------------------------------------')
     actr_simulation = simulation_unpacker(actr.simulate([a_val, b_val, c_val, d_val], var,
                                                         AB_freq=100, CD_freq=50, num_iterations=1000))
 
-    # summarize the results
+    # Summarize the results
     dual_results = dual_simulation[dual_simulation['pair'] == ('C', 'A')].groupby('simulation_num').agg(
         choice=('choice', proportion_chosen),
         t=('t', 'mean'),
@@ -122,7 +122,6 @@ for i in range(n):
         weight_dir=('weight_Dir', 'mean'),
     ).reset_index()
 
-    # for classic models
     decay_results = decay_simulation[decay_simulation['pair'] == ('C', 'A')].groupby('simulation_num').agg(
         choice=('choice', proportion_chosen),
         t=('t', 'mean'),
@@ -138,33 +137,57 @@ for i in range(n):
     actr_results = actr_simulation[actr_simulation['pair'] == ('C', 'A')].groupby('simulation_num').agg(
         choice=('choice', proportion_chosen),
         t=('t', 'mean'),
-        a=('a', 'mean')
+        a=('a', 'mean'),
+        tau=('tau', 'mean')
     ).reset_index()
 
-    # add the reward difference and variance to the summaries
+    # Add reward difference and variance to summaries
     for res in [dual_results, decay_results, delta_results, actr_results]:
-        res.loc[:, 'diff'] = c_val - a_val
-        res.loc[:, 'var'] = var_val
+        res['diff'] = c_val - a_val
+        res['reward_ratio'] = c_val / (c_val + a_val)
+        res['var'] = var_val
 
-    if i == 0:
-        dual_all = dual_results
-        decay_all = decay_results
-        delta_all = delta_results
-        actr_all = actr_results
-    else:
-        dual_all = pd.concat([dual_all, dual_results], ignore_index=True)
-        decay_all = pd.concat([decay_all, decay_results], ignore_index=True)
-        delta_all = pd.concat([delta_all, delta_results], ignore_index=True)
-        actr_all = pd.concat([actr_all, actr_results], ignore_index=True)
+    return dual_results, decay_results, delta_results, actr_results
 
-# save the results
-dual_all.to_csv('./data/Simulation/random_dual.csv', index=False)
-decay_all.to_csv('./data/Simulation/random_decay.csv', index=False)
-delta_all.to_csv('./data/Simulation/random_delta.csv', index=False)
-actr_all.to_csv('./data/Simulation/random_actr.csv', index=False)
 
-total_time = time.time() - start_time
-print(f'Total Time: {total_time}')
+# Run the simulation
+if __name__ == '__main__':
+
+    start_time = time.time()
+
+    dual_filepath = './data/Simulation/random_dual.csv'
+    decay_filepath = './data/Simulation/random_decay.csv'
+    delta_filepath = './data/Simulation/random_delta.csv'
+    actr_filepath = './data/Simulation/random_actr.csv'
+
+    # Define the headers
+    dual_headers = ['simulation_num', 'choice', 't', 'a', 'param_weight', 'obj_weight', 'weight_dir', 'diff',
+                    'reward_ratio', 'var']
+    decay_headers = ['simulation_num', 'choice', 't', 'a', 'diff', 'reward_ratio', 'var']
+    delta_headers = ['simulation_num', 'choice', 't', 'a', 'diff', 'reward_ratio', 'var']
+    actr_headers = ['simulation_num', 'choice', 't', 'a', 'tau', 'diff', 'reward_ratio', 'var']
+
+    # Initialize the file and write headers
+    pd.DataFrame(columns=dual_headers).to_csv(dual_filepath, index=False)
+    pd.DataFrame(columns=decay_headers).to_csv(decay_filepath, index=False)
+    pd.DataFrame(columns=delta_headers).to_csv(delta_filepath, index=False)
+    pd.DataFrame(columns=actr_headers).to_csv(actr_filepath, index=False)
+
+    with ProcessPoolExecutor(max_workers=24) as executor:
+        for i, (dual_results, decay_results, delta_results, actr_results) in enumerate(
+                tqdm(executor.map(run_simulation, range(n)), total=n)):
+            dual_results.to_csv(dual_filepath, mode='a', header=False, index=False)
+            decay_results.to_csv(decay_filepath, mode='a', header=False, index=False)
+            delta_results.to_csv(delta_filepath, mode='a', header=False, index=False)
+            actr_results.to_csv(actr_filepath, mode='a', header=False, index=False)
+
+            # Free up memory
+            del dual_results, decay_results, delta_results, actr_results
+            gc.collect()
+
+    total_time = time.time() - start_time
+    print(f'Total Time: {total_time}')
+
 
 # ======================================================================================================================
 #                                           Traditional Simulation

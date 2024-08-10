@@ -119,7 +119,7 @@ class ComputationalModels:
         elif self.condition == "Both":
             self.EVs = np.full(self.num_options, 0.0)
 
-        # Model type
+        # Model plot_type
         self.model_type = model_type
 
         # Mapping of choice sets to pairs of options
@@ -333,7 +333,7 @@ class ComputationalModels:
 
         for iteration in range(num_iterations):
 
-            print(f"Iteration {iteration + 1} of {num_iterations}")
+            # print(f"Iteration {iteration + 1} of {num_iterations}")
 
             self.reset()
 

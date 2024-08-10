@@ -40,9 +40,9 @@ for key in simulations:
     else:
         simulations[key] = pd.concat([LV[['bestOption', 'TrialType']], simulations[key]], axis=1)
         simulations[key]['Condition'] = 'LV'
-    # now separate the key to find the model type
+    # now separate the key to find the model plot_type
     model_type = key.split('_')[0]
-    # add the model type to the dataframe
+    # add the model plot_type to the dataframe
     simulations[key]['model'] = model_type
 
     # now, combine all the elements in the dictionary into a single dataframe
@@ -115,7 +115,7 @@ plt.ylabel('Proportion')
 plt.xlabel('Model')
 plt.show()
 
-# MSE for the proportion of optimal choices for each trial type
+# MSE for the proportion of optimal choices for each trial plot_type
 MAE_by_proportion = all_posthoc.groupby(['Condition', 'model', 'TrialType'])[
     ['choice', 'bestOption']].mean().reset_index()
 MAE_by_proportion = MAE_by_proportion.groupby(['Condition', 'model', 'TrialType']).apply(
