@@ -255,3 +255,14 @@ def visualization_3D(sim_summary, x_var='reward_ratio', y_var='var', z_var='prop
 
     plt.savefig(f'./figures/simulation_{plot_type}.png', dpi=600)
     plt.show(dpi=600)
+
+
+# Function to plot planes with filled colors
+def plot_planes(ax, fixed_condition, x_range, z_range, color, alpha=0.3):
+    """Create a plane at a fixed condition (y-value) that covers the entire x and z ranges."""
+    X_plane, Z_plane = np.meshgrid(np.linspace(x_range[0], x_range[1], 10),
+                                   np.linspace(z_range[0], z_range[1], 10))
+    Y_plane = np.full_like(X_plane, fixed_condition)
+
+    ax.plot_surface(X_plane, Y_plane, Z_plane, color=color, alpha=alpha, rstride=1000, cstride=1000, edgecolors='none')
+

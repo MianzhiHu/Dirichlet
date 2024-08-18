@@ -1,3 +1,5 @@
+import ast
+
 import numpy as np
 import pandas as pd
 from docx import Document
@@ -56,37 +58,68 @@ def create_bayes_matrix(simulations, file_name):
     return bayes_matrix.map(format_large_numbers)
 
 
-def process_chosen_prop(results, data, sub=False):
-    results['best_process_chosen'] = results['best_process_chosen'].apply(lambda x: x if isinstance(x, list) else eval(x))
-    process_chosen = results['best_process_chosen'].explode()
+def safely_evaluate(x):
+    if isinstance(x, list):
+        return x
+    try:
+        # Try to safely evaluate the string to a list using ast.literal_eval
+        return ast.literal_eval(x)
+    except (ValueError, SyntaxError):
+        # If it's not evaluable (e.g., a number), just return as is
+        return [x]  # Wrap in a list for consistency
+
+
+def process_chosen_prop(results, data, sub=False, value='best_process_chosen'):
+    results[value] = results[value].apply(safely_evaluate)
+    process_chosen = results[value].explode()
     pd.options.mode.chained_assignment = None
-    data['best_process_chosen'] = process_chosen.values
+    data[value] = process_chosen.values
+
     # check if there is a TrialType column
     if 'TrialType' not in data.columns:
         mappping = {0: 'AB', 1: 'CD', 2: 'CA', 3: 'CB', 4: 'AD', 5: 'BD'}
         data['TrialType'] = data['SetSeen.'].map(mappping)
 
     if sub:
-        process_chosen_df = data.groupby(['Subnum', 'TrialType'])['best_process_chosen'].value_counts(normalize=True).reset_index()
+        process_chosen_df = data.groupby(['Subnum', 'TrialType'])[value].value_counts(normalize=True).reset_index()
     else:
-        process_chosen_df = data.groupby('TrialType')['best_process_chosen'].value_counts(normalize=True).unstack().fillna(0)
+        process_chosen_df = data.groupby('TrialType')[value].value_counts(normalize=True).unstack().fillna(0)
 
     return data, process_chosen_df
+
+
+# We rearrange the formula to solve for obj_weight
+def calculate_obj_weight(weight_dir, subj_weight):
+    obj_weight = (weight_dir * (1 - subj_weight)) / (weight_dir * (1 - subj_weight) + (1 - weight_dir) * subj_weight)
+    return obj_weight
+
+
+def count_choices(data):
+    count = data.groupby(['Subnum', 'TrialType', 'KeyResponse']).size().reset_index(name='Count')
+    total_count = data.groupby(['Subnum', 'TrialType']).size().reset_index(name='TotalCount')
+    data = pd.merge(count, total_count, on=['Subnum', 'TrialType'])
+    data['optimal_ratio'] = data['Count'] / data['TotalCount']
+    data = data[data['KeyResponse'].isin([0, 2])]
+    data.drop(columns=['Count', 'TotalCount', 'KeyResponse'], inplace=True)
+    return data
+
+
+def summary_choices(data):
+    data = data.groupby(['Subnum', 'TrialType', 'KeyResponse'])['Reward'].mean().reset_index()
+    # transform key response to option index
+    data['KeyResponse'] = data['KeyResponse'].replace({0: 'A', 1: 'B', 2: 'C', 3: 'D'})
+    data_pivot = data.pivot_table(index=['Subnum'], columns='KeyResponse', values='Reward').reset_index()
+    # if any option contains NaN, fill it with 0
+    data_pivot.fillna(0, inplace=True)
+    data_pivot.loc[:, 'ratio_AB'] = data_pivot['A'] / (data_pivot['A'] + data_pivot['B'])
+    data_pivot.loc[:, 'ratio_CD'] = data_pivot['C'] / (data_pivot['C'] + data_pivot['D'])
+    data_pivot.loc[:, 'ratio_CA'] = data_pivot['C'] / (data_pivot['A'] + data_pivot['C'])
+    return data_pivot
 
 
 def calculate_mean_squared_error(error_list):
     squared_error = [x ** 2 for x in error_list]
     return sum(squared_error) / len(error_list)
-
-
-def RMSE_calculation(original, simulated, mean=True):
-    if mean:
-        mse = np.mean((original - simulated) ** 2)
-        rmse = np.sqrt(mse)
-        return rmse
-    else:
-        se = (original - simulated) ** 2
-        return se
 
 
 # ======================================================================================================================

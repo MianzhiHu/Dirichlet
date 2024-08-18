@@ -67,14 +67,14 @@ visualization_3D(sim_summary, plot_type='contourf', elev=None, azim=None, z_labe
 #
 # Finally, generate a linear plot to show the relationship between the objective weight of the Dirichlet process and
 # the proportion of frequency effects
-sns.set(style='white')
-fig = plt.figure()
-ax = fig.add_subplot(111)
-sns.regplot(data=sim_summary[0], x='obj_weight', y='proportion', ax=ax, x_ci='ci', ci=95, color='darkorange',
-            scatter_kws={'s': 10, 'alpha': 0.3})
-ax.set_xlabel('Objective Weight of the Dirichlet Process', fontproperties=prop, fontsize=12)
-ax.set_ylabel('% of Frequency Effects', fontproperties=prop, fontsize=12)
-sns.despine()
-plt.savefig('./figures/obj_weight_vs_proportion.png', dpi=600)
-plt.show()
+# sns.set(style='white')
+# fig = plt.figure()
+# ax = fig.add_subplot(111)
+# sns.regplot(data=sim_summary[0], x='obj_weight', y='proportion', ax=ax, x_ci='ci', ci=95, color='darkorange',
+#             scatter_kws={'s': 10, 'alpha': 0.3})
+# ax.set_xlabel('Objective Weight of the Dirichlet Process', fontproperties=prop, fontsize=12)
+# ax.set_ylabel('% of Frequency Effects', fontproperties=prop, fontsize=12)
+# sns.despine()
+# plt.savefig('./figures/obj_weight_vs_proportion.png', dpi=600)
+# plt.show()
 

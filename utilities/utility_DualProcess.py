@@ -20,10 +20,10 @@ def fit_participant(model, participant_id, pdata, model_type, weight_fun, num_it
 
     total_n = model.num_trials
 
-    if model_type in ('Param', 'Recency', 'Param_Dynamic', 'Param_Dynamic', 'Param_Dynamic_Recency', 'Entropy_Recency',
+    if model_type in ('Dir', 'Gau', 'Recency', 'Param_Dynamic', 'Param_Dynamic', 'Param_Dynamic_Recency', 'Entropy_Recency',
                       'Confidence_Recency', 'Threshold', 'Entropy_Dis', 'Dual_Dis'):
         k = 2
-    elif model_type in ('Threshold_Recency', 'Entropy_Dis_ID'):
+    elif model_type in ('Threshold_Recency', 'Param', 'Entropy_Dis_ID'):
         k = 3
     elif model_type == 'Multi_Param':
         k = 7
@@ -47,11 +47,11 @@ def fit_participant(model, participant_id, pdata, model_type, weight_fun, num_it
         print('Participant {} - Iteration [{}/{}]'.format(participant_id, model.iteration,
                                                           num_iterations))
 
-        if model_type in ('Dir', 'Gau', 'Param', 'Recency', 'Param_Dynamic', 'Param_Dynamic', 'Param_Dynamic_Recency',
+        if model_type in ('Dir', 'Gau', 'Recency', 'Param_Dynamic', 'Param_Dynamic', 'Param_Dynamic_Recency',
                           'Entropy_Recency', 'Confidence_Recency', 'Entropy_Dis', 'Dual_Dis'):
             initial_guess = [np.random.uniform(0.0001, 4.9999), np.random.uniform(0.0001, 0.9999)]
             bounds = [(0.0001, 4.9999), (0.0001, 0.9999)]
-        elif model_type in ('Entropy_Dis_ID'):
+        elif model_type in ('Entropy_Dis_ID', 'Param'):
             initial_guess = [np.random.uniform(0.0001, 4.9999), np.random.uniform(0.0001, 0.9999),
                              np.random.uniform(0.0001, 0.9999)]
             bounds = [(0.0001, 4.9999), (0.0001, 0.9999), (0.0001, 0.9999)]
@@ -191,8 +191,8 @@ class DualProcessModel:
              'CD': (2, 3),
              'CA': (2, 0),
              'CB': (2, 1),
-             'BD': (0, 3),
-             'AD': (1, 3)
+             'BD': (1, 3),
+             'AD': (0, 3)
              }
         ]
 
@@ -315,7 +315,7 @@ class DualProcessModel:
     def softmax(self, chosen_prob, alt1_prob, chosen, alt1, n1, n2):
         c = 3 ** self.t - 1
         num = np.exp(min(700, c * chosen_prob))
-        denom = num + np.exp(min(700, c * alt1_prob))
+        denom = np.clip(num + np.exp(min(700, c * alt1_prob)), 0.0001, 9999)
         return np.clip(num / denom, 0.0001, 0.9999)
 
     def weight_prop(self, chosen_prob, alt1_prob, chosen, alt1, n1, n2):
@@ -417,7 +417,7 @@ class DualProcessModel:
     def Gau_naive_update(self, prior_mean, prior_var, reward, chosen, n=1):
         self.AV[chosen] = np.mean(self.reward_history[chosen])
         self.var[chosen] = np.var(self.reward_history[chosen], ddof=1) if len(self.reward_history[chosen]) > 1 else (
-                                                                                                       reward - self.prior_mean) ** 2
+                                                                                                                            reward - self.prior_mean) ** 2
 
     def Gau_naive_update_with_recency(self, prior_mean, prior_var, reward, chosen, n=1):
         delta = self.a * (reward - prior_mean)
@@ -1021,24 +1021,21 @@ class DualProcessModel:
 
         nll = 0
 
-        weight = params[self.param_start + 1]
+        self.a = params[self.param_start + 1]
+        self.weight = params[self.param_start + 2]
 
         for r, cs, ch, t in zip(reward, choiceset, choice, trial):
-
             cs_mapped = self.choiceset_mapping[0][cs]
 
-            if np.std(self.EV_Dir) == 0 and np.std(self.EV_Gau) == 0:
-                self.EVs = self.default_EVs
-            else:
-                # Standardize the EVs
-                EV_Dir = (self.EV_Dir - np.mean(self.EV_Dir)) / np.std(self.EV_Dir)
-                EV_Gau = (self.EV_Gau - np.mean(self.EV_Gau)) / np.std(self.EV_Gau)
-
-                # Calculate the expected value as a weighted sum of the two processes
-                self.EVs = EV_calculation(EV_Dir, EV_Gau, weight)
+            dir_prob = self.action_selection_Dir(self.EV_Dir[cs_mapped[0]], self.EV_Dir[cs_mapped[1]],
+                                                 cs_mapped[0], cs_mapped[1], len(self.reward_history[cs_mapped[0]]),
+                                                 len(self.reward_history[cs_mapped[1]]))
+            gau_prob = self.action_selection_Gau(self.EV_Gau[cs_mapped[0]], self.EV_Gau[cs_mapped[1]],
+                                                 cs_mapped[0], cs_mapped[1], len(self.reward_history[cs_mapped[0]]),
+                                                 len(self.reward_history[cs_mapped[1]]))
 
             # Calculate the probability of choosing the optimal option
-            prob_choice = self.softmax(self.EVs[cs_mapped[0]], self.EVs[cs_mapped[1]])
+            prob_choice = EV_calculation(dir_prob, gau_prob, self.weight)
 
             nll += -np.log(prob_choice if ch == cs_mapped[0] else 1 - prob_choice)
 
@@ -1093,7 +1090,8 @@ class DualProcessModel:
             cs_mapped = self.choiceset_mapping[0][cs]
 
             prob_choice = self.action_selection_Dir(self.EV_Dir[cs_mapped[0]], self.EV_Dir[cs_mapped[1]],
-                                                    cs_mapped[0], cs_mapped[1])
+                                                    cs_mapped[0], cs_mapped[1], len(self.reward_history[cs_mapped[0]]),
+                                                    len(self.reward_history[cs_mapped[1]]))
             nll += -np.log(prob_choice if ch == cs_mapped[0] else 1 - prob_choice)
 
             self.update(ch, r, t)
@@ -1621,6 +1619,13 @@ class DualProcessModel:
         else:
             process = None
 
+        print(f'============================================================')
+        print(f'In the current model, the Dirichlet process is updated using {self.Dir_update_fun.__name__} '
+              f'and the Gaussian process is updated using {self.Gau_update_fun.__name__}')
+        print(f'Dirichlet process is selected using {self.action_selection_Dir.__name__} and '
+              f'Gaussian process is selected using {self.action_selection_Gau.__name__}')
+        print(f'============================================================')
+
         # extract the trial sequence for each participant
         if not use_random_sequence:
             trial_index = original_data.groupby('Subnum')['trial_index'].apply(list)
@@ -1653,11 +1658,17 @@ class DualProcessModel:
 
             if recency:
                 self.a = parameter_sequences[1][participant - 1]
-                self.weight = parameter_sequences[2][participant - 1]
-                self.tau = parameter_sequences[2][participant - 1]
+                self.weight = parameter_sequences[2][participant - 1] if self.model in ('Param', 'Threshold',
+                                                                                        'Threshold_Recency',
+                                                                                        'Entropy_Dis_ID') else None
+                self.tau = parameter_sequences[2][participant - 1] if self.model in ('Threshold',
+                                                                                     'Threshold_Recency') else None
             else:
-                self.weight = parameter_sequences[1][participant - 1]
-                self.tau = parameter_sequences[1][participant - 1]
+                self.weight = parameter_sequences[1][participant - 1] if self.model in ('Param', 'Threshold',
+                                                                                        'Threshold_Recency',
+                                                                                        'Entropy_Dis_ID') else None
+                self.tau = parameter_sequences[1][participant - 1] if self.model in ('Threshold',
+                                                                                     'Threshold_Recency') else None
 
             for _ in range(num_iterations):
 
@@ -1688,6 +1699,7 @@ class DualProcessModel:
                     for trial, pair in zip(trial_index[participant], trial_sequence[participant]):
                         trial_indices.append(trial)
                         optimal, suboptimal = self.choiceset_mapping[1][pair]
+                        pair = (optimal, suboptimal)
                         post_hoc_func(optimal, suboptimal, reward_means, reward_sd, trial_details, pair, trial, process)
 
                 all_results.append({

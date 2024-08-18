@@ -3,191 +3,115 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import matplotlib.ticker as ticker
-from scipy.stats import f_oneway, ttest_ind
+from scipy.stats import f_oneway, ttest_ind, ttest_1samp, kruskal
 from statsmodels.stats.multitest import multipletests
-from utilities.utility_DataAnalysis import option_mean_calculation
+import scikit_posthocs as sp
+from utilities.utility_DataAnalysis import option_mean_calculation, count_choices, summary_choices
+from utilities.utility_PlottingFunctions import prop
 
 # import the data
 data = pd.read_csv("./data/ABCDContRewardsAllData.csv")
 data_process = pd.read_csv("./data/CombinedVarianceData.csv")
+summary = data_process[(data_process['TrialType'] == 'CA') & (data_process['model'] == 'Dual')].groupby(
+    ['Subnum', 'Condition']).agg(
+    bestOption=('bestOption', 'mean'),
+    t=('t', 'mean'),
+    a=('a', 'mean'),
+    obj_weight=('obj_weight', 'mean'),
+    subj_weight=('subj_weight', 'mean'),
+    best_weight=('best_weight', 'mean')
+).reset_index()
 
-LV = data[data['Condition'] == 'LV']
-MV = data[data['Condition'] == 'MV']
-HV = data[data['Condition'] == 'HV']
+sub_hv_data = data_process[(data_process['Condition'] == 'HV') & (data_process['TrialType'].isin(['AB', 'CD']))]
+sub_mv_data = data_process[(data_process['Condition'] == 'MV') & (data_process['TrialType'].isin(['AB', 'CD']))]
+sub_lv_data = data_process[(data_process['Condition'] == 'LV') & (data_process['TrialType'].isin(['AB', 'CD']))]
 
-# calculate the average reward for each condition
-LV_option = option_mean_calculation(LV)
-MV_option = option_mean_calculation(MV)
-HV_option = option_mean_calculation(HV)
-
-training_data = data[data['Trial'] <= 150]
-mean = training_data.groupby('choice')['points'].mean()
-
-# keep track of the dynamic mean for each participant
-training_data.loc[:, 'cumulative_mean'] = (training_data.groupby('subnum')['points']
-                                           .expanding().mean().reset_index(level=0, drop=True))
-training_data.loc[:, 'above_average'] = training_data['points'] > training_data['cumulative_mean']
-
-var_condition = [LV, MV, HV]
-
-propoptimal_mean = pd.DataFrame()
-se = pd.DataFrame()
-
-propoptimal = LV.groupby(['subnum', 'TrialType'])['bestOption'].mean()
-
-for condition in var_condition:
-    propoptimal = condition.groupby(['subnum', 'TrialType'])['bestOption'].mean()
-    if propoptimal_mean.empty:
-        propoptimal_mean = propoptimal.reset_index().groupby('TrialType')['bestOption'].mean()
-        se = propoptimal.reset_index().groupby('TrialType')['bestOption'].std() / np.sqrt(len(propoptimal))
-    else:
-        propoptimal_mean = pd.concat([propoptimal_mean, propoptimal.reset_index().groupby('TrialType')['bestOption'].mean()],
-                                     axis=1)
-        se = pd.concat([se, propoptimal.reset_index().groupby('TrialType')['bestOption'].std() / np.sqrt(len(propoptimal))],
-                       axis=1)
-
-# put the data in the right format
-propoptimal_mean.columns = ['LV', 'MV', 'HV']
-se.columns = ['LV', 'MV', 'HV']
+sub_hv_summary = summary_choices(sub_hv_data)
+sub_hv_count = count_choices(sub_hv_data)
+sub_mv_summary = summary_choices(sub_mv_data)
+sub_mv_count = count_choices(sub_mv_data)
+sub_lv_summary = summary_choices(sub_lv_data)
+sub_lv_count = count_choices(sub_lv_data)
+sub_all_summary = summary_choices(data_process[data_process['TrialType'].isin(['AB', 'CD'])])
+sub_all_count = count_choices(data_process[data_process['TrialType'].isin(['AB', 'CD'])])
 
 
-#
-# mean_CA = []
-# se_CA = []
-#
-# for condition in var_condition:
-#     propoptimal_CA = condition[condition['TrialType'] == 'CA'].groupby('subnum')['bestOption'].mean()
-#     mean_CA.append(propoptimal_CA.mean())
-#     # calculate the standard error
-#     propoptimal_CA_se = propoptimal_CA.std() / np.sqrt(len(propoptimal_CA))
-#     se_CA.append(propoptimal_CA_se)
-#
-# # Define colors for each bar
-# palette = sns.color_palette("pastel", 3)
-#
-# # Plot the percentage of choosing the best option only for CA pair
-# plt.bar(['LV', 'MV', 'HV'], mean_CA, yerr=se_CA, color=palette)
-# plt.ylim(0, 0.7)
-# plt.ylabel('Percentage of Selecting C in CA Pair')
-# plt.xlabel('Condition')
-# plt.gca().yaxis.set_major_formatter(ticker.PercentFormatter(xmax=1))
-# # remove the top and right spines
-# sns.despine()
-# plt.show()
-#
-# # conduct an ANOVA
-# f_oneway(*[var[var['TrialType'] == 'CA'].groupby('subnum')['bestOption'].mean() for var in var_condition])
-#
-# # post-hoc t-tests
-# LM_t, LM_p = ttest_ind(LV[LV['TrialType'] == 'CA'].groupby('subnum')['bestOption'].mean(),
-#                        MV[MV['TrialType'] == 'CA'].groupby('subnum')['bestOption'].mean())
-#
-# LH_t, LH_p = ttest_ind(LV[LV['TrialType'] == 'CA'].groupby('subnum')['bestOption'].mean(),
-#                        HV[HV['TrialType'] == 'CA'].groupby('subnum')['bestOption'].mean())
-#
-# MH_t, MH_p = ttest_ind(MV[MV['TrialType'] == 'CA'].groupby('subnum')['bestOption'].mean(),
-#                        HV[HV['TrialType'] == 'CA'].groupby('subnum')['bestOption'].mean())
-#
-# print(f"LM_t: {LM_t}, LM_p: {LM_p}")
-# print(f"LH_t: {LH_t}, LH_p: {LH_p}")
-# print(f"MH_t: {MH_t}, MH_p: {MH_p}")
-#
-# # correct for multiple comparisons
-# t_values = [LM_t, LH_t, MH_t]
-# p_values = [LM_p, LH_p, MH_p]
-#
-# reject, pvals_corrected, _, _ = multipletests(p_values, alpha=0.05, method='bonferroni')
-#
-# # plot the percentage of best process chosen
-# # set the condition order for plotting
-# condition_order = ['LV', 'MV', 'HV']
-# option_order = ['AB', 'CD', 'CA', 'CB', 'AD', 'BD']
-#
-# data_process['Condition'] = pd.Categorical(data_process['Condition'], condition_order)
-# data_process['TrialType'] = pd.Categorical(data_process['TrialType'], option_order)
-#
-# process_chosen = data_process.groupby(['Subnum', 'Condition', 'TrialType'])['best_process_chosen'].mean().reset_index()
-# process_chosen_CA = data_process[data_process['TrialType'] == 'CA']
-# process_chosen_CA = process_chosen_CA.groupby(['Subnum', 'Condition'])['best_process_chosen'].mean().reset_index()
-# process_chosen_CA['best_process_chosen'] = 1 - process_chosen_CA['best_process_chosen']
-#
-# best_option = data_process.groupby(['Subnum', 'Condition', 'TrialType'])['bestOption'].mean().reset_index()
-#
-# # Create a bar plot
-# sns.barplot(x='Condition', y='bestOption', hue='TrialType', data=best_option)
-# plt.title('Percentage of Best Option Chosen')
-# plt.ylabel('Percentage')
-# plt.show()
-#
-# palette6 = sns.color_palette("pastel", 6)
-# palette3 = sns.color_palette("pastel", 3)
-#
-# # plot for all choices in all conditions and trials
-# g = sns.FacetGrid(data_process, col='Condition', col_order=condition_order)
-# g.map_dataframe(sns.barplot, x='best_process_chosen', y='bestOption', hue='TrialType', palette=palette6)
-# g.add_legend(title='Trial Type')
-# g.set_axis_labels(y_var='Probability of Best Option Chosen', x_var='')
-# g.set_xticklabels(['Gaussian', 'Dirichlet'])
-# g.despine()
-# plt.savefig('./figures/ProportionBestOptionChosen.png', dpi=600)
-# plt.show()
-#
-# # plot for all choices in CA trials
-# sns.barplot(x='best_process_chosen', y='bestOption', hue='Condition', data=data_process[data_process['TrialType'] == 'CA'],
-#             palette=palette3)
-# plt.ylabel('Probability of Best Option Chosen')
-# plt.xlabel('')
-# plt.xticks([0, 1], ['Gaussian', 'Dirichlet'])
-# plt.savefig('./figures/ProportionBestOptionChosen_CA.png', dpi=600)
-# plt.show()
-#
-#
-# # plot for behavioral pattern in CA trials
-# sns.barplot(x='Condition', y='best_process_chosen', data=process_chosen_CA, palette=palette3)
-# # plt.ylabel('Percentage')
-# plt.gca().yaxis.set_major_formatter(ticker.PercentFormatter(xmax=1))
-# plt.axhline(y=0.5, color='black', linestyle='--')
-# plt.xticks(fontsize=20)
-# plt.yticks(fontsize=20)
-# plt.xlabel('')
-# plt.ylabel('')
-# sns.despine()
-# plt.show()
-#
-# # plot for RT
-# RT = data_process.groupby(['Subnum', 'best_process_chosen', 'Condition'])['RT'].mean().reset_index()
-#
-# sns.lineplot(x='best_process_chosen', y='RT', data=RT, palette=palette3, hue='Condition', errorbar='se')
-# plt.xticks([0, 1], ['Gaussian', 'Dirichlet'])
-# plt.ylabel('RT')
-# plt.xlabel('')
-# sns.despine()
-# plt.show(dpi=600)
+if __name__ == '__main__':
+    LV = data[data['Condition'] == 'LV']
+    MV = data[data['Condition'] == 'MV']
+    HV = data[data['Condition'] == 'HV']
 
-# =============================================================================
-# Uncertainty data (Not used in the paper)
-# =============================================================================
-# uncertainty_data = pd.read_csv('./data/UncertaintyData.csv')
-# uncertaintyPropOptimal = pd.read_csv('./data/UncertaintyDualProcessParticipant.csv')
-# condition_assignments = uncertainty_data[['Subnum', 'Condition']].drop_duplicates()
-#
-# # dealing with uncertainty data
-# uncertainty = uncertaintyPropOptimal[(uncertaintyPropOptimal['Condition'] == 'S2A1')]
-#
-# mean_uncertainty = []
-# se_uncertainty = []
-#
-# for trial in uncertainty['ChoiceSet'].unique():
-#     propoptimal_CA = uncertainty[uncertainty['ChoiceSet'] == trial].groupby('Subnum')['PropOptimal'].mean()
-#     mean_uncertainty.append(propoptimal_CA.mean())
-#     # calculate the standard error
-#     propoptimal_CA_se = propoptimal_CA.std() / np.sqrt(len(propoptimal_CA))
-#     se_uncertainty.append(propoptimal_CA_se)
-#
-# plt.bar(uncertainty['ChoiceSet'].unique(), mean_uncertainty, yerr=se_uncertainty)
-# plt.title('Percentage of Choosing the Best Option for Uncertainty Pair')
-# plt.ylim(0, 0.9)
-# plt.ylabel('Percentage')
-# plt.xlabel('Condition')
-# plt.gca().yaxis.set_major_formatter(ticker.PercentFormatter(xmax=1))
-# plt.show()
+    # calculate the average reward for each condition
+    LV_option = option_mean_calculation(LV)
+    MV_option = option_mean_calculation(MV)
+    HV_option = option_mean_calculation(HV)
+
+    training_data = data[data['Trial'] <= 150]
+    mean = training_data.groupby('choice')['points'].mean()
+
+    # keep track of the dynamic mean for each participant
+    training_data.loc[:, 'cumulative_mean'] = (training_data.groupby('subnum')['points']
+                                               .expanding().mean().reset_index(level=0, drop=True))
+    training_data.loc[:, 'above_average'] = training_data['points'] > training_data['cumulative_mean']
+
+    var_condition = [LV, MV, HV]
+
+    propoptimal_mean = pd.DataFrame()
+    se = pd.DataFrame()
+
+    propoptimal = LV.groupby(['subnum', 'TrialType'])['bestOption'].mean()
+
+    for condition in var_condition:
+        propoptimal = condition.groupby(['subnum', 'TrialType'])['bestOption'].mean()
+        if propoptimal_mean.empty:
+            propoptimal_mean = propoptimal.reset_index().groupby('TrialType')['bestOption'].mean()
+            se = propoptimal.reset_index().groupby('TrialType')['bestOption'].std() / np.sqrt(len(propoptimal))
+        else:
+            propoptimal_mean = pd.concat(
+                [propoptimal_mean, propoptimal.reset_index().groupby('TrialType')['bestOption'].mean()],
+                axis=1)
+            se = pd.concat(
+                [se, propoptimal.reset_index().groupby('TrialType')['bestOption'].std() / np.sqrt(len(propoptimal))],
+                axis=1)
+
+    # put the data in the right format
+    propoptimal_mean.columns = ['LV', 'MV', 'HV']
+    se.columns = ['LV', 'MV', 'HV']
+
+    # Conduct one-sample t-tests
+    reward_ratio = 0.75 / (0.75 + 0.65)
+    for condition in ['LV', 'MV', 'HV']:
+        CA_trials = data[(data['Condition'] == condition) & (data['TrialType'] == 'CA')]
+        CA_trials = CA_trials.groupby('subnum')['bestOption'].mean()
+        t, p = ttest_1samp(CA_trials, 0.5)
+        t1, p1 = ttest_1samp(CA_trials, reward_ratio)
+        print(f"Condition: {condition}")
+        print(f"Against 0.5: {t}, {p}")
+        print(f"Against reward ratio: {t1}, {p1}")
+
+    # Conduct Kruskal-Wallis test
+    summary_hv = summary[summary['Condition'] == 'HV']
+    summary_mv = summary[summary['Condition'] == 'MV']
+    summary_lv = summary[summary['Condition'] == 'LV']
+
+    h_subj, p_subj = kruskal(summary_hv['subj_weight'], summary_mv['subj_weight'], summary_lv['subj_weight'])
+    h_obj, p_obj = kruskal(summary_hv['obj_weight'], summary_mv['obj_weight'], summary_lv['obj_weight'])
+    h_best, p_best = kruskal(summary_hv['best_weight'], summary_mv['best_weight'], summary_lv['best_weight'])
+    print(f"Subjective weight: {h_subj}, {p_subj}")
+    print(f"Objective weight: {h_obj}, {p_obj}")
+    print(f"Best weight: {h_best}, {p_best}")
+
+    # Follow-up dunn's test
+    print(sp.posthoc_dunn([summary_hv['subj_weight'], summary_mv['subj_weight'], summary_lv['subj_weight']],
+                          p_adjust='bonferroni'))
+    print(sp.posthoc_dunn([summary_hv['obj_weight'], summary_mv['obj_weight'], summary_lv['obj_weight']],
+                          p_adjust='bonferroni'))
+    print(sp.posthoc_dunn([summary_hv['best_weight'], summary_mv['best_weight'], summary_lv['best_weight']],
+                          p_adjust='bonferroni'))
+
+    # analysis for the proportion of optimal choices
+    sub_all_count = pd.pivot_table(sub_all_count, index='Subnum', columns=['TrialType'],
+                                   values='optimal_ratio').reset_index()
+    sub_all_count.loc[:, 'total_ratio'] = (sub_all_count['AB'] * 2 + sub_all_count['CD']) / 3
+    sub_all_count = pd.merge(sub_all_count, summary, on='Subnum', how='outer')
+    sub_all_count.to_csv('./data/sub_all_count.csv', index=False)
