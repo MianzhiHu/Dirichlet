@@ -4,8 +4,11 @@ import os
 from scipy.stats import dirichlet, multivariate_normal, entropy, norm, differential_entropy
 from utilities.utility_DualProcess import DualProcessModel
 from utilities.utility_ComputationalModeling import dict_generator, ComputationalModels, bayes_factor
+import time
 
 if __name__ == '__main__':
+
+    start = time.time()
 
     data = pd.read_csv("./data/ABCDContRewardsAllData.csv")
 
@@ -31,27 +34,20 @@ if __name__ == '__main__':
 
     LV, MV, HV = dicts
 
-    # fit uncertainty data
-    uncertainty_data = pd.read_csv('./data/UncertaintyData.csv')
-    uncertainty_data['KeyResponse'] = uncertainty_data['KeyResponse'] - 1
-    uncertainty = dict_generator(uncertainty_data)
-
     model = DualProcessModel()
     decay = ComputationalModels("decay")
     delta = ComputationalModels("delta")
     actr = ComputationalModels("ACTR")
+    actr_original = ComputationalModels("ACTR_Ori")
 
-    # this is for testing
-    # select the first 500 rows for testing
-    # testing_data = HV_df.iloc[:250, :]
-    # testing_data = HV_df.iloc[501:510, :]
-    # testing_data = HV_df
-    # testing_data = dict_generator(testing_data)
-    # result = model.fit(testing_data, 'Entropy', num_iterations=1, weight_Gau='softmax', weight_Dir='weight',
+    # # this is for testing
+    # # select the first 500 rows for testing
+    # testing_data = dict_generator(HV_df.iloc[:500, :])
+    # # testing_data = dict_generator(HV_df.iloc[501:510, :])
+    # # testing_data = dict_generator(HV_df)
+    # result = model.fit(testing_data, 'Param', num_iterations=1, weight_Gau='softmax', weight_Dir='softmax',
     #                    arbi_option='Entropy', Dir_fun='Linear_Recency', Gau_fun='Naive_Recency')
-    # # result = model.fit(testing_data, 'Recency', num_iterations=300, weight_Gau='softmax', arbi_option='Entropy',
-    # #                    weight_Dir='weight', Dir_fun='Normal', Gau_fun='Naive_Recency')
-    # # result_delta = delta.fit(testing_data, num_iterations=1)
+    # result_delta = actr_original.fit(testing_data, num_iterations=10)
     # print(result['AIC'].mean())
     # print(result['BIC'].mean())
 
@@ -63,8 +59,7 @@ if __name__ == '__main__':
     # ==================================================================================================================
     # Model fitting starts here
     # ==================================================================================================================
-    # # # fitting_models = ['Dir', 'Gau', 'Dual', 'Param', 'Multi_Param', 'Recency', 'Threshold', 'Recency_Threshold']
-    fitting_models = ['Entropy_Dis']
+    fitting_models = ['Gau', 'Dir']
     Gau_fun = ['Naive_Recency']
     Dir_fun = ['Linear_Recency']
     Dir_weight = ['softmax']
@@ -112,39 +107,39 @@ if __name__ == '__main__':
                                                arbi_option='Entropy', Dir_fun=dir_fun, Gau_fun=gau_fun)
                             result.to_csv(file_path, index=False)
 
-    # ============== Uncertainty =================
-    # for model_type in fitting_models:
-    #     file_path = f'./data/DataFitting/FittingResults/{model_type}_uncertaintyOld_results.csv'
-    #     if os.path.exists(file_path):
-    #         print(f'{model_type}_uncertaintyOld_results.csv already exists')
-    #     else:
-    #         result = model.fit(uncertainty, model_type, num_iterations=200)
-    #         result.to_csv(file_path, index=False)
-    #
-    # uncertainty_decay = decay.fit(uncertainty, num_iterations=100)
-    # uncertainty_delta = delta.fit(uncertainty, num_iterations=100)
-    # ============================================
-
-    # # fit the traditional delta, decay, and actr models
+    # ------------------------------------------------------------------------------------------------------------------
+    # Fit the traditional models: decay, delta, actr, actr_original_version
+    # ------------------------------------------------------------------------------------------------------------------
     # HV_decay = decay.fit(HV, num_iterations=200)
     # HV_delta = delta.fit(HV, num_iterations=200)
     # HV_actr = actr.fit(HV, num_iterations=200)
-
+    # HV_actr_original = actr_original.fit(HV, num_iterations=200)
+    #
     # MV_decay = decay.fit(MV, num_iterations=200)
     # MV_delta = delta.fit(MV, num_iterations=200)
     # MV_actr = actr.fit(MV, num_iterations=200)
-
+    # MV_actr_original = actr_original.fit(MV, num_iterations=200)
+    #
     # LV_decay = decay.fit(LV, num_iterations=200)
     # LV_delta = delta.fit(LV, num_iterations=200)
     # LV_actr = actr.fit(LV, num_iterations=200)
-
+    # LV_actr_original = actr_original.fit(LV, num_iterations=200)
+    #
     # # save
     # HV_decay.to_csv('./data/DataFitting/FittingResults/decay_HV_results.csv', index=False)
     # HV_delta.to_csv('./data/DataFitting/FittingResults/delta_HV_results.csv', index=False)
     # HV_actr.to_csv('./data/DataFitting/FittingResults/actr_HV_results.csv', index=False)
+    # HV_actr_original.to_csv('./data/DataFitting/FittingResults/actr_original_HV_results.csv', index=False)
+    #
     # MV_decay.to_csv('./data/DataFitting/FittingResults/decay_MV_results.csv', index=False)
     # MV_delta.to_csv('./data/DataFitting/FittingResults/delta_MV_results.csv', index=False)
     # MV_actr.to_csv('./data/DataFitting/FittingResults/actr_MV_results.csv', index=False)
+    # MV_actr_original.to_csv('./data/DataFitting/FittingResults/actr_original_MV_results.csv', index=False)
+    #
     # LV_decay.to_csv('./data/DataFitting/FittingResults/decay_LV_results.csv', index=False)
     # LV_delta.to_csv('./data/DataFitting/FittingResults/delta_LV_results.csv', index=False)
     # LV_actr.to_csv('./data/DataFitting/FittingResults/actr_LV_results.csv', index=False)
+    # LV_actr_original.to_csv('./data/DataFitting/FittingResults/actr_original_LV_results.csv', index=False)
+    #
+    # print(f'Time taken: {time.time() - start}')
+

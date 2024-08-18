@@ -5,13 +5,14 @@ from scipy.stats import ttest_ind, pearsonr, norm
 import statsmodels.formula.api as smf
 from utilities.utility_DataAnalysis import (mean_AIC_BIC, create_bayes_matrix, process_chosen_prop,
                                             calculate_mean_squared_error, fitting_summary_generator,
-                                            save_df_to_word, individual_param_generator, calculate_difference)
+                                            save_df_to_word, individual_param_generator, calculate_difference,
+                                            calculate_obj_weight)
 from utilities.utility_DataAnalysis import extract_all_parameters
 import seaborn as sns
 import matplotlib.pyplot as plt
 
 # after the simulation has been completed, we can just load the simulated data from the folder
-# folder_path = './data/DataFitting/FittingResults/AllCombinations/'
+# folder_path = './data/DataFitting/FittingResults/AlternativeModels/'
 folder_path = './data/DataFitting/FittingResults/'
 fitting_results = {}
 
@@ -31,7 +32,7 @@ for key in fitting_results:
 # Generate the fitting summary
 # ======================================================================================================================
 # select the models to be compared
-included_models = ['decay', 'delta', 'actr', 'Dual']
+included_models = ['decay', 'delta', 'actr', 'Dual', 'Obj']
 indices_to_calculate = ['AIC', 'BIC']
 fitting_summary = fitting_summary_generator(fitting_results, included_models, indices_to_calculate)
 fitting_summary = fitting_summary.round(3)
@@ -42,22 +43,19 @@ fitting_summary[numeric_cols] = fitting_summary[numeric_cols].map(
 save_df_to_word(fitting_summary, 'FittingSummary.docx')
 
 # calculate the mean AIC and BIC advantage of dual process model over the other models
-fitting_summary['model'] = fitting_summary['index'].str.split('_').str[-2]
+fitting_summary['model'] = fitting_summary['index'].str.split('_').str[0]
 fitting_summary['condition'] = fitting_summary['index'].str.split('_').str[1]
 fitting_summary.drop('index', axis=1, inplace=True)
 
 # Specify the reference model to calculate the difference from
 reference_model = 'Dual'
 
-
-
 # Group by the condition and apply the difference calculation
 fitting_summary_diff = fitting_summary.groupby('condition').apply(calculate_difference, reference_model,
                                                                   include_groups=False)
 fitting_summary_diff = fitting_summary_diff[
     (fitting_summary_diff['model'] != reference_model) &
-    (fitting_summary_diff['model'] != "Dir") &
-    (fitting_summary_diff['model'] != "Gau")
+    (fitting_summary_diff['model'] != "Obj")
 ]
 
 # Calculate the average difference for each model
@@ -75,19 +73,11 @@ individual_param_df = individual_param_generator(fitting_results, param_cols)
 # filter for the conditions and models
 individual_param_df = individual_param_df[individual_param_df['condition'].isin(['HV', 'MV', 'LV'])]
 individual_param_df = individual_param_df[individual_param_df['model'].isin(included_models)]
-individual_param_df = individual_param_df[individual_param_df['model'] != 'actr']
 
-# plot the distribution of the parameters
-sns.set_theme(style='white')
-sns.displot(data=individual_param_df, x='param_2', hue='model', col='condition', kind='kde', fill=True)
-# set the x-axis limit
-plt.xlim(0, 1)
-plt.show()
+individual_param_df.to_csv('./data/IndividualParamResults.csv', index=False)
 
-print(individual_param_df.groupby(['model', 'condition'])['param_2'].mean())
-print(individual_param_df.groupby(['model', 'condition'])['param_2'].std())
-
-# individual_param_df.to_csv('./data/IndividualParamResults.csv', index=False)
+dual_param = individual_param_df[individual_param_df['model'] == 'Dual'].reset_index()
+dual_param.loc[:, 'Subnum'] = dual_param.index + 1
 
 # ======================================================================================================================
 # Extract the individual AIC and BIC values
@@ -113,7 +103,7 @@ individual_indices_df = individual_indices_df[individual_indices_df['condition']
 individual_indices_df = individual_indices_df[individual_indices_df['model'].isin(included_models)]
 individual_indices_df.drop('index', axis=1, inplace=True)
 
-# individual_indices_df.to_csv('./data/IndividualIndices.csv', index=False)
+individual_indices_df.to_csv('./data/IndividualIndices.csv', index=False)
 
 
 # import the data
@@ -148,37 +138,27 @@ bayes_matrix_MV = create_bayes_matrix(fitting_results_MV, 'MV Bayes Factor Matri
 bayes_matrix_LV = create_bayes_matrix(fitting_results_LV, 'LV Bayes Factor Matrix')
 
 # explode ProcessChosen
-HV_df, process_chosen_HV = process_chosen_prop(Recency_HV_results, HV_df, sub=True)
-MV_df, process_chosen_MV = process_chosen_prop(Dual_MV_results, MV_df, sub=True)
-LV_df, process_chosen_LV = process_chosen_prop(Dual_LV_results, LV_df, sub=True)
+HV_df, process_chosen_HV = process_chosen_prop(Dual_HV_results, HV_df, sub=True, value='best_weight')
+MV_df, process_chosen_MV = process_chosen_prop(Dual_MV_results, MV_df, sub=True, value='best_weight')
+LV_df, process_chosen_LV = process_chosen_prop(Dual_LV_results, LV_df, sub=True, value='best_weight')
 
 # the proportion of choosing the Dirichlet process
-HV_df['best_process_chosen'] = (HV_df['best_process_chosen'] == 'Dir').astype(int)
-print(HV_df.groupby('TrialType')['best_process_chosen'].mean())
+print(HV_df.groupby('TrialType')['best_weight'].mean())
 
 
 dfs = [HV_df, MV_df, LV_df]
 process_chosen_df = [process_chosen_HV, process_chosen_MV, process_chosen_LV]
 
-for i in range(len(dfs)):
-    prop_optimal = dfs[i].groupby(['Subnum', 'TrialType'])['bestOption'].mean().reset_index()
-    process_chosen_Dir = process_chosen_df[i][process_chosen_df[i]['best_process_chosen'] == 'Dir']
-    df_corr = pd.merge(prop_optimal, process_chosen_Dir, on=['Subnum', 'TrialType'], how='outer')
-    df_corr.fillna(0, inplace=True)
-    df_corr = df_corr[df_corr['TrialType'] == 'CA']
-    corr, p = pearsonr(df_corr['bestOption'], df_corr['proportion'])
-    print(f"correlation: {corr}, p-value: {p}")
-
 # combine the AIC and BIC values
 columns = ['AIC', 'BIC', 'Model']
-hv_results = [delta_HV_results, decay_HV_results, Dual_HV_results]
-mv_results = [delta_MV_results, decay_MV_results, Dual_MV_results]
-lv_results = [delta_LV_results, decay_LV_results, Dual_LV_results]
+hv_results = [delta_HV_results, decay_HV_results, Dual_HV_results, Obj_HV_results, actr_HV_results]
+mv_results = [delta_MV_results, decay_MV_results, Dual_MV_results, Obj_MV_results, actr_MV_results]
+lv_results = [delta_LV_results, decay_LV_results, Dual_LV_results, Obj_LV_results, actr_LV_results]
 
 
 def combine_results(results):
     combined_results = []
-    model_names = ['Delta', 'Decay', 'Dual Process']
+    model_names = ['Delta', 'Decay', 'Dual', 'Obj', 'ACTR']
     for i in range(len(results)):
         model_results = results[i]
         model_results['Model'] = model_names[i]
@@ -210,50 +190,24 @@ combined_LV_results = combine_results(lv_results)
 # plt.show()
 
 
-# find out the significance of the model
-for df in [HV_df, MV_df, LV_df]:
-    df['best_process_chosen'] = (df['best_process_chosen'] == 'Dir').astype(int)
-
 # combine the dataframes and add a column for the condition
 HV_df['Condition'] = 'HV'
 MV_df['Condition'] = 'MV'
 LV_df['Condition'] = 'LV'
 combined_df = pd.concat([HV_df, MV_df, LV_df]).reset_index()
 combined_df['Subnum'] = combined_df.index // 250 + 1
-# combined_df.to_csv('./data/CombinedVarianceData.csv', index=False)
+combined_df = combined_df.merge(dual_param, on='Subnum')
+col_to_drop = ['index_x', 'index_y', 'Unnamed: 0', 'fname', 'AdvChoice', 'BlockCentered', 'subjID', 'Block']
+combined_df.drop(col_to_drop, axis=1, inplace=True)
+combined_df.rename(columns={'param_1': 't', 'param_2': 'a', 'param_3': 'subj_weight'}, inplace=True)
 
-combined_df_CA = combined_df[combined_df['TrialType'] == 'CA']
+# apply the function to calculate the objective weight
+for row in combined_df.iterrows():
+    row = row[1]
+    combined_df.loc[row.name, 'obj_weight'] = calculate_obj_weight(row['best_weight'], row['subj_weight'])
 
-model = smf.logit('bestOption ~ best_process_chosen + TrialType + Condition', data=combined_df)
-result = model.fit()
-print(result.summary())
-
-# model = smf.logit('bestOption ~ best_process_chosen + Condition', data=combined_df_CA)
-# result = model.fit()
-# print(result.summary())
-
-# Assuming 'result' is the fitted model object
-cov = result.cov_params()
-diff_se = np.sqrt(
-    cov.loc['TrialType[T.CA]', 'TrialType[T.CA]'] + cov.loc['TrialType[T.AD]', 'TrialType[T.AD]'] - 2 * cov.loc[
-        'TrialType[T.CA]', 'TrialType[T.AD]'])
-z_score = (-1.5318 - 0.2048) / diff_se
-p_value = norm.sf(abs(z_score)) * 2  # two-tailed p-value
-
-print("Z-score for difference:", z_score)
-print("P-value for difference:", p_value)
-
-
-# RT analysis
-# process_rt = LV_df.groupby('best_process_chosen')['RT'].mean().reset_index()
-# # do a t-test to compare the reaction times of the two processes
-#
-# ttest_ind(LV_df[LV_df['best_process_chosen'] == 'Gau']['RT'], LV_df[LV_df['best_process_chosen'] == 'Dir']['RT'])
-#
-# # Fit a linear model
-# model = smf.mixedlm('RT ~ best_process_chosen', data=LV_df, groups=LV_df['Subnum'] + LV_df['SetSeen.'])
-# result = model.fit()
-# print(result.summary())
+# save the data
+combined_df.to_csv('./data/CombinedVarianceData.csv', index=False)
 
 
 # # ====================================================================================================================
