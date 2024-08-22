@@ -85,8 +85,13 @@ all_posthoc = all_posthoc.merge(data_summary, on=['Subnum', 'Condition', 'TrialT
 # add summary columns to all_posthoc
 all_posthoc['AE'] = np.abs(all_posthoc['bestOption'] - all_posthoc['choice'])
 all_posthoc['squared_error'] = all_posthoc['AE'] ** 2
+all_posthoc.to_csv('./data/all_posthoc.csv', index=False)
 
 # get RMSE for each model
+RMSE_all = all_posthoc.groupby(['Subnum', 'Condition', 'TrialType', 'model'])['squared_error'].mean().reset_index()
+RMSE_all['RMSE'] = RMSE_all['squared_error'].apply(np.sqrt)
+RMSE_all.to_csv('./data/RMSE_all.csv', index=False)
+
 RMSE = all_posthoc.groupby(['model'])['squared_error'].mean().reset_index()
 RMSE['RMSE'] = RMSE['squared_error'].apply(np.sqrt)
 

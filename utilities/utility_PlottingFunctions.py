@@ -1,4 +1,5 @@
 import numpy as np
+import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap, Normalize
 from mpl_toolkits.mplot3d import Axes3D
@@ -7,7 +8,7 @@ from scipy.stats import dirichlet, multivariate_normal
 import matplotlib.tri as mtri
 from matplotlib import cm
 from matplotlib import font_manager as fm
-
+from sklearn.linear_model import LinearRegression
 
 # load the font
 font_path = 'utilities/AbhayaLibre-ExtraBold.ttf'
@@ -265,4 +266,63 @@ def plot_planes(ax, fixed_condition, x_range, z_range, color, alpha=0.3):
     Y_plane = np.full_like(X_plane, fixed_condition)
 
     ax.plot_surface(X_plane, Y_plane, Z_plane, color=color, alpha=alpha, rstride=1000, cstride=1000, edgecolors='none')
+
+
+def three_planes(summary, var, x_label='Dirichlet Weight', name='Weight_Optimal'):
+    # Create a 3D plot to show the relationship between weight, best_option, and condition
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    # Set conditions and colors
+    conditions = summary['Condition'].unique()
+    condition_names = ['HV', 'MV', 'LV']
+    color = sns.color_palette('deep', len(conditions))
+
+    # Get the min and max of the x (Dirichlet Weight) and z (% of Choosing C) axes
+    x_min, x_max = summary[var].min(), summary[var].max()
+    z_min, z_max = summary['bestOption'].min(), summary['bestOption'].max()
+
+    # Loop through each condition, fit a linear regression, and plot the line
+    for condition in conditions:
+        subset = summary[summary['Condition'] == condition]
+
+        # Extract the variables for regression
+        X = subset[[var]].values  # Reshaped to fit the model
+        y = subset['bestOption'].values
+
+        # Fit the linear regression model
+        model = LinearRegression()
+        model.fit(X, y)
+
+        # Generate the regression line
+        x_vals = np.linspace(X.min(), X.max(), 100)
+        y_vals = model.predict(x_vals.reshape(-1, 1))
+
+        # Plot the original data points
+        condition_index = 3 - condition
+        ax.scatter(subset[var], subset['Condition'], subset['bestOption'], marker='o',
+                   color=color[condition_index], alpha=0.4)
+
+        # Plot the regression line
+        ax.plot(x_vals, [condition] * len(x_vals), y_vals, label=f'{condition_names[condition_index]}',
+                color=color[condition_index])
+
+        # Plot a plane at each condition
+        plot_planes(ax, condition, (x_min, x_max), (z_min, z_max), color=color[condition_index], alpha=0.12)
+
+    # Set the labels and title
+    ax.set_yticks([1, 2, 3])
+    ax.set_yticklabels(['LV', 'MV', 'HV'], fontproperties=prop)
+    ax.set_box_aspect([1, 2, 1])
+    ax.set_ylim(1, 3)
+    ax.set_xlabel(x_label, fontproperties=prop)
+    ax.set_ylabel('Condition', fontproperties=prop, labelpad=10)
+    ax.set_zlabel('% of Choosing C in CA Trials', fontproperties=prop)
+    # set font for tick labels
+    for label in (ax.get_xticklabels() + ax.get_yticklabels() + ax.get_zticklabels()):
+        label.set_fontproperties(prop)
+    ax.view_init(azim=-55)
+    plt.legend(title='Condition', prop=prop, title_fontproperties=prop, loc='upper left')
+    plt.savefig(f'./figures/{name}.png', dpi=1000)
+    plt.show()
 

@@ -42,24 +42,23 @@ if __name__ == '__main__':
 
     # # this is for testing
     # # select the first 500 rows for testing
-    # testing_data = dict_generator(HV_df.iloc[:500, :])
+    # testing_data = dict_generator(HV_df.iloc[:250, :])
     # # testing_data = dict_generator(HV_df.iloc[501:510, :])
     # # testing_data = dict_generator(HV_df)
-    # result = model.fit(testing_data, 'Param', num_iterations=1, weight_Gau='softmax', weight_Dir='softmax',
+    # result = model.fit(testing_data, 'Entropy_Dis_ID', num_iterations=10, weight_Gau='softmax', weight_Dir='softmax',
     #                    arbi_option='Entropy', Dir_fun='Linear_Recency', Gau_fun='Naive_Recency')
-    # result_delta = actr_original.fit(testing_data, num_iterations=10)
+    # # result_delta = actr_original.fit(testing_data, num_iterations=10)
     # print(result['AIC'].mean())
     # print(result['BIC'].mean())
+    # #
+    # # print(result_delta['AIC'].mean())
+    # # print(result_delta['BIC'].mean())
 
-    # print(result_delta['AIC'].mean())
-    # print(result_delta['BIC'].mean())
-
-    # result.to_csv('./data/DataFitting/FittingResults/BayesianRecencySW_HV_results.csv', index=False)
 
     # ==================================================================================================================
     # Model fitting starts here
     # ==================================================================================================================
-    fitting_models = ['Gau', 'Dir']
+    fitting_models = ['Entropy_Dis_ID']
     Gau_fun = ['Naive_Recency']
     Dir_fun = ['Linear_Recency']
     Dir_weight = ['softmax']

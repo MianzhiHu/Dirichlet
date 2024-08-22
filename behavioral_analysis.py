@@ -5,6 +5,7 @@ import seaborn as sns
 import matplotlib.ticker as ticker
 from scipy.stats import f_oneway, ttest_ind, ttest_1samp, kruskal
 from statsmodels.stats.multitest import multipletests
+from statsmodels.stats.multicomp import pairwise_tukeyhsd
 import scikit_posthocs as sp
 from utilities.utility_DataAnalysis import option_mean_calculation, count_choices, summary_choices
 from utilities.utility_PlottingFunctions import prop
@@ -17,10 +18,11 @@ summary = data_process[(data_process['TrialType'] == 'CA') & (data_process['mode
     bestOption=('bestOption', 'mean'),
     t=('t', 'mean'),
     a=('a', 'mean'),
-    obj_weight=('obj_weight', 'mean'),
+    obj_weight=('best_obj_weight', 'mean'),
     subj_weight=('subj_weight', 'mean'),
     best_weight=('best_weight', 'mean')
 ).reset_index()
+summary.to_csv('./data/CA_summary.csv', index=False)
 
 sub_hv_data = data_process[(data_process['Condition'] == 'HV') & (data_process['TrialType'].isin(['AB', 'CD']))]
 sub_mv_data = data_process[(data_process['Condition'] == 'MV') & (data_process['TrialType'].isin(['AB', 'CD']))]
@@ -93,21 +95,6 @@ if __name__ == '__main__':
     summary_hv = summary[summary['Condition'] == 'HV']
     summary_mv = summary[summary['Condition'] == 'MV']
     summary_lv = summary[summary['Condition'] == 'LV']
-
-    h_subj, p_subj = kruskal(summary_hv['subj_weight'], summary_mv['subj_weight'], summary_lv['subj_weight'])
-    h_obj, p_obj = kruskal(summary_hv['obj_weight'], summary_mv['obj_weight'], summary_lv['obj_weight'])
-    h_best, p_best = kruskal(summary_hv['best_weight'], summary_mv['best_weight'], summary_lv['best_weight'])
-    print(f"Subjective weight: {h_subj}, {p_subj}")
-    print(f"Objective weight: {h_obj}, {p_obj}")
-    print(f"Best weight: {h_best}, {p_best}")
-
-    # Follow-up dunn's test
-    print(sp.posthoc_dunn([summary_hv['subj_weight'], summary_mv['subj_weight'], summary_lv['subj_weight']],
-                          p_adjust='bonferroni'))
-    print(sp.posthoc_dunn([summary_hv['obj_weight'], summary_mv['obj_weight'], summary_lv['obj_weight']],
-                          p_adjust='bonferroni'))
-    print(sp.posthoc_dunn([summary_hv['best_weight'], summary_mv['best_weight'], summary_lv['best_weight']],
-                          p_adjust='bonferroni'))
 
     # analysis for the proportion of optimal choices
     sub_all_count = pd.pivot_table(sub_all_count, index='Subnum', columns=['TrialType'],

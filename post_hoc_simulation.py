@@ -45,10 +45,14 @@ if __name__ == '__main__':
     model_actr = ComputationalModels(model_type='ACTR')
 
     # simulate the data
-    LV_results = [Dual_LV_results, Obj_LV_results]
-    MV_results = [Dual_MV_results, Obj_MV_results]
-    HV_results = [Dual_HV_results, Obj_HV_results]
-    models = ['Entropy_Dis_ID', 'Entropy_Dis']
+    # LV_results = [Dual_LV_results, Obj_LV_results]
+    # MV_results = [Dual_MV_results, Obj_MV_results]
+    # HV_results = [Dual_HV_results, Obj_HV_results]
+    # models = ['Entropy_Dis_ID', 'Entropy_Dis']
+    LV_results = [Dual_LV_results]
+    MV_results = [Dual_MV_results]
+    HV_results = [Dual_HV_results]
+    models = ['Entropy_Dis_ID']
     decay_results = [decay_LV_results, decay_MV_results, decay_HV_results]
     delta_results = [delta_LV_results, delta_MV_results, delta_HV_results]
     actr_results = [actr_LV_results, actr_MV_results, actr_HV_results]
@@ -60,41 +64,41 @@ if __name__ == '__main__':
     sd = [lv, mv, hv]
     df = [LV_df, MV_df, HV_df]
 
-    # for i in range(len(LV_results)):
-    #     file_name = f'./data/Post_hoc/{models[i]}_posthoc_LV.csv'
-    #     if not os.path.exists(file_name):
-    #         print(f"Simulating {models[i]}_posthoc_LV.csv")
-    #         simulated_data = model.post_hoc_simulation(LV_results[i], LV_df, models[i],
-    #                                                    reward_means, lv, Gau_fun='Naive_Recency',
-    #                                                    Dir_fun='Linear_Recency',
-    #                                                    num_iterations=1000)
-    #         simulated_data.to_csv(file_name, index=False)
-    #     else:
-    #         print(f"{models[i]}_posthoc_LV.csv already exists")
-    #
-    # for i in range(len(MV_results)):
-    #     file_name = f'./data/Post_hoc/{models[i]}_posthoc_MV.csv'
-    #     if not os.path.exists(file_name):
-    #         print(f"Simulating {models[i]}_posthoc_MV.csv")
-    #         simulated_data = model.post_hoc_simulation(MV_results[i], MV_df, models[i],
-    #                                                    reward_means, mv, Gau_fun='Naive_Recency',
-    #                                                    Dir_fun='Linear_Recency',
-    #                                                    num_iterations=1000)
-    #         simulated_data.to_csv(file_name, index=False)
-    #     else:
-    #         print(f"{models[i]}_posthoc_MV.csv already exists")
-    #
-    # for i in range(len(HV_results)):
-    #     file_name = f'./data/Post_hoc/{models[i]}_posthoc_HV.csv'
-    #     if not os.path.exists(file_name):
-    #         print(f"Simulating {models[i]}_posthoc_HV.csv")
-    #         simulated_data = model.post_hoc_simulation(HV_results[i], HV_df, models[i],
-    #                                                    reward_means, hv, Gau_fun='Naive_Recency',
-    #                                                    Dir_fun='Linear_Recency',
-    #                                                    num_iterations=1000)
-    #         simulated_data.to_csv(file_name, index=False)
-    #     else:
-    #         print(f"{models[i]}_posthoc_HV.csv already exists")
+    for i in range(len(LV_results)):
+        file_name = f'./data/Post_hoc/{models[i]}_posthoc_LV.csv'
+        if not os.path.exists(file_name):
+            print(f"Simulating {models[i]}_posthoc_LV.csv")
+            simulated_data = model.post_hoc_simulation(LV_results[i], LV_df, models[i],
+                                                       reward_means, lv, Gau_fun='Naive_Recency',
+                                                       Dir_fun='Linear_Recency',
+                                                       num_iterations=1000)
+            simulated_data.to_csv(file_name, index=False)
+        else:
+            print(f"{models[i]}_posthoc_LV.csv already exists")
+
+    for i in range(len(MV_results)):
+        file_name = f'./data/Post_hoc/{models[i]}_posthoc_MV.csv'
+        if not os.path.exists(file_name):
+            print(f"Simulating {models[i]}_posthoc_MV.csv")
+            simulated_data = model.post_hoc_simulation(MV_results[i], MV_df, models[i],
+                                                       reward_means, mv, Gau_fun='Naive_Recency',
+                                                       Dir_fun='Linear_Recency',
+                                                       num_iterations=1000)
+            simulated_data.to_csv(file_name, index=False)
+        else:
+            print(f"{models[i]}_posthoc_MV.csv already exists")
+
+    for i in range(len(HV_results)):
+        file_name = f'./data/Post_hoc/{models[i]}_posthoc_HV.csv'
+        if not os.path.exists(file_name):
+            print(f"Simulating {models[i]}_posthoc_HV.csv")
+            simulated_data = model.post_hoc_simulation(HV_results[i], HV_df, models[i],
+                                                       reward_means, hv, Gau_fun='Naive_Recency',
+                                                       Dir_fun='Linear_Recency',
+                                                       num_iterations=1000)
+            simulated_data.to_csv(file_name, index=False)
+        else:
+            print(f"{models[i]}_posthoc_HV.csv already exists")
     #
     # # decay model
     # for i in range(len(decay_results)):

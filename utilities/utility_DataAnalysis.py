@@ -69,29 +69,32 @@ def safely_evaluate(x):
         return [x]  # Wrap in a list for consistency
 
 
-def process_chosen_prop(results, data, sub=False, value='best_process_chosen'):
-    results[value] = results[value].apply(safely_evaluate)
-    process_chosen = results[value].explode()
+def process_chosen_prop(results, data, sub=False, values=None):
+
     pd.options.mode.chained_assignment = None
-    data[value] = process_chosen.values
 
-    # check if there is a TrialType column
+    # Loop through each value in the list of values
+    for value in values:
+        # Apply safely_evaluate and explode the column
+        results[value] = results[value].apply(safely_evaluate)
+        process_chosen = results[value].explode()
+        # Create a new column in data for each value processed
+        data[value] = process_chosen.values
+
+    # Check if there is a TrialType column, create if absent
     if 'TrialType' not in data.columns:
-        mappping = {0: 'AB', 1: 'CD', 2: 'CA', 3: 'CB', 4: 'AD', 5: 'BD'}
-        data['TrialType'] = data['SetSeen.'].map(mappping)
+        mapping = {0: 'AB', 1: 'CD', 2: 'CA', 3: 'CB', 4: 'AD', 5: 'BD'}
+        data['TrialType'] = data['SetSeen.'].map(mapping)
 
+    # Process chosen proportions and combine into one DataFrame
     if sub:
-        process_chosen_df = data.groupby(['Subnum', 'TrialType'])[value].value_counts(normalize=True).reset_index()
+        process_chosen_df = data.groupby(['Subnum', 'TrialType'])[values].apply(
+            lambda x: x.value_counts(normalize=True)).reset_index()
     else:
-        process_chosen_df = data.groupby('TrialType')[value].value_counts(normalize=True).unstack().fillna(0)
+        process_chosen_df = data.groupby('TrialType')[values].apply(
+            lambda x: x.value_counts(normalize=True)).unstack().fillna(0).reset_index()
 
     return data, process_chosen_df
-
-
-# We rearrange the formula to solve for obj_weight
-def calculate_obj_weight(weight_dir, subj_weight):
-    obj_weight = (weight_dir * (1 - subj_weight)) / (weight_dir * (1 - subj_weight) + (1 - weight_dir) * subj_weight)
-    return obj_weight
 
 
 def count_choices(data):

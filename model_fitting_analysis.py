@@ -5,8 +5,7 @@ from scipy.stats import ttest_ind, pearsonr, norm
 import statsmodels.formula.api as smf
 from utilities.utility_DataAnalysis import (mean_AIC_BIC, create_bayes_matrix, process_chosen_prop,
                                             calculate_mean_squared_error, fitting_summary_generator,
-                                            save_df_to_word, individual_param_generator, calculate_difference,
-                                            calculate_obj_weight)
+                                            save_df_to_word, individual_param_generator, calculate_difference)
 from utilities.utility_DataAnalysis import extract_all_parameters
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -138,9 +137,9 @@ bayes_matrix_MV = create_bayes_matrix(fitting_results_MV, 'MV Bayes Factor Matri
 bayes_matrix_LV = create_bayes_matrix(fitting_results_LV, 'LV Bayes Factor Matrix')
 
 # explode ProcessChosen
-HV_df, process_chosen_HV = process_chosen_prop(Dual_HV_results, HV_df, sub=True, value='best_weight')
-MV_df, process_chosen_MV = process_chosen_prop(Dual_MV_results, MV_df, sub=True, value='best_weight')
-LV_df, process_chosen_LV = process_chosen_prop(Dual_LV_results, LV_df, sub=True, value='best_weight')
+HV_df, process_chosen_HV = process_chosen_prop(Dual_HV_results, HV_df, sub=True, values=['best_weight', 'best_obj_weight'])
+MV_df, process_chosen_MV = process_chosen_prop(Dual_MV_results, MV_df, sub=True, values=['best_weight', 'best_obj_weight'])
+LV_df, process_chosen_LV = process_chosen_prop(Dual_LV_results, LV_df, sub=True, values=['best_weight', 'best_obj_weight'])
 
 # the proportion of choosing the Dirichlet process
 print(HV_df.groupby('TrialType')['best_weight'].mean())
@@ -201,10 +200,7 @@ col_to_drop = ['index_x', 'index_y', 'Unnamed: 0', 'fname', 'AdvChoice', 'BlockC
 combined_df.drop(col_to_drop, axis=1, inplace=True)
 combined_df.rename(columns={'param_1': 't', 'param_2': 'a', 'param_3': 'subj_weight'}, inplace=True)
 
-# apply the function to calculate the objective weight
-for row in combined_df.iterrows():
-    row = row[1]
-    combined_df.loc[row.name, 'obj_weight'] = calculate_obj_weight(row['best_weight'], row['subj_weight'])
+
 
 # save the data
 combined_df.to_csv('./data/CombinedVarianceData.csv', index=False)

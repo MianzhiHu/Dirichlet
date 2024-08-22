@@ -39,6 +39,10 @@ def fit_participant(model, participant_id, pdata, model_type, weight_fun, num_it
     best_initial_guess = None
     best_parameters = None
     best_weight = None
+    best_obj_weight = None
+    best_EV_Gau = None
+    best_EV_Dir = None
+    best_EV = None
 
     for _ in range(num_iterations):
 
@@ -96,6 +100,10 @@ def fit_participant(model, participant_id, pdata, model_type, weight_fun, num_it
                 best_parameters = result.x
                 best_process_chosen = model.process_chosen
                 best_weight = model.weight_history
+                best_obj_weight = model.obj_weight_history
+                best_EV_Gau = model.EV_Gau
+                best_EV_Dir = model.EV_Dir
+                best_EV = model.EVs
         elif isinstance(result, (float, np.float64)):
             best_nll = result
             best_initial_guess = initial_guess
@@ -110,11 +118,15 @@ def fit_participant(model, participant_id, pdata, model_type, weight_fun, num_it
         'participant_id': participant_id,
         'best_initial_guess': best_initial_guess,
         'best_parameters': best_parameters,
+        'EV_Gau': best_EV_Gau,
+        'EV_Dir': best_EV_Dir,
+        'EV': best_EV,
         'best_process_chosen': best_process_chosen if model_type in ('Dual', 'Recency', 'Threshold',
                                                                      'Threshold_Recency', 'Dual_Dis') else None,
         'best_weight': best_weight if model_type in ('Entropy', 'Entropy_Recency', 'Confidence', 'Confidence_Recency',
                                                      'Threshold', 'Threshold_Recency', 'Entropy_Dis', 'Entropy_Dis_ID'
                                                      ) else None,
+        'best_obj_weight': best_obj_weight if model_type in ('Entropy_Dis', 'Entropy_Dis_ID') else None,
         'total_nll': best_nll,
         'AIC': aic,
         'BIC': bic
@@ -160,6 +172,7 @@ class DualProcessModel:
         self.reward_history = [[0] for _ in range(4)]
         self.process_chosen = []
         self.weight_history = []
+        self.obj_weight_history = []
 
         self.t = None
         self.a = None
@@ -311,6 +324,7 @@ class DualProcessModel:
         self.reward_history = [[] for _ in range(4)]
         self.process_chosen = []
         self.weight_history = []
+        self.obj_weight_history = []
 
     def softmax(self, chosen_prob, alt1_prob, chosen, alt1, n1, n2):
         c = 3 ** self.t - 1
@@ -1332,6 +1346,7 @@ class DualProcessModel:
         nll = 0
 
         self.weight_history = []
+        self.obj_weight_history = []
 
         self.a = params[self.param_start + 1]
         self.weight = params[self.param_start + 2]
@@ -1351,6 +1366,7 @@ class DualProcessModel:
             obj_weight = gau_entropy / (dir_entropy + gau_entropy)
             weight_dir = (self.weight * obj_weight) / (self.weight * obj_weight + (1 - self.weight) * (1 - obj_weight))
 
+            self.obj_weight_history.append(obj_weight)
             self.weight_history.append(weight_dir)
 
             dir_prob = self.action_selection_Dir(self.EV_Dir[cs_mapped[0]], self.EV_Dir[cs_mapped[1]],
@@ -1595,7 +1611,9 @@ class DualProcessModel:
             for future in futures:
                 results.append(future.result())
 
-        return pd.DataFrame(results)
+        results_df = pd.DataFrame(results).dropna(how='all', axis=1)
+
+        return results_df
 
     def post_hoc_simulation(self, fitting_result, original_data, model, reward_means, reward_sd, AB_freq=100,
                             CD_freq=50, sim_trials=250, num_iterations=1000, arbi_option='Entropy',
