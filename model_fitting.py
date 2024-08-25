@@ -40,25 +40,10 @@ if __name__ == '__main__':
     actr = ComputationalModels("ACTR")
     actr_original = ComputationalModels("ACTR_Ori")
 
-    # # this is for testing
-    # # select the first 500 rows for testing
-    # testing_data = dict_generator(HV_df.iloc[:250, :])
-    # # testing_data = dict_generator(HV_df.iloc[501:510, :])
-    # # testing_data = dict_generator(HV_df)
-    # result = model.fit(testing_data, 'Entropy_Dis_ID', num_iterations=10, weight_Gau='softmax', weight_Dir='softmax',
-    #                    arbi_option='Entropy', Dir_fun='Linear_Recency', Gau_fun='Naive_Recency')
-    # # result_delta = actr_original.fit(testing_data, num_iterations=10)
-    # print(result['AIC'].mean())
-    # print(result['BIC'].mean())
-    # #
-    # # print(result_delta['AIC'].mean())
-    # # print(result_delta['BIC'].mean())
-
-
     # ==================================================================================================================
     # Model fitting starts here
     # ==================================================================================================================
-    fitting_models = ['Entropy_Dis_ID']
+    fitting_models = ['Entropy_Dis_ID', 'Entropy_Dis', 'Gau', 'Dir']
     Gau_fun = ['Naive_Recency']
     Dir_fun = ['Linear_Recency']
     Dir_weight = ['softmax']
@@ -109,36 +94,36 @@ if __name__ == '__main__':
     # ------------------------------------------------------------------------------------------------------------------
     # Fit the traditional models: decay, delta, actr, actr_original_version
     # ------------------------------------------------------------------------------------------------------------------
-    # HV_decay = decay.fit(HV, num_iterations=200)
-    # HV_delta = delta.fit(HV, num_iterations=200)
-    # HV_actr = actr.fit(HV, num_iterations=200)
-    # HV_actr_original = actr_original.fit(HV, num_iterations=200)
-    #
-    # MV_decay = decay.fit(MV, num_iterations=200)
-    # MV_delta = delta.fit(MV, num_iterations=200)
-    # MV_actr = actr.fit(MV, num_iterations=200)
-    # MV_actr_original = actr_original.fit(MV, num_iterations=200)
-    #
-    # LV_decay = decay.fit(LV, num_iterations=200)
-    # LV_delta = delta.fit(LV, num_iterations=200)
-    # LV_actr = actr.fit(LV, num_iterations=200)
-    # LV_actr_original = actr_original.fit(LV, num_iterations=200)
-    #
-    # # save
-    # HV_decay.to_csv('./data/DataFitting/FittingResults/decay_HV_results.csv', index=False)
-    # HV_delta.to_csv('./data/DataFitting/FittingResults/delta_HV_results.csv', index=False)
-    # HV_actr.to_csv('./data/DataFitting/FittingResults/actr_HV_results.csv', index=False)
-    # HV_actr_original.to_csv('./data/DataFitting/FittingResults/actr_original_HV_results.csv', index=False)
-    #
-    # MV_decay.to_csv('./data/DataFitting/FittingResults/decay_MV_results.csv', index=False)
-    # MV_delta.to_csv('./data/DataFitting/FittingResults/delta_MV_results.csv', index=False)
-    # MV_actr.to_csv('./data/DataFitting/FittingResults/actr_MV_results.csv', index=False)
-    # MV_actr_original.to_csv('./data/DataFitting/FittingResults/actr_original_MV_results.csv', index=False)
-    #
-    # LV_decay.to_csv('./data/DataFitting/FittingResults/decay_LV_results.csv', index=False)
-    # LV_delta.to_csv('./data/DataFitting/FittingResults/delta_LV_results.csv', index=False)
-    # LV_actr.to_csv('./data/DataFitting/FittingResults/actr_LV_results.csv', index=False)
-    # LV_actr_original.to_csv('./data/DataFitting/FittingResults/actr_original_LV_results.csv', index=False)
-    #
-    # print(f'Time taken: {time.time() - start}')
+    HV_decay = decay.fit(HV, num_iterations=200)
+    HV_delta = delta.fit(HV, num_iterations=200)
+    HV_actr = actr.fit(HV, num_iterations=200)
+    HV_actr_original = actr_original.fit(HV, num_iterations=200)
+
+    MV_decay = decay.fit(MV, num_iterations=200)
+    MV_delta = delta.fit(MV, num_iterations=200)
+    MV_actr = actr.fit(MV, num_iterations=200)
+    MV_actr_original = actr_original.fit(MV, num_iterations=200)
+
+    LV_decay = decay.fit(LV, num_iterations=200)
+    LV_delta = delta.fit(LV, num_iterations=200)
+    LV_actr = actr.fit(LV, num_iterations=200)
+    LV_actr_original = actr_original.fit(LV, num_iterations=200)
+
+    # save
+    HV_decay.to_csv('./data/DataFitting/FittingResults/decay_HV_results.csv', index=False)
+    HV_delta.to_csv('./data/DataFitting/FittingResults/delta_HV_results.csv', index=False)
+    HV_actr.to_csv('./data/DataFitting/FittingResults/actr_HV_results.csv', index=False)
+    HV_actr_original.to_csv('./data/DataFitting/FittingResults/actr_original_HV_results.csv', index=False)
+
+    MV_decay.to_csv('./data/DataFitting/FittingResults/decay_MV_results.csv', index=False)
+    MV_delta.to_csv('./data/DataFitting/FittingResults/delta_MV_results.csv', index=False)
+    MV_actr.to_csv('./data/DataFitting/FittingResults/actr_MV_results.csv', index=False)
+    MV_actr_original.to_csv('./data/DataFitting/FittingResults/actr_original_MV_results.csv', index=False)
+
+    LV_decay.to_csv('./data/DataFitting/FittingResults/decay_LV_results.csv', index=False)
+    LV_delta.to_csv('./data/DataFitting/FittingResults/delta_LV_results.csv', index=False)
+    LV_actr.to_csv('./data/DataFitting/FittingResults/actr_LV_results.csv', index=False)
+    LV_actr_original.to_csv('./data/DataFitting/FittingResults/actr_original_LV_results.csv', index=False)
+
+    print(f'Time taken: {time.time() - start}')
 

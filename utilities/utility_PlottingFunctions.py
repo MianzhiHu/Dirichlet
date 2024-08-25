@@ -203,7 +203,7 @@ def crop_colormap(cmap, minval=0.0, maxval=1.0, n=100):
 
 # Generate a 3D visualization of the simulation results
 def visualization_3D(sim_summary, x_var='reward_ratio', y_var='var', z_var='proportion',
-                     x_label='Reward Ratio', y_label='Reward Variance', z_label='Proportion of Frequency Effects',
+                     x_label='Reward Ratio', y_label='Variance', z_label='Proportion of Frequency Effects',
                      minval=0.09, maxval=0.81, plot_type='surface', cmap='coolwarm', color='skyblue', elev=20,
                      azim=-135, title=True):
 
@@ -237,11 +237,14 @@ def visualization_3D(sim_summary, x_var='reward_ratio', y_var='var', z_var='prop
             axs[i].contourf(grid_x, grid_y, grid_z, zdir='y', offset=y.max(), cmap=cmap_x)
 
         if title:
-            axs[i].set_title(['Dual-Process', 'Delta', 'Decay', 'ACT-R'][i], fontproperties=prop, fontsize=20, pad=5)
+            axs[i].set_title(['Dual-Process', 'Delta', 'Decay', 'ACT-R'][i], fontproperties=prop, fontsize=25, pad=5)
 
-        axs[i].set_xlabel(x_label, fontproperties=prop)
-        axs[i].set_ylabel(y_label, fontproperties=prop)
-        axs[i].set_zlabel(z_label, fontproperties=prop)
+        axs[i].set_xlabel(x_label, fontproperties=prop, fontsize=15)
+        axs[i].set_ylabel(y_label, fontproperties=prop, fontsize=15)
+        axs[i].set_zlabel(z_label, fontproperties=prop, fontsize=15)
+        # set font for tick labels
+        for label in (axs[i].get_xticklabels() + axs[i].get_yticklabels() + axs[i].get_zticklabels()):
+            label.set_fontproperties(prop)
         axs[i].set_zlim(0, 1)
 
         # Set elevation and azimuth angles
@@ -254,7 +257,7 @@ def visualization_3D(sim_summary, x_var='reward_ratio', y_var='var', z_var='prop
         cbar_ax = fig.add_axes([0.95, 0.25, 0.01, 0.5])
         fig.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=cropped_cmap), cax=cbar_ax, orientation='vertical')
 
-    plt.savefig(f'./figures/simulation_{plot_type}.png', dpi=600)
+    plt.savefig(f'./figures/simulation_{plot_type}.png', dpi=1000)
     plt.show(dpi=600)
 
 
