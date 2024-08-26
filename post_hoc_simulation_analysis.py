@@ -98,7 +98,7 @@ RMSE['RMSE'] = RMSE['squared_error'].apply(np.sqrt)
 RMSE_CA = all_posthoc[all_posthoc['TrialType'] == 'CA'].groupby(['model'])['squared_error'].mean().reset_index()
 RMSE_CA['RMSE'] = RMSE_CA['squared_error'].apply(np.sqrt)
 
-RMSE_by_condition = all_posthoc.groupby(['Condition', 'model'])['squared_error'].mean().reset_index()
+RMSE_by_condition = all_posthoc.groupby(['Condition', 'model', 'TrialType'])['squared_error'].mean().reset_index()
 RMSE_by_condition['RMSE'] = RMSE_by_condition['squared_error'].apply(np.sqrt)
 
 MAE = all_posthoc.groupby(['model'])['AE'].mean().reset_index()

@@ -71,6 +71,43 @@ summary = data_CA.groupby(['Subnum', 'Condition']).agg(
 
 bins = np.linspace(0, 1, 11)
 
+# Plot for time series during training
+data_training = data[data['trial_index'] <= 150]
+data_training.loc[:, 'binned_trial_index'] = pd.cut(data_training['trial_index'], bins=10, labels=False)
+data_training['binned_trial_index'] = data_training['binned_trial_index'] + 1
+
+# put three conditions into three facets
+sns.set_style('whitegrid')
+g = sns.FacetGrid(data=data_training, col='Condition', hue='TrialType',
+                  palette=sns.color_palette('pastel')[2:], col_order=['LV', 'MV', 'HV'])
+g.map(sns.lineplot, 'binned_trial_index', 'bestOption', errorbar='se', err_style='bars')
+g.set_axis_labels('Blocks', '% of Choosing the Optimal Option')
+g.set_titles(col_template="{col_name}")
+g.set(ylim=(0, 1))
+# g.set(xticks=np.arange(1, 11, 1))
+g.add_legend(title='Trial Type')
+plt.savefig('./figures/Training.png', dpi=600)
+plt.show()
+
+
+data_transfer = data[data['trial_index'] > 150]
+data_transfer.loc[:, 'trial_index'] = data_transfer.groupby(['Subnum', 'TrialType']).cumcount() + 1
+
+# put three conditions into three facets
+sns.set_style('whitegrid')
+g = sns.FacetGrid(data=data_transfer, col='Condition', hue='TrialType',
+                  palette=sns.color_palette('pastel')[2:], col_order=['LV', 'MV', 'HV'])
+g.map(sns.lineplot, 'trial_index', 'bestOption', errorbar='se', err_style='bars')
+g.set_axis_labels('Trial Index', '% of Choosing the Optimal Option')
+g.set_titles(col_template="{col_name}")
+g.set(ylim=(0, 1))
+# g.set(xticks=np.arange(1, 11, 1))
+g.add_legend(title='Trial Type')
+plt.savefig('./figures/Transfer.png', dpi=600)
+plt.show()
+
+
+
 # Create a 3D plot to show the relationship between weight, best_option, and condition
 three_planes(summary, 'best_weight', x_label='Overall Dirichlet Weight', name='Overall_Weight_Optimal')
 
@@ -224,4 +261,36 @@ sns.despine()
 plt.savefig('./figures/HighLowDirichlet.png', dpi=1000)
 plt.show()
 
+# ======================================================================================================================
+# Plot for post-hoc simulation
+# ======================================================================================================================
+# Load the data
+all_posthoc = pd.read_csv('./data/all_posthoc.csv')
 
+# plot the distribution of AE
+sns.set_theme(style='white')
+plt.figure(figsize=(10, 6))
+sns.boxplot(data=all_posthoc, x='model', y='AE', hue='TrialType')
+# set model names on x-axis
+plt.xticks([0, 1, 2, 3, 4], ['Dual-Process', 'Dual-Obj', 'ACTR', 'Decay', 'Delta'])
+plt.xlabel('')
+plt.ylabel('Absolute Error')
+plt.legend(loc='upper left', bbox_to_anchor=(1, 1))
+sns.despine()
+plt.savefig('./figures/AE.png', dpi=600)
+plt.show()
+
+# plot separate bar plots for each trial type
+# rename the models
+all_posthoc['model'] = all_posthoc['model'].map({'Dual': 'Dual-Process', 'Obj': 'Dual-Obj', 'actr': 'ACTR',
+                                                 'decay': 'Decay', 'delta': 'Delta'})
+hue_order = ['Dual-Process', 'Dual-Obj', 'Delta', 'Decay', 'ACTR']
+sns.set_theme(style='white')
+g = sns.FacetGrid(data=all_posthoc, col='TrialType', col_wrap=3, margin_titles=True)
+g.map_dataframe(sns.barplot, x='Condition', y='squared_error', hue='model', palette=sns.color_palette('pastel'),
+                hue_order=hue_order)
+g.set_axis_labels('', 'Absolute Error')
+g.set_titles(col_template="{col_name}")
+g.add_legend(title='Model')
+plt.savefig('./figures/AE_TrialType.png', dpi=600)
+plt.show()

@@ -31,7 +31,7 @@ for key in fitting_results:
 # Generate the fitting summary
 # ======================================================================================================================
 # select the models to be compared
-included_models = ['decay', 'delta', 'actr', 'Dual', 'Obj']
+included_models = ['decay', 'delta', 'actr', 'Dual', 'Obj', 'Dir', 'Gau']
 indices_to_calculate = ['AIC', 'BIC']
 fitting_summary = fitting_summary_generator(fitting_results, included_models, indices_to_calculate)
 fitting_summary = fitting_summary.round(3)
