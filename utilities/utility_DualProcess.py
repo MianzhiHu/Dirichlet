@@ -939,19 +939,19 @@ class DualProcessModel:
         self.Gau_update_fun = self.Gau_fun_customized.get(Gau_fun, self.Gau_fun_mapping[self.model])
         self.Dir_update_fun = self.Dir_fun_customized.get(Dir_fun, self.Dir_fun_mapping[self.model])
 
-        # print(f'============================================================')
-        # print(f'In the current model, the Dirichlet process is updated using {self.Dir_update_fun.__name__} '
-        #       f'and the Gaussian process is updated using {self.Gau_update_fun.__name__}')
-        # print(f'Dirichlet process is selected using {self.action_selection_Dir.__name__} and '
-        #       f'Gaussian process is selected using {self.action_selection_Gau.__name__}')
-        # print(f'The arbitration mechanism used is {self.arbitration_function.__name__}')
-        # print(f'============================================================')
+        print(f'============================================================')
+        print(f'In the current model, the Dirichlet process is updated using {self.Dir_update_fun.__name__} '
+              f'and the Gaussian process is updated using {self.Gau_update_fun.__name__}')
+        print(f'Dirichlet process is selected using {self.action_selection_Dir.__name__} and '
+              f'Gaussian process is selected using {self.action_selection_Gau.__name__}')
+        print(f'The arbitration mechanism used is {self.arbitration_function.__name__}')
+        print(f'============================================================')
 
         all_results = []
 
         for iteration in range(num_iterations):
 
-            # print(f"Iteration {iteration + 1} of {num_iterations}")
+            print(f"Iteration {iteration + 1} of {num_iterations}")
 
             self.reset()
 
