@@ -9,6 +9,7 @@ from utilities.utility_DataAnalysis import (mean_AIC_BIC, create_bayes_matrix, p
 from utilities.utility_DataAnalysis import extract_all_parameters
 import seaborn as sns
 import matplotlib.pyplot as plt
+from utilities.utility_PlottingFunctions import prop
 
 # after the simulation has been completed, we can just load the simulated data from the folder
 # folder_path = './data/DataFitting/FittingResults/AlternativeModels/'
@@ -150,14 +151,14 @@ process_chosen_df = [process_chosen_HV, process_chosen_MV, process_chosen_LV]
 
 # combine the AIC and BIC values
 columns = ['AIC', 'BIC', 'Model']
-hv_results = [delta_HV_results, decay_HV_results, Dual_HV_results, Obj_HV_results, actr_HV_results]
-mv_results = [delta_MV_results, decay_MV_results, Dual_MV_results, Obj_MV_results, actr_MV_results]
-lv_results = [delta_LV_results, decay_LV_results, Dual_LV_results, Obj_LV_results, actr_LV_results]
+hv_results = [Dual_HV_results, delta_HV_results, decay_HV_results, actr_HV_results]
+mv_results = [Dual_MV_results, delta_MV_results, decay_MV_results, actr_MV_results]
+lv_results = [Dual_LV_results, delta_LV_results, decay_LV_results, actr_LV_results]
 
 
 def combine_results(results):
     combined_results = []
-    model_names = ['Delta', 'Decay', 'Dual', 'Obj', 'ACTR']
+    model_names = ['Dual', 'Delta', 'Decay', 'ACTR']
     for i in range(len(results)):
         model_results = results[i]
         model_results['Model'] = model_names[i]
@@ -169,24 +170,34 @@ combined_HV_results = combine_results(hv_results)
 combined_MV_results = combine_results(mv_results)
 combined_LV_results = combine_results(lv_results)
 
-# # plot the AIC and BIC values
-# sns.set_theme(style='white')
-# fig, ax = plt.subplots(1, 3, figsize=(15, 5))
-# sns.barplot(x='Model', y='AIC', data=combined_LV_results, ax=ax[0])
-# ax[0].set_title('Low Variance')
-# sns.barplot(x='Model', y='AIC', data=combined_MV_results, ax=ax[1])
-# ax[1].set_title('Moderate Variance')
-# sns.barplot(x='Model', y='AIC', data=combined_HV_results, ax=ax[2])
-# ax[2].set_title('High Variance')
-# for i in range(3):
-#     # remove the x label
-#     ax[i].set_xlabel('')
-#     # set lower y limit
-#     ax[i].set_ylim(bottom=120)
-# for i in (1, 2):
-#     ax[i].set_ylabel('')
-# sns.despine()
-# plt.show()
+# plot the AIC and BIC values
+sns.set_theme(style='white')
+fig, ax = plt.subplots(1, 3, figsize=(15, 5))
+sns.barplot(x='Model', y='BIC', data=combined_LV_results, ax=ax[0], errorbar=None, color='darkred')
+ax[0].set_title('LV')
+sns.barplot(x='Model', y='BIC', data=combined_MV_results, ax=ax[1], errorbar=None, color='darkred')
+ax[1].set_title('MV')
+sns.barplot(x='Model', y='BIC', data=combined_HV_results, ax=ax[2], errorbar=None, color='darkred')
+ax[2].set_title('HV')
+for i in range(3):
+    # remove the x label
+    ax[i].set_xlabel('')
+    # set lower y limit
+    dfs = [combined_LV_results, combined_MV_results, combined_HV_results]
+    y_lower = dfs[i].groupby('Model')['BIC'].mean().min() - 10
+    ax[i].set_ylim(bottom=y_lower)
+    # set the font properties
+    ax[i].set_xticklabels(ax[i].get_xticklabels(), fontproperties=prop, fontsize=15)
+    ax[i].set_yticklabels(ax[i].get_yticks(), fontproperties=prop, fontsize=15)
+    # set the title
+    ax[i].set_title(ax[i].get_title(), fontproperties=prop, fontsize=25)
+for i in (1, 2):
+    ax[i].set_ylabel('')
+ax[0].set_ylabel('BIC', fontproperties=prop, fontsize=20)
+sns.despine()
+plt.tight_layout()
+plt.savefig('./figures/BICValues.png', dpi=600)
+plt.show()
 
 
 # combine the dataframes and add a column for the condition

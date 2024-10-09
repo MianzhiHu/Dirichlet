@@ -113,9 +113,10 @@ three_planes(summary, 'best_weight', x_label='Overall Dirichlet Weight', name='O
 
 
 # plot how subjective and objective weights change across conditions
+summary.loc[:, "gaussian_weight"] = 1 - summary['best_weight']
 plt.figure()
-sns.barplot(x='Condition', y='best_weight', data=summary, color=sns.color_palette('pastel')[3], errorbar='se')
-plt.ylabel('Dirichlet Weight', fontproperties=prop, fontsize=15)
+sns.barplot(x='Condition', y='best_weight', data=summary, color=sns.color_palette('deep')[3], errorbar='se')
+plt.ylabel('Dirichlet Weights in CA Trials', fontproperties=prop, fontsize=15)
 plt.xlabel('')
 plt.xticks([0, 1, 2], ['LV', 'MV', 'HV'], fontproperties=prop, fontsize=15)
 plt.yticks(fontproperties=prop)
@@ -192,8 +193,10 @@ plt.savefig('./figures/all_behavioral.png', dpi=1000)
 plt.show()
 
 # plot for CA
-sns.barplot(x='Condition', y='bestOption', data=all_mean_CA, color=palette6[2], order=['LV', 'MV', 'HV'])
-plt.ylabel('% Selecting C in CA Trials', fontproperties=prop, fontsize=20)
+all_mean_CA.loc[:, 'As'] = 1 - all_mean_CA['bestOption']
+sns.set_style('white')
+sns.barplot(x='Condition', y='As', data=all_mean_CA, color="darkred", order=['LV', 'MV', 'HV'])
+plt.ylabel('% Selecting A in CA Trials', fontproperties=prop, fontsize=20)
 plt.xlabel('')
 plt.gca().yaxis.set_major_formatter(ticker.PercentFormatter(xmax=1))
 plt.xticks(fontproperties=prop, fontsize=15)
