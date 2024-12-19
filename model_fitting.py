@@ -3,7 +3,7 @@ import pandas as pd
 import os
 from scipy.stats import dirichlet, multivariate_normal, entropy, norm, differential_entropy
 from utilities.utility_DualProcess import DualProcessModel
-from utilities.utility_ComputationalModeling import dict_generator, ComputationalModels, bayes_factor
+from utils.ComputationalModeling import dict_generator, ComputationalModels, bayes_factor
 import time
 
 if __name__ == '__main__':
@@ -37,40 +37,10 @@ if __name__ == '__main__':
     model = DualProcessModel()
     decay = ComputationalModels("decay")
     delta = ComputationalModels("delta")
+    delta_asym = ComputationalModels("delta_asymmetric")
+    mean_var_utility = ComputationalModels("mean_var_utility")
     actr = ComputationalModels("ACTR")
     actr_original = ComputationalModels("ACTR_Ori")
-
-    # testing
-    test_results = []
-    test_data = dict_generator(HV_df[:250])
-    for model_type in ['delta', 'decay', 'decay_fre', 'decay_choice', 'decay_win', 'delta_decay', 'sampler_decay',
-                  'sampler_decay_PE', 'sampler_decay_AV', 'ACTR', 'ACTR_Ori']:
-        print(f'Fitting {model_type} model')
-        model_spec = ComputationalModels(model_type)
-        sim_results = model_spec.simulate([0.65, 0.35, 0.75, 0.25], [0.43, 0.43, 0.43, 0.43],
-                                     AB_freq=100, CD_freq=50, num_iterations=10)
-
-        # Here you can save the simulation results
-
-        result = model_spec.fit(test_data, num_iterations=2)
-
-        # Here you can save the fitting results
-
-
-    for i, model_type in enumerate(['delta', 'decay', 'decay_fre', 'decay_choice', 'decay_win', 'delta_decay', 'sampler_decay',
-                  'sampler_decay_PE', 'sampler_decay_AV', 'ACTR', 'ACTR_Ori']):
-
-        print(f'Post-hoc simulation for {model_type}')
-
-        # You will need the best-fitting parameters from the fitting results, so you load the results from previous
-        # steps and use them here
-        post_hoc_results = pd.read_csv(f'./{model_type}_HV_results.csv')
-        model_spec = ComputationalModels(model_type)
-        result = model_spec.post_hoc_simulation(post_hoc_results, HV_df[:250], reward_means=[0.65, 0.35, 0.75, 0.25],
-                                                reward_sd=[0.43, 0.43, 0.43, 0.43], num_iterations=10, summary=True)
-
-        # Here you can save the post-hoc results
-
 
 
     # # ==================================================================================================================
@@ -131,32 +101,44 @@ if __name__ == '__main__':
     # HV_delta = delta.fit(HV, num_iterations=200)
     # HV_actr = actr.fit(HV, num_iterations=200)
     # HV_actr_original = actr_original.fit(HV, num_iterations=200)
-    #
+    # HV_delta_asym = delta_asym.fit(HV, num_iterations=200)
+    HV_utility = mean_var_utility.fit(HV, num_iterations=200)
+
     # MV_decay = decay.fit(MV, num_iterations=200)
     # MV_delta = delta.fit(MV, num_iterations=200)
     # MV_actr = actr.fit(MV, num_iterations=200)
     # MV_actr_original = actr_original.fit(MV, num_iterations=200)
-    #
+    # MV_delta_asym = delta_asym.fit(MV, num_iterations=200)
+    MV_utility = mean_var_utility.fit(MV, num_iterations=200)
+
     # LV_decay = decay.fit(LV, num_iterations=200)
     # LV_delta = delta.fit(LV, num_iterations=200)
     # LV_actr = actr.fit(LV, num_iterations=200)
     # LV_actr_original = actr_original.fit(LV, num_iterations=200)
-    #
+    # LV_delta_asym = delta_asym.fit(LV, num_iterations=200)
+    LV_utility = mean_var_utility.fit(LV, num_iterations=200)
+
     # # save
     # HV_decay.to_csv('./data/DataFitting/FittingResults/decay_HV_results.csv', index=False)
     # HV_delta.to_csv('./data/DataFitting/FittingResults/delta_HV_results.csv', index=False)
     # HV_actr.to_csv('./data/DataFitting/FittingResults/actr_HV_results.csv', index=False)
     # HV_actr_original.to_csv('./data/DataFitting/FittingResults/actr_original_HV_results.csv', index=False)
-    #
+    # HV_delta_asym.to_csv('./data/DataFitting/FittingResults/delta_asym_HV_results.csv', index=False)
+    HV_utility.to_csv('./data/DataFitting/FittingResults/utility_HV_results.csv', index=False)
+
     # MV_decay.to_csv('./data/DataFitting/FittingResults/decay_MV_results.csv', index=False)
     # MV_delta.to_csv('./data/DataFitting/FittingResults/delta_MV_results.csv', index=False)
     # MV_actr.to_csv('./data/DataFitting/FittingResults/actr_MV_results.csv', index=False)
     # MV_actr_original.to_csv('./data/DataFitting/FittingResults/actr_original_MV_results.csv', index=False)
-    #
+    # MV_delta_asym.to_csv('./data/DataFitting/FittingResults/delta_asym_MV_results.csv', index=False)
+    MV_utility.to_csv('./data/DataFitting/FittingResults/utility_MV_results.csv', index=False)
+
     # LV_decay.to_csv('./data/DataFitting/FittingResults/decay_LV_results.csv', index=False)
     # LV_delta.to_csv('./data/DataFitting/FittingResults/delta_LV_results.csv', index=False)
     # LV_actr.to_csv('./data/DataFitting/FittingResults/actr_LV_results.csv', index=False)
     # LV_actr_original.to_csv('./data/DataFitting/FittingResults/actr_original_LV_results.csv', index=False)
+    # LV_delta_asym.to_csv('./data/DataFitting/FittingResults/delta_asym_LV_results.csv', index=False)
+    LV_utility.to_csv('./data/DataFitting/FittingResults/utility_LV_results.csv', index=False)
     #
     # print(f'Time taken: {time.time() - start}')
     #

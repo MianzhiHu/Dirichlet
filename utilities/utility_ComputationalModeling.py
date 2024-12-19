@@ -16,7 +16,7 @@ def fit_participant(model, participant_id, pdata, model_type, num_iterations=100
 
     if model_type in ('decay', 'delta', 'decay_choice', 'decay_win'):
         k = 2  # Initialize the cumulative number of parameters
-    elif model_type in ('decay_fre', 'ACTR', 'ACTR_Ori'):
+    elif model_type in ('delta_asymmetric', 'decay_fre', 'ACTR', 'ACTR_Ori'):
         k = 3
     elif model_type in ('sampler_decay', 'sampler_decay_PE', 'sampler_decay_AV', 'delta_decay'):
         k = model.num_params
@@ -41,6 +41,10 @@ def fit_participant(model, participant_id, pdata, model_type, num_iterations=100
             initial_guess = [np.random.uniform(0.0001, 4.9999), np.random.uniform(0.0001, 0.9999),
                              np.random.uniform(beta_lower, beta_upper)]
             bounds = ((0.0001, 4.9999), (0.0001, 0.9999), (beta_lower, beta_upper))
+        elif model_type in ('delta_asymmetric'):
+            initial_guess = [np.random.uniform(0.0001, 4.9999), np.random.uniform(0.0001, 0.9999),
+                             np.random.uniform(0.0001, 0.9999)]
+            bounds = ((0.0001, 4.9999), (0.0001, 0.9999), (0.0001, 0.9999))
         elif model_type in ('delta_decay', 'sampler_decay', 'sampler_decay_PE', 'sampler_decay_AV'):
             if model.num_params == 2:
                 initial_guess = [np.random.uniform(0.0001, 4.9999), np.random.uniform(0.0001, 0.9999)]
@@ -134,6 +138,7 @@ class ComputationalModels:
         # Mapping of updating functions to model types
         self.updating_mapping = {
             'delta': self.delta_update,
+            'delta_asymmetric': self.delta_asymmetric_update,
             'decay': self.decay_update,
             'decay_fre': self.decay_fre_update,
             'decay_choice': self.decay_choice_update,
@@ -151,6 +156,7 @@ class ComputationalModels:
         # Mapping of nll functions to model types
         self.nll_mapping = {
             'delta': self.standard_nll,
+            'delta_asymmetric': self.standard_nll,
             'decay': self.standard_nll,
             'decay_fre': self.standard_nll,
             'decay_choice': self.standard_nll,
@@ -310,6 +316,11 @@ class ComputationalModels:
     def delta_update(self, chosen, reward, trial, choiceset=None):
         prediction_error = reward - self.EVs[chosen]
         self.EVs[chosen] += self.a * prediction_error
+
+    def delta_asymmetric_update(self, chosen, reward, trial, choiceset=None):
+        prediction_error = reward - self.EVs[chosen]
+        self.EVs[chosen] += (prediction_error > 0) * self.a * prediction_error + (prediction_error < 0) * self.b * \
+                            prediction_error
 
     def decay_update(self, chosen, reward, trial, choiceset=None):
         self.EVs[chosen] += reward

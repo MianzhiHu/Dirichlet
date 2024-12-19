@@ -42,6 +42,25 @@ def scatter_Dirichlet(alpha, num_samples=5000):
     plt.show()
 
 
+def scatter_Dirichlet_2D(alpha, num_samples=5000):
+    # Sample from a Dirichlet distribution
+    samples = dirichlet.rvs(alpha, num_samples)
+
+    # Create a 3D plot
+    fig = plt.figure(figsize=(10, 7))
+    ax = fig.add_subplot(111)
+    ax.grid(False)  # Hide gridlines\
+
+    # Scatter plot of samples with colormap
+    ax.scatter(samples[:, 0], samples[:, 1], alpha=0.6, s=5)
+
+    # Labels and title with a custom font
+    ax.set_xlabel('Option A', fontweight='bold', fontsize=20, labelpad=15, fontproperties=prop)
+    ax.set_ylabel('Option B', fontweight='bold', fontsize=20, labelpad=15, fontproperties=prop)
+
+    # Show the plot
+    plt.show()
+
 def bar_Dirichlet(alpha, resolution=50, elev=30, azim=135):
     # Reduce resolution to make the 3D bar plot manageable
     x = np.linspace(0, 1, resolution)
@@ -207,7 +226,7 @@ def visualization_3D(sim_summary, x_var='reward_ratio', y_var='var', z_var='prop
                      minval=0.09, maxval=0.81, plot_type='surface', cmap='coolwarm', color='skyblue', elev=20,
                      azim=-135, title=True):
 
-    fig, axs = plt.subplots(2, 2, subplot_kw={'projection': '3d'}, figsize=(12, 8))
+    fig, axs = plt.subplots(2, 3, subplot_kw={'projection': '3d'}, figsize=(12, 8))
     axs = axs.flatten()
     cmap = plt.get_cmap(cmap)
     cmap_x = 'OrRd'
@@ -237,7 +256,7 @@ def visualization_3D(sim_summary, x_var='reward_ratio', y_var='var', z_var='prop
             axs[i].contourf(grid_x, grid_y, grid_z, zdir='y', offset=y.max(), cmap=cmap_x)
 
         if title:
-            axs[i].set_title(['Dual-Process', 'Delta', 'Decay', 'ACT-R'][i], fontproperties=prop, fontsize=25, pad=5)
+            axs[i].set_title(['Dual-Process', 'Delta', 'Risk-Sensitive Delta', 'Decay', 'ACT-R'][i], fontproperties=prop, fontsize=25, pad=5)
 
         axs[i].set_xlabel(x_label, fontproperties=prop, fontsize=15)
         axs[i].set_ylabel(y_label, fontproperties=prop, fontsize=15)

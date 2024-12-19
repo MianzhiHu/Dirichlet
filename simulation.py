@@ -1,5 +1,7 @@
-from utilities.utility_DualProcess import DualProcessModel
-from utilities.utility_ComputationalModeling import ComputationalModels
+from wsgiref.validate import bad_header_value_re
+
+from utils.DualProcess import DualProcessModel
+from utils.ComputationalModeling import ComputationalModels
 import pandas as pd
 import numpy as np
 import time
@@ -51,6 +53,7 @@ def simulation_unpacker(dict):
     for res in dict:
         sim_num = res['simulation_num']
         a_val = res['a']
+        b_val = res['b']
         t_val = res['t']
         tau_val = res['tau']
         for trial_idx, trial_detail in zip(res['trial_indices'], res['trial_details']):
@@ -58,6 +61,7 @@ def simulation_unpacker(dict):
                 'simulation_num': sim_num,
                 'trial_index': trial_idx,
                 'a': a_val,
+                'b': b_val,
                 't': t_val,
                 'tau': tau_val,
                 'pair': trial_detail['pair'],
@@ -75,6 +79,7 @@ def simulation_unpacker(dict):
 model = DualProcessModel()
 decay = ComputationalModels("decay")
 delta = ComputationalModels("delta")
+delta_asym = ComputationalModels("delta_asymmetric")
 actr = ComputationalModels("ACTR")
 
 # ======================================================================================================================
@@ -109,6 +114,9 @@ def run_simulation(i):
     delta_simulation = simulation_unpacker(delta.simulate([a_val, b_val, c_val, d_val], var,
                                                           AB_freq=100, CD_freq=50, num_iterations=1000))
 
+    delta_asym_simulation = simulation_unpacker(delta_asym.simulate([a_val, b_val, c_val, d_val], var,
+                                                            AB_freq=100, CD_freq=50, num_iterations=1000))
+
     actr_simulation = simulation_unpacker(actr.simulate([a_val, b_val, c_val, d_val], var,
                                                         AB_freq=100, CD_freq=50, num_iterations=1000))
 
@@ -134,6 +142,13 @@ def run_simulation(i):
         a=('a', 'mean')
     ).reset_index()
 
+    delta_asym_results = delta_asym_simulation[delta_asym_simulation['pair'] == ('C', 'A')].groupby('simulation_num').agg(
+        choice=('choice', proportion_chosen),
+        t=('t', 'mean'),
+        a=('a', 'mean'),
+        b=('b', 'mean')
+    ).reset_index()
+
     actr_results = actr_simulation[actr_simulation['pair'] == ('C', 'A')].groupby('simulation_num').agg(
         choice=('choice', proportion_chosen),
         t=('t', 'mean'),
@@ -142,12 +157,12 @@ def run_simulation(i):
     ).reset_index()
 
     # Add reward difference and variance to summaries
-    for res in [dual_results, decay_results, delta_results, actr_results]:
+    for res in [dual_results, decay_results, delta_results, delta_asym_results, actr_results]:
         res['diff'] = c_val - a_val
         res['reward_ratio'] = c_val / (c_val + a_val)
         res['var'] = var_val
 
-    return dual_results, decay_results, delta_results, actr_results
+    return dual_results, decay_results, delta_results, delta_asym_results, actr_results
 
 
 # Run the simulation
@@ -158,6 +173,7 @@ if __name__ == '__main__':
     dual_filepath = './data/Simulation/random_dual.csv'
     decay_filepath = './data/Simulation/random_decay.csv'
     delta_filepath = './data/Simulation/random_delta.csv'
+    delta_asym_filepath = './data/Simulation/random_delta_asym.csv'
     actr_filepath = './data/Simulation/random_actr.csv'
 
     # Define the headers
@@ -165,24 +181,27 @@ if __name__ == '__main__':
                     'reward_ratio', 'var']
     decay_headers = ['simulation_num', 'choice', 't', 'a', 'diff', 'reward_ratio', 'var']
     delta_headers = ['simulation_num', 'choice', 't', 'a', 'diff', 'reward_ratio', 'var']
+    delta_asym_headers = ['simulation_num', 'choice', 't', 'a', 'b', 'diff', 'reward_ratio', 'var']
     actr_headers = ['simulation_num', 'choice', 't', 'a', 'tau', 'diff', 'reward_ratio', 'var']
 
     # Initialize the file and write headers
     pd.DataFrame(columns=dual_headers).to_csv(dual_filepath, index=False)
     pd.DataFrame(columns=decay_headers).to_csv(decay_filepath, index=False)
     pd.DataFrame(columns=delta_headers).to_csv(delta_filepath, index=False)
+    pd.DataFrame(columns=delta_asym_headers).to_csv(delta_asym_filepath, index=False)
     pd.DataFrame(columns=actr_headers).to_csv(actr_filepath, index=False)
 
     with ProcessPoolExecutor(max_workers=24) as executor:
-        for i, (dual_results, decay_results, delta_results, actr_results) in enumerate(
+        for i, (dual_results, decay_results, delta_results, delta_asym_results, actr_results) in enumerate(
                 tqdm(executor.map(run_simulation, range(n)), total=n)):
             dual_results.to_csv(dual_filepath, mode='a', header=False, index=False)
             decay_results.to_csv(decay_filepath, mode='a', header=False, index=False)
             delta_results.to_csv(delta_filepath, mode='a', header=False, index=False)
+            delta_asym_results.to_csv(delta_asym_filepath, mode='a', header=False, index=False)
             actr_results.to_csv(actr_filepath, mode='a', header=False, index=False)
 
             # Free up memory
-            del dual_results, decay_results, delta_results, actr_results
+            del dual_results, decay_results, delta_results, delta_asym_results, actr_results
             gc.collect()
 
     total_time = time.time() - start_time

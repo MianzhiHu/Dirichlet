@@ -126,4 +126,17 @@ if __name__ == '__main__':
     print(f"Age: {np.mean(age)}, {np.std(age)}")
     print(sex.count(2) / 260)
 
+    # power analysis
+    # calculate the effect size
+    effect_size = 0.5
+    alpha = 0.01
+    power = 0.8
+    group = 3
+
+    from statsmodels.stats.power import FTestAnovaPower
+    anova = FTestAnovaPower()
+    sample_size = anova.solve_power(effect_size=effect_size, alpha=alpha, power=power, k_groups=group)
+    print(f"Sample size: {sample_size}")
+
+
 

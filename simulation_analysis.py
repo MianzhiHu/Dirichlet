@@ -8,18 +8,19 @@ from scipy.interpolate import griddata
 # after the simulation has been completed, we can just load the simulated data from the folder
 dual = pd.read_csv('./data/Simulation/random_dual.csv')
 delta = pd.read_csv('./data/Simulation/random_delta.csv')
+delta_asym = pd.read_csv('./data/Simulation/random_delta_asym.csv')
 decay = pd.read_csv('./data/Simulation/random_decay.csv')
 actr = pd.read_csv('./data/Simulation/random_actr.csv')
 
 # Generate a summary document for the simulation
 sim_summary = []
 
-for i, data in enumerate([dual, delta, decay, actr]):
+for i, data in enumerate([dual, delta, delta_asym, decay, actr]):
     # Remove the simulation number column and take the mean of the rest
     data = data.drop(columns='simulation_num')
     data.loc[:, 'proportion'] = (data['choice'] < data['reward_ratio']).astype(int)
     summary = data.groupby(['diff', 'var']).mean().reset_index()
-    summary.loc[:, 'model'] = ['dual', 'delta', 'decay', 'actr'][i]
+    summary.loc[:, 'model'] = ['dual', 'delta', 'delta_asym', 'decay', 'actr'][i]
     # print(f'Minimum proportion of frequency effects for {summary["model"].iloc[0]}: {summary["proportion"].min()}')
     # print(f'Maximum proportion of frequency effects for {summary["model"].iloc[0]}: {summary["proportion"].max()}')
     # print(f'Minimum proportion of C choices for {summary["model"].iloc[0]}: {summary["choice"].min()}')
