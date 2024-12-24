@@ -226,7 +226,7 @@ def visualization_3D(sim_summary, x_var='reward_ratio', y_var='var', z_var='prop
                      minval=0.09, maxval=0.81, plot_type='surface', cmap='coolwarm', color='skyblue', elev=20,
                      azim=-135, title=True):
 
-    fig, axs = plt.subplots(2, 3, subplot_kw={'projection': '3d'}, figsize=(12, 8))
+    fig, axs = plt.subplots(2, 3, subplot_kw={'projection': '3d'}, figsize=(16, 8))
     axs = axs.flatten()
     cmap = plt.get_cmap(cmap)
     cmap_x = 'OrRd'
@@ -245,6 +245,7 @@ def visualization_3D(sim_summary, x_var='reward_ratio', y_var='var', z_var='prop
         grid_x, grid_y = np.mgrid[x.min():x.max():100j, y.min():y.max():100j]
         grid_z = griddata((x, y), z, (grid_x, grid_y), method='linear')
         if plot_type == 'surface':
+            # axs[i].plot_surface(grid_x, grid_y, grid_z, cmap=cropped_cmap, norm=norm, alpha=0.99)
             axs[i].plot_surface(grid_x, grid_y, grid_z, cmap=cropped_cmap, alpha=0.99)
         elif plot_type == 'wireframe':
             axs[i].plot_wireframe(grid_x, grid_y, grid_z, color=color)
@@ -256,7 +257,8 @@ def visualization_3D(sim_summary, x_var='reward_ratio', y_var='var', z_var='prop
             axs[i].contourf(grid_x, grid_y, grid_z, zdir='y', offset=y.max(), cmap=cmap_x)
 
         if title:
-            axs[i].set_title(['Dual-Process', 'Delta', 'Risk-Sensitive Delta', 'Decay', 'ACT-R'][i], fontproperties=prop, fontsize=25, pad=5)
+            axs[i].set_title(['Dual-Process', 'Delta', 'Risk-Sensitive Delta', 'Mean-Variance Utility',
+                              'Decay', 'ACT-R'][i], fontproperties=prop, fontsize=25, pad=5)
 
         axs[i].set_xlabel(x_label, fontproperties=prop, fontsize=15)
         axs[i].set_ylabel(y_label, fontproperties=prop, fontsize=15)

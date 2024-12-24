@@ -3,7 +3,7 @@ import ast
 import numpy as np
 import pandas as pd
 from docx import Document
-from utilities.utility_ComputationalModeling import bayes_factor
+from utils.ComputationalModeling import bayes_factor
 
 
 def mean_AIC_BIC(df):
@@ -15,7 +15,9 @@ def mean_AIC_BIC(df):
 def create_bayes_matrix(simulations, file_name):
 
     def format_large_numbers(num):
-        if num > 1000:
+        if num > 1e100:
+            return f">10^100"
+        if 1e100 > num > 1000:
             exponent = np.floor(np.log10(num))
             mantissa = num / 10 ** exponent
             return f"{mantissa:.3f} * 10^{exponent:.0f}"

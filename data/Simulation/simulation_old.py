@@ -1,5 +1,5 @@
-from utils.DualProcess import DualProcessModel
-from utils.ComputationalModeling import ComputationalModels
+from utilities.utility_DualProcess import DualProcessModel
+from utilities.utility_ComputationalModeling import ComputationalModels
 import pandas as pd
 import numpy as np
 import time
@@ -51,19 +51,15 @@ def simulation_unpacker(dict):
     for res in dict:
         sim_num = res['simulation_num']
         a_val = res['a']
-        b_val = res['b']
         t_val = res['t']
-        lambda_val = res['lamda']
         tau_val = res['tau']
         for trial_idx, trial_detail in zip(res['trial_indices'], res['trial_details']):
             data_row = {
                 'simulation_num': sim_num,
                 'trial_index': trial_idx,
                 'a': a_val,
-                'b': b_val,
                 't': t_val,
                 'tau': tau_val,
-                'lambda': lambda_val,
                 'pair': trial_detail['pair'],
                 'choice': trial_detail['choice'],
                 'reward': trial_detail['reward'],
@@ -79,8 +75,6 @@ def simulation_unpacker(dict):
 model = DualProcessModel()
 decay = ComputationalModels("decay")
 delta = ComputationalModels("delta")
-delta_asym = ComputationalModels("delta_asymmetric")
-mean_var_utility = ComputationalModels("mean_var_utility")
 actr = ComputationalModels("ACTR")
 
 # ======================================================================================================================
@@ -88,7 +82,6 @@ actr = ComputationalModels("ACTR")
 # ======================================================================================================================
 # randomly draw reward values and variances
 n = 5000
-n_iterations = 1000
 epsilon = 0.01
 
 
@@ -101,29 +94,23 @@ def run_simulation(i):
     a_val, b_val, c_val, d_val = value_generator(epsilon)
 
     # Randomly draw the variance
-    var_val = np.random.uniform(0.24, 0.48)
+    var_val = np.random.uniform(0.11, 0.48)
     var = [var_val, var_val, var_val, var_val]
 
     # Simulate the data
     dual_simulation = model.simulate([a_val, b_val, c_val, d_val], var, model='Entropy_Dis_ID',
-                                     AB_freq=100, CD_freq=50, num_iterations=n_iterations, weight_Gau='softmax',
+                                     AB_freq=100, CD_freq=50, num_iterations=1000, weight_Gau='softmax',
                                      weight_Dir='softmax', arbi_option='Entropy', Dir_fun='Linear_Recency',
                                      Gau_fun='Naive_Recency')
 
     decay_simulation = simulation_unpacker(decay.simulate([a_val, b_val, c_val, d_val], var,
-                                                          AB_freq=100, CD_freq=50, num_iterations=n_iterations))
+                                                          AB_freq=100, CD_freq=50, num_iterations=1000))
 
     delta_simulation = simulation_unpacker(delta.simulate([a_val, b_val, c_val, d_val], var,
-                                                          AB_freq=100, CD_freq=50, num_iterations=n_iterations))
-
-    delta_asym_simulation = simulation_unpacker(delta_asym.simulate([a_val, b_val, c_val, d_val], var,
-                                                            AB_freq=100, CD_freq=50, num_iterations=n_iterations))
-
-    utility_simulation = simulation_unpacker(mean_var_utility.simulate([a_val, b_val, c_val, d_val], var,
-                                                                      AB_freq=100, CD_freq=50, num_iterations=n_iterations))
+                                                          AB_freq=100, CD_freq=50, num_iterations=1000))
 
     actr_simulation = simulation_unpacker(actr.simulate([a_val, b_val, c_val, d_val], var,
-                                                        AB_freq=100, CD_freq=50, num_iterations=n_iterations))
+                                                        AB_freq=100, CD_freq=50, num_iterations=1000))
 
     # Summarize the results
     dual_results = dual_simulation[dual_simulation['pair'] == ('C', 'A')].groupby('simulation_num').agg(
@@ -147,20 +134,6 @@ def run_simulation(i):
         a=('a', 'mean')
     ).reset_index()
 
-    delta_asym_results = delta_asym_simulation[delta_asym_simulation['pair'] == ('C', 'A')].groupby('simulation_num').agg(
-        choice=('choice', proportion_chosen),
-        t=('t', 'mean'),
-        a=('a', 'mean'),
-        b=('b', 'mean')
-    ).reset_index()
-
-    utility_results = utility_simulation[utility_simulation['pair'] == ('C', 'A')].groupby('simulation_num').agg(
-        choice=('choice', proportion_chosen),
-        t=('t', 'mean'),
-        a=('a', 'mean'),
-        lamda=('lambda', 'mean')
-    ).reset_index()
-
     actr_results = actr_simulation[actr_simulation['pair'] == ('C', 'A')].groupby('simulation_num').agg(
         choice=('choice', proportion_chosen),
         t=('t', 'mean'),
@@ -169,12 +142,12 @@ def run_simulation(i):
     ).reset_index()
 
     # Add reward difference and variance to summaries
-    for res in [dual_results, decay_results, delta_results, delta_asym_results, utility_results, actr_results]:
+    for res in [dual_results, decay_results, delta_results, actr_results]:
         res['diff'] = c_val - a_val
         res['reward_ratio'] = c_val / (c_val + a_val)
         res['var'] = var_val
 
-    return dual_results, decay_results, delta_results, delta_asym_results, utility_results, actr_results
+    return dual_results, decay_results, delta_results, actr_results
 
 
 # Run the simulation
@@ -185,8 +158,6 @@ if __name__ == '__main__':
     dual_filepath = './data/Simulation/random_dual.csv'
     decay_filepath = './data/Simulation/random_decay.csv'
     delta_filepath = './data/Simulation/random_delta.csv'
-    delta_asym_filepath = './data/Simulation/random_delta_asym.csv'
-    utility_filepath = './data/Simulation/random_utility.csv'
     actr_filepath = './data/Simulation/random_actr.csv'
 
     # Define the headers
@@ -194,30 +165,24 @@ if __name__ == '__main__':
                     'reward_ratio', 'var']
     decay_headers = ['simulation_num', 'choice', 't', 'a', 'diff', 'reward_ratio', 'var']
     delta_headers = ['simulation_num', 'choice', 't', 'a', 'diff', 'reward_ratio', 'var']
-    delta_asym_headers = ['simulation_num', 'choice', 't', 'a', 'b', 'diff', 'reward_ratio', 'var']
-    utility_headers = ['simulation_num', 'choice', 't', 'a', 'lambda', 'diff', 'reward_ratio', 'var']
     actr_headers = ['simulation_num', 'choice', 't', 'a', 'tau', 'diff', 'reward_ratio', 'var']
 
     # Initialize the file and write headers
     pd.DataFrame(columns=dual_headers).to_csv(dual_filepath, index=False)
     pd.DataFrame(columns=decay_headers).to_csv(decay_filepath, index=False)
     pd.DataFrame(columns=delta_headers).to_csv(delta_filepath, index=False)
-    pd.DataFrame(columns=delta_asym_headers).to_csv(delta_asym_filepath, index=False)
-    pd.DataFrame(columns=utility_headers).to_csv(utility_filepath, index=False)
     pd.DataFrame(columns=actr_headers).to_csv(actr_filepath, index=False)
 
-    with ProcessPoolExecutor(max_workers=32) as executor:
-        for i, (dual_results, decay_results, delta_results, delta_asym_results, utility_results,
-                actr_results) in enumerate(tqdm(executor.map(run_simulation, range(n)), total=n)):
+    with ProcessPoolExecutor(max_workers=24) as executor:
+        for i, (dual_results, decay_results, delta_results, actr_results) in enumerate(
+                tqdm(executor.map(run_simulation, range(n)), total=n)):
             dual_results.to_csv(dual_filepath, mode='a', header=False, index=False)
             decay_results.to_csv(decay_filepath, mode='a', header=False, index=False)
             delta_results.to_csv(delta_filepath, mode='a', header=False, index=False)
-            delta_asym_results.to_csv(delta_asym_filepath, mode='a', header=False, index=False)
-            utility_results.to_csv(utility_filepath, mode='a', header=False, index=False)
             actr_results.to_csv(actr_filepath, mode='a', header=False, index=False)
 
             # Free up memory
-            del dual_results, decay_results, delta_results, delta_asym_results, utility_results, actr_results
+            del dual_results, decay_results, delta_results, actr_results
             gc.collect()
 
     total_time = time.time() - start_time
@@ -256,7 +221,6 @@ if __name__ == '__main__':
 # dual_hv = model.simulate(reward_means, hv, model='Entropy_Dis_ID', AB_freq=100, CD_freq=50, num_iterations=2000,
 #                          weight_Gau='softmax', weight_Dir='softmax', arbi_option='Entropy', Dir_fun='Linear_Recency',
 #                          Gau_fun='Naive_Recency')
-
 # dual_mv = model.simulate(reward_means, mv, model='Entropy_Dis_ID', AB_freq=100, CD_freq=50, num_iterations=2000,
 #                          weight_Gau='softmax', weight_Dir='softmax', arbi_option='Entropy', Dir_fun='Linear_Recency',
 #                          Gau_fun='Naive_Recency')

@@ -10,28 +10,29 @@ dual = pd.read_csv('./data/Simulation/random_dual.csv')
 delta = pd.read_csv('./data/Simulation/random_delta.csv')
 delta_asym = pd.read_csv('./data/Simulation/random_delta_asym.csv')
 decay = pd.read_csv('./data/Simulation/random_decay.csv')
+utility = pd.read_csv('./data/Simulation/random_utility.csv')
 actr = pd.read_csv('./data/Simulation/random_actr.csv')
 
 # Generate a summary document for the simulation
 sim_summary = []
 
-for i, data in enumerate([dual, delta, delta_asym, decay, actr]):
+for i, data in enumerate([dual, delta, delta_asym, utility, decay, actr]):
     # Remove the simulation number column and take the mean of the rest
     data = data.drop(columns='simulation_num')
     data.loc[:, 'proportion'] = (data['choice'] < data['reward_ratio']).astype(int)
     summary = data.groupby(['diff', 'var']).mean().reset_index()
-    summary.loc[:, 'model'] = ['dual', 'delta', 'delta_asym', 'decay', 'actr'][i]
-    # print(f'Minimum proportion of frequency effects for {summary["model"].iloc[0]}: {summary["proportion"].min()}')
-    # print(f'Maximum proportion of frequency effects for {summary["model"].iloc[0]}: {summary["proportion"].max()}')
-    # print(f'Minimum proportion of C choices for {summary["model"].iloc[0]}: {summary["choice"].min()}')
-    # print(f'Maximum proportion of C choices for {summary["model"].iloc[0]}: {summary["choice"].max()}')
+    summary.loc[:, 'model'] = ['dual', 'delta', 'delta_asym', 'utility', 'decay', 'actr'][i]
+    print(f'Minimum proportion of frequency effects for {summary["model"].iloc[0]}: {summary["proportion"].min()}')
+    print(f'Maximum proportion of frequency effects for {summary["model"].iloc[0]}: {summary["proportion"].max()}')
+    print(f'Minimum proportion of C choices for {summary["model"].iloc[0]}: {summary["choice"].min()}')
+    print(f'Maximum proportion of C choices for {summary["model"].iloc[0]}: {summary["choice"].max()}')
     sim_summary.append(summary)
 
 sim_summary_df = pd.concat(sim_summary)
 sim_summary_df.to_csv('./data/Simulation/sim_summary.csv', index=False)
 
 # Generate a 3D visualization of the simulation results
-visualization_3D(sim_summary, plot_type='surface', z_label='% of Frequency Effects')
+visualization_3D(sim_summary, plot_type='surface', z_label='% of Frequency Effects', z_var='choice')
 visualization_3D(sim_summary, plot_type='contourf', elev=None, azim=None, z_label='% of Frequency Effects')
 
 # Generate a heatmap to show the relationship between the reward ratio, variance, and the objective weight of the
