@@ -44,35 +44,6 @@ def value_generator(epsilon=0.01):
 
     return A, B, C, D
 
-
-def simulation_unpacker(dict):
-    all_sims = []
-
-    for res in dict:
-        sim_num = res['simulation_num']
-        a_val = res['a']
-        b_val = res['b']
-        t_val = res['t']
-        lambda_val = res['lamda']
-        tau_val = res['tau']
-        for trial_idx, trial_detail in zip(res['trial_indices'], res['trial_details']):
-            data_row = {
-                'simulation_num': sim_num,
-                'trial_index': trial_idx,
-                'a': a_val,
-                'b': b_val,
-                't': t_val,
-                'tau': tau_val,
-                'lambda': lambda_val,
-                'pair': trial_detail['pair'],
-                'choice': trial_detail['choice'],
-                'reward': trial_detail['reward'],
-            }
-            all_sims.append(data_row)
-
-    return pd.DataFrame(all_sims)
-
-
 # ======================================================================================================================
 #                                           Initialize models
 # ======================================================================================================================
@@ -101,7 +72,7 @@ def run_simulation(i):
     a_val, b_val, c_val, d_val = value_generator(epsilon)
 
     # Randomly draw the variance
-    var_val = np.random.uniform(0.24, 0.48)
+    var_val = np.random.uniform(0.11, 0.48)
     var = [var_val, var_val, var_val, var_val]
 
     # Simulate the data
@@ -110,20 +81,20 @@ def run_simulation(i):
                                      weight_Dir='softmax', arbi_option='Entropy', Dir_fun='Linear_Recency',
                                      Gau_fun='Naive_Recency')
 
-    decay_simulation = simulation_unpacker(decay.simulate([a_val, b_val, c_val, d_val], var,
-                                                          AB_freq=100, CD_freq=50, num_iterations=n_iterations))
+    decay_simulation = decay.simulate([a_val, b_val, c_val, d_val], var, AB_freq=100, CD_freq=50,
+                                      num_iterations=n_iterations)
 
-    delta_simulation = simulation_unpacker(delta.simulate([a_val, b_val, c_val, d_val], var,
-                                                          AB_freq=100, CD_freq=50, num_iterations=n_iterations))
+    delta_simulation = delta.simulate([a_val, b_val, c_val, d_val], var, AB_freq=100, CD_freq=50,
+                                      num_iterations=n_iterations)
 
-    delta_asym_simulation = simulation_unpacker(delta_asym.simulate([a_val, b_val, c_val, d_val], var,
-                                                            AB_freq=100, CD_freq=50, num_iterations=n_iterations))
+    delta_asym_simulation = delta_asym.simulate([a_val, b_val, c_val, d_val], var, AB_freq=100, CD_freq=50,
+                                                num_iterations=n_iterations)
 
-    utility_simulation = simulation_unpacker(mean_var_utility.simulate([a_val, b_val, c_val, d_val], var,
-                                                                      AB_freq=100, CD_freq=50, num_iterations=n_iterations))
+    utility_simulation = mean_var_utility.simulate([a_val, b_val, c_val, d_val], var, AB_freq=100,
+                                                   CD_freq=50, num_iterations=n_iterations)
 
-    actr_simulation = simulation_unpacker(actr.simulate([a_val, b_val, c_val, d_val], var,
-                                                        AB_freq=100, CD_freq=50, num_iterations=n_iterations))
+    actr_simulation = actr.simulate([a_val, b_val, c_val, d_val], var, AB_freq=100, CD_freq=50,
+                                    num_iterations=n_iterations)
 
     # Summarize the results
     dual_results = dual_simulation[dual_simulation['pair'] == ('C', 'A')].groupby('simulation_num').agg(

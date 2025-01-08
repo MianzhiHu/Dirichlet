@@ -244,6 +244,8 @@ def visualization_3D(sim_summary, x_var='reward_ratio', y_var='var', z_var='prop
         z = sim_summary[i][z_var]
         grid_x, grid_y = np.mgrid[x.min():x.max():100j, y.min():y.max():100j]
         grid_z = griddata((x, y), z, (grid_x, grid_y), method='linear')
+        # plane_z = grid_x
+        # axs[i].plot_surface(grid_x, grid_y, plane_z, color='blue', alpha=0.1)
         if plot_type == 'surface':
             # axs[i].plot_surface(grid_x, grid_y, grid_z, cmap=cropped_cmap, norm=norm, alpha=0.99)
             axs[i].plot_surface(grid_x, grid_y, grid_z, cmap=cropped_cmap, alpha=0.99)

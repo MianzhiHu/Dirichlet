@@ -10,7 +10,7 @@ from utilities.utility_DataAnalysis import extract_all_parameters
 import seaborn as sns
 import matplotlib.pyplot as plt
 from utilities.utility_PlottingFunctions import prop
-from scipy.special import psi  # Digamma function
+from utils.ComputationalModeling import vb_model_selection, compute_exceedance_prob
 
 # after the simulation has been completed, we can just load the simulated data from the folder
 # folder_path = './data/DataFitting/FittingResults/AlternativeModels/'
@@ -33,7 +33,7 @@ for key in fitting_results:
 # Generate the fitting summary
 # ======================================================================================================================
 # select the models to be compared
-included_models = ['decay', 'delta', 'actr', 'Dual', 'Obj', 'Dir', 'Gau', 'delta_asymmetric', 'mean_var_utility']
+included_models = ['decay', 'delta', 'actr', 'Dual', 'Obj', 'delta_asym', 'utility']
 indices_to_calculate = ['AIC', 'BIC']
 fitting_summary = fitting_summary_generator(fitting_results, included_models, indices_to_calculate)
 fitting_summary = fitting_summary.round(3)
@@ -79,6 +79,10 @@ individual_param_df.to_csv('./data/IndividualParamResults.csv', index=False)
 
 dual_param = individual_param_df[individual_param_df['model'] == 'Dual'].reset_index()
 dual_param.loc[:, 'Subnum'] = dual_param.index + 1
+print(f'max t for all models: {individual_param_df["param_1"].max()}; min t: {individual_param_df["param_1"].min()}')
+print(f'max t for dual: {dual_param["param_1"].max()}; min t for dual: {dual_param["param_1"].min()}')
+print(f'max a for dual: {dual_param["param_2"].max()}; min a for dual: {dual_param["param_2"].min()}')
+print(f'max subj_weight for dual: {dual_param["param_3"].max()}; min subj_weight for dual: {dual_param["param_3"].min()}')
 
 # ======================================================================================================================
 # Extract the individual AIC and BIC values
@@ -152,24 +156,31 @@ process_chosen_df = [process_chosen_HV, process_chosen_MV, process_chosen_LV]
 
 # combine the AIC and BIC values
 columns = ['AIC', 'BIC', 'Model']
-hv_results = [Dual_HV_results, delta_HV_results, decay_HV_results, actr_HV_results]
-mv_results = [Dual_MV_results, delta_MV_results, decay_MV_results, actr_MV_results]
-lv_results = [Dual_LV_results, delta_LV_results, decay_LV_results, actr_LV_results]
+hv_results = [Dual_HV_results, delta_HV_results, decay_HV_results, actr_HV_results, delta_asym_HV_results, utility_HV_results]
+mv_results = [Dual_MV_results, delta_MV_results, decay_MV_results, actr_MV_results, delta_asym_MV_results, utility_MV_results]
+lv_results = [Dual_LV_results, delta_LV_results, decay_LV_results, actr_LV_results, delta_asym_LV_results, utility_LV_results]
 
 
 def combine_results(results):
     combined_results = []
-    model_names = ['Dual', 'Delta', 'Decay', 'ACTR']
+    model_names = ['Dual', 'Delta', 'Decay', 'ACTR', 'Risk-Sensitive Delta', 'Mean-Variance Utility']
     for i in range(len(results)):
         model_results = results[i]
         model_results['Model'] = model_names[i]
         combined_results.append(model_results[columns])
-    return pd.concat(combined_results)
+    df = pd.concat(combined_results)
+
+    index_df = pd.DataFrame()
+    for model in df['Model'].unique():
+        index_df[f'{model}_AIC'] = df[df['Model'] == model]['AIC'].values
+        index_df[f'{model}_BIC'] = df[df['Model'] == model]['BIC'].values
+
+    return df, index_df
 
 
-combined_HV_results = combine_results(hv_results)
-combined_MV_results = combine_results(mv_results)
-combined_LV_results = combine_results(lv_results)
+_, combined_HV_results = combine_results(hv_results)
+_, combined_MV_results = combine_results(mv_results)
+_, combined_LV_results = combine_results(lv_results)
 
 # plot the AIC and BIC values
 sns.set_theme(style='white')
@@ -215,82 +226,14 @@ combined_df.rename(columns={'param_1': 't', 'param_2': 'a', 'param_3': 'subj_wei
 # save the data
 combined_df.to_csv('./data/CombinedVarianceData.csv', index=False)
 
+# --------------------------------------------------------------------------------------------------------------
+# Perform variational Bayesian model selection
+# --------------------------------------------------------------------------------------------------------------
+K = 6  # number of models
 
-# ======================================================================================================================
-# Implement Bayesian Model Selection (BMS)
-# ======================================================================================================================
-def vb_model_selection(log_evidences, alpha0=None, tol=1e-6, max_iter=1000):
-    """
-    Variational Bayesian Model Selection for multiple models and multiple subjects.
-
-    Implements the iterative VB algorithm described by:
-    - Equations 3, 7, 9, 11, 12, 13, and the final pseudo-code in Equation 14.
-
-    Parameters
-    ----------
-    log_evidences : np.ndarray, shape (N, K)
-        Matrix of log model evidences for N subjects and K models.
-        log_evidences[n, k] = ln p(y_n | m_{nk})
-    alpha0 : np.ndarray, shape (K,)
-        Initial Dirichlet prior parameters. If None, set to 1 for all models.
-    tol : float
-        Tolerance for convergence based on changes in alpha.
-    max_iter : int
-        Maximum number of VB iterations.
-
-    Returns
-    -------
-    alpha : np.ndarray, shape (K,)
-        Final Dirichlet parameters of the approximate posterior q(r).
-    g : np.ndarray, shape (N, K)
-        Posterior model assignment probabilities per subject.
-    """
-
-    N, K = log_evidences.shape
-    if alpha0 is None:
-        alpha0 = np.ones(K)
-
-    # Initialize alpha
-    alpha = alpha0.copy()
-
-    for iteration in range(max_iter):
-        alpha_sum = np.sum(alpha)
-
-        # Compute unnormalized posterior assignments u_nk
-        # u_nk = exp(ln p(y_n | m_nk) + Psi(alpha_k) - Psi(alpha_sum))
-        u = np.exp(log_evidences + psi(alpha) - psi(alpha_sum))  # shape (N,K)
-
-        # Normalize to get g_nk
-        u_sum = np.sum(u, axis=1, keepdims=True)
-        g = u / u_sum  # shape (N,K)
-
-        # Update beta_k = sum_n g_nk
-        beta = np.sum(g, axis=0)  # shape (K,)
-
-        # Update alpha
-        alpha_new = alpha0 + beta
-
-        # Check convergence
-        diff = np.linalg.norm(alpha_new - alpha)
-        alpha = alpha_new
-        if diff < tol:
-            break
-
-    return alpha, g
-
-
-# -----------------------------------------
-# Example usage:
-# Suppose we have N=10 subjects and K=3 models.
-# We assume we have computed log model evidences for each subject and model.
-np.random.seed(42)
-
-N = 10  # number of subjects
-K = 3  # number of models
-
-# Simulated log-evidences (e.g., from model fitting)
-# In practice, these would be obtained from a separate model estimation procedure per subject and model.
-log_evidences = np.random.randn(N, K)
+# select columns that end with BIC
+bic_cols = [col for col in combined_LV_results.columns if col.endswith('BIC')]
+log_evidences = combined_HV_results[bic_cols].values / (-2)
 
 # Run VB model selection
 alpha0 = np.ones(K)  # uniform prior
@@ -302,35 +245,7 @@ print("Final alpha (Dirichlet parameters):", alpha_est)
 print("Posterior model probabilities per subject:\n", g_est)
 print("Expected model frequencies:", alpha_est / np.sum(alpha_est))
 
-
-from scipy.stats import dirichlet
-
-def compute_exceedance_prob(alpha, n_samples=100000):
-    """
-    Compute exceedance probabilities for each model by Monte Carlo approximation.
-
-    Parameters
-    ----------
-    alpha : array-like of shape (K,)
-        The Dirichlet parameters for the posterior q(r).
-    n_samples : int
-        Number of samples to draw from Dirichlet.
-    random_state : int or None
-        Random seed for reproducibility.
-
-    Returns
-    -------
-    exceedance_probs : np.ndarray of shape (K,)
-        The exceedance probability for each model.
-    """
-    samples = dirichlet.rvs(alpha, size=n_samples)
-    winners = np.argmax(samples, axis=1)  # indices of best model per draw
-
-    K = len(alpha)
-    exceedance_probs = np.bincount(winners, minlength=K) / n_samples
-    return exceedance_probs
-
-# Example usage:
-ex_probs = compute_exceedance_prob(alpha_est[:2], n_samples=100000)
+# calculate the exceedance probabilities
+ex_probs = compute_exceedance_prob(alpha_est, n_samples=100000)
 print("Exceedance probabilities:", ex_probs)
 
