@@ -1,8 +1,7 @@
 import pandas as pd
 import os
-from utilities.utility_DualProcess import DualProcessModel
-from utilities.utility_ComputationalModeling import ComputationalModels
-from utilities.utility_ComputationalModeling import dict_generator, ComputationalModels, bayes_factor
+from utils.DualProcess import DualProcessModel
+from utils.ComputationalModeling import dict_generator, ComputationalModels, bayes_factor
 
 if __name__ == '__main__':
 
@@ -43,6 +42,8 @@ if __name__ == '__main__':
     model_decay = ComputationalModels(model_type='decay')
     model_delta = ComputationalModels(model_type='delta')
     model_actr = ComputationalModels(model_type='ACTR')
+    model_asym = ComputationalModels(model_type='delta_asymmetric')
+    model_utility = ComputationalModels(model_type='mean_var_utility')
 
     # simulate the data
     # LV_results = [Dual_LV_results, Obj_LV_results]
@@ -56,6 +57,8 @@ if __name__ == '__main__':
     decay_results = [decay_LV_results, decay_MV_results, decay_HV_results]
     delta_results = [delta_LV_results, delta_MV_results, delta_HV_results]
     actr_results = [actr_LV_results, actr_MV_results, actr_HV_results]
+    delta_asym_results = [delta_asym_LV_results, delta_asym_MV_results, delta_asym_HV_results]
+    utility_results = [utility_LV_results, utility_MV_results, utility_HV_results]
 
     reward_means = [0.65, 0.35, 0.75, 0.25]
     hv = [0.48, 0.48, 0.43, 0.43]
@@ -132,4 +135,25 @@ if __name__ == '__main__':
                                                             sd[i], num_iterations=1000)
             simulated_data.to_csv(f'./data/Post_hoc/actr_posthoc_{df[i]["Condition"].unique()[0]}.csv', index=False)
 
-    #
+    # delta_asym model
+    for i in range(len(actr_results)):
+        file_name = f'./data/Post_hoc/delta_asym_posthoc_{df[i]["Condition"].unique()[0]}.csv'
+        if os.path.exists(file_name):
+            print(f"delta_asym_posthoc_{df[i]['Condition'].unique()[0]}.csv already exists")
+        else:
+            print(f"Simulating delta_asym_posthoc_{df[i]['Condition'].unique()[0]}.csv")
+            simulated_data = model_asym.post_hoc_simulation(delta_asym_results[i], df[i], reward_means,
+                                                            sd[i], num_iterations=1000)
+            simulated_data.to_csv(f'./data/Post_hoc/delta_asym_posthoc_{df[i]["Condition"].unique()[0]}.csv', index=False)
+
+    # mean_var_utility model
+    for i in range(len(actr_results)):
+        file_name = f'./data/Post_hoc/utility_posthoc_{df[i]["Condition"].unique()[0]}.csv'
+        if os.path.exists(file_name):
+            print(f"utility_posthoc_{df[i]['Condition'].unique()[0]}.csv already exists")
+        else:
+            print(f"Simulating utility_posthoc_{df[i]['Condition'].unique()[0]}.csv")
+            simulated_data = model_utility.post_hoc_simulation(utility_results[i], df[i], reward_means,
+                                                            sd[i], num_iterations=1000)
+            simulated_data.to_csv(f'./data/Post_hoc/utility_posthoc_{df[i]["Condition"].unique()[0]}.csv', index=False)
+

@@ -33,7 +33,7 @@ for key in fitting_results:
 # Generate the fitting summary
 # ======================================================================================================================
 # select the models to be compared
-included_models = ['decay', 'delta', 'actr', 'Dual', 'Obj', 'delta_asym', 'utility']
+included_models = ['decay', 'delta', 'actr', 'Dual', 'delta_asym', 'utility', 'Gau', 'Dir', 'Obj']
 indices_to_calculate = ['AIC', 'BIC']
 fitting_summary = fitting_summary_generator(fitting_results, included_models, indices_to_calculate)
 fitting_summary = fitting_summary.round(3)
@@ -156,14 +156,26 @@ process_chosen_df = [process_chosen_HV, process_chosen_MV, process_chosen_LV]
 
 # combine the AIC and BIC values
 columns = ['AIC', 'BIC', 'Model']
-hv_results = [Dual_HV_results, delta_HV_results, decay_HV_results, actr_HV_results, delta_asym_HV_results, utility_HV_results]
-mv_results = [Dual_MV_results, delta_MV_results, decay_MV_results, actr_MV_results, delta_asym_MV_results, utility_MV_results]
-lv_results = [Dual_LV_results, delta_LV_results, decay_LV_results, actr_LV_results, delta_asym_LV_results, utility_LV_results]
+hv_results = [Dual_HV_results, delta_HV_results, decay_HV_results, actr_HV_results, delta_asym_HV_results,
+              utility_HV_results]
+mv_results = [Dual_MV_results, delta_MV_results, decay_MV_results, actr_MV_results, delta_asym_MV_results,
+              utility_MV_results]
+lv_results = [Dual_LV_results, delta_LV_results, decay_LV_results, actr_LV_results, delta_asym_LV_results,
+              utility_LV_results]
+
+# hv_results = [Dual_HV_results, delta_HV_results, decay_HV_results, actr_HV_results, delta_asym_HV_results,
+#               utility_HV_results, Dir_HV_results, Gau_HV_results, Obj_HV_results]
+# mv_results = [Dual_MV_results, delta_MV_results, decay_MV_results, actr_MV_results, delta_asym_MV_results,
+#               utility_MV_results, Dir_MV_results, Gau_MV_results, Obj_MV_results]
+# lv_results = [Dual_LV_results, delta_LV_results, decay_LV_results, actr_LV_results, delta_asym_LV_results,
+#               utility_LV_results, Dir_LV_results, Gau_LV_results, Obj_LV_results]
 
 
 def combine_results(results):
     combined_results = []
     model_names = ['Dual', 'Delta', 'Decay', 'ACTR', 'Risk-Sensitive Delta', 'Mean-Variance Utility']
+    # model_names = ['Dual', 'Delta', 'Decay', 'ACTR', 'Risk-Sensitive Delta', 'Mean-Variance Utility', 'Dirichlet',
+    #                'Gaussian', 'Objective']
     for i in range(len(results)):
         model_results = results[i]
         model_results['Model'] = model_names[i]
@@ -182,34 +194,34 @@ _, combined_HV_results = combine_results(hv_results)
 _, combined_MV_results = combine_results(mv_results)
 _, combined_LV_results = combine_results(lv_results)
 
-# plot the AIC and BIC values
-sns.set_theme(style='white')
-fig, ax = plt.subplots(1, 3, figsize=(15, 5))
-sns.barplot(x='Model', y='BIC', data=combined_LV_results, ax=ax[0], errorbar=None, color='darkred')
-ax[0].set_title('LV')
-sns.barplot(x='Model', y='BIC', data=combined_MV_results, ax=ax[1], errorbar=None, color='darkred')
-ax[1].set_title('MV')
-sns.barplot(x='Model', y='BIC', data=combined_HV_results, ax=ax[2], errorbar=None, color='darkred')
-ax[2].set_title('HV')
-for i in range(3):
-    # remove the x label
-    ax[i].set_xlabel('')
-    # set lower y limit
-    dfs = [combined_LV_results, combined_MV_results, combined_HV_results]
-    y_lower = dfs[i].groupby('Model')['BIC'].mean().min() - 10
-    ax[i].set_ylim(bottom=y_lower)
-    # set the font properties
-    ax[i].set_xticklabels(ax[i].get_xticklabels(), fontproperties=prop, fontsize=15)
-    ax[i].set_yticklabels(ax[i].get_yticks(), fontproperties=prop, fontsize=15)
-    # set the title
-    ax[i].set_title(ax[i].get_title(), fontproperties=prop, fontsize=25)
-for i in (1, 2):
-    ax[i].set_ylabel('')
-ax[0].set_ylabel('BIC', fontproperties=prop, fontsize=20)
-sns.despine()
-plt.tight_layout()
-plt.savefig('./figures/BICValues.png', dpi=600)
-plt.show()
+# # plot the AIC and BIC values
+# sns.set_theme(style='white')
+# fig, ax = plt.subplots(1, 3, figsize=(15, 5))
+# sns.barplot(x='Model', y='BIC', data=combined_LV_results, ax=ax[0], errorbar=None, color='darkred')
+# ax[0].set_title('LV')
+# sns.barplot(x='Model', y='BIC', data=combined_MV_results, ax=ax[1], errorbar=None, color='darkred')
+# ax[1].set_title('MV')
+# sns.barplot(x='Model', y='BIC', data=combined_HV_results, ax=ax[2], errorbar=None, color='darkred')
+# ax[2].set_title('HV')
+# for i in range(3):
+#     # remove the x label
+#     ax[i].set_xlabel('')
+#     # set lower y limit
+#     dfs = [combined_LV_results, combined_MV_results, combined_HV_results]
+#     y_lower = dfs[i].groupby('Model')['BIC'].mean().min() - 10
+#     ax[i].set_ylim(bottom=y_lower)
+#     # set the font properties
+#     ax[i].set_xticklabels(ax[i].get_xticklabels(), fontproperties=prop, fontsize=15)
+#     ax[i].set_yticklabels(ax[i].get_yticks(), fontproperties=prop, fontsize=15)
+#     # set the title
+#     ax[i].set_title(ax[i].get_title(), fontproperties=prop, fontsize=25)
+# for i in (1, 2):
+#     ax[i].set_ylabel('')
+# ax[0].set_ylabel('BIC', fontproperties=prop, fontsize=20)
+# sns.despine()
+# plt.tight_layout()
+# plt.savefig('./figures/BICValues.png', dpi=600)
+# plt.show()
 
 
 # combine the dataframes and add a column for the condition
@@ -229,20 +241,23 @@ combined_df.to_csv('./data/CombinedVarianceData.csv', index=False)
 # --------------------------------------------------------------------------------------------------------------
 # Perform variational Bayesian model selection
 # --------------------------------------------------------------------------------------------------------------
-K = 6  # number of models
+K = 6 # number of models
 
 # select columns that end with BIC
-bic_cols = [col for col in combined_LV_results.columns if col.endswith('BIC')]
-log_evidences = combined_HV_results[bic_cols].values / (-2)
+condition_of_interest = combined_HV_results
+bic_cols = [col for col in condition_of_interest.columns if col.endswith('AIC')]
+condition_of_interest['best_model'] = condition_of_interest[bic_cols].idxmin(axis=1)
+print(condition_of_interest['best_model'].value_counts() / len(condition_of_interest))
+log_evidences = condition_of_interest[bic_cols].values / (-2)
 
 # Run VB model selection
 alpha0 = np.ones(K)  # uniform prior
-alpha_est, g_est = vb_model_selection(log_evidences, alpha0=alpha0, tol=1e-6, max_iter=500)
+alpha_est, g_est = vb_model_selection(log_evidences, alpha0=alpha0, tol=1e-12, max_iter=50000)
 
 # alpha_est: Dirichlet parameters of the approximate posterior q(r)
 # g_est: posterior probabilities that each subject was generated by each model
 print("Final alpha (Dirichlet parameters):", alpha_est)
-print("Posterior model probabilities per subject:\n", g_est)
+# print("Posterior model probabilities per subject:\n", g_est)
 print("Expected model frequencies:", alpha_est / np.sum(alpha_est))
 
 # calculate the exceedance probabilities

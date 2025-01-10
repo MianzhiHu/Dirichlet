@@ -53,41 +53,41 @@ cov = np.diag(var)
 
 # # ======================================================================================================================
 # # Plot for empirical data
-# # ======================================================================================================================
-# # Load the data
-# data = pd.read_csv("./data/CombinedVarianceData.csv")
-# sub_all_count = pd.read_csv('./data/sub_all_count.csv')
-#
-# data_CA = data[(data['TrialType'] == 'CA') & (data['model'] == 'Dual')]
-# data_CA.loc[:, 'Condition'] = data_CA['Condition'].map({'HV': 3, 'MV': 2, 'LV': 1})
-# summary = data_CA.groupby(['Subnum', 'Condition']).agg(
-#     bestOption=('bestOption', 'mean'),
-#     t=('t', 'mean'),
-#     a=('a', 'mean'),
-#     obj_weight=('best_obj_weight', 'mean'),
-#     subj_weight=('subj_weight', 'mean'),
-#     best_weight=('best_weight', 'mean')
-# ).reset_index()
-#
-# bins = np.linspace(0, 1, 11)
-#
-# # Plot for time series during training
-# data_training = data[data['trial_index'] <= 150]
-# data_training.loc[:, 'binned_trial_index'] = pd.cut(data_training['trial_index'], bins=10, labels=False)
-# data_training['binned_trial_index'] = data_training['binned_trial_index'] + 1
-#
-# # put three conditions into three facets
-# sns.set_style('whitegrid')
-# g = sns.FacetGrid(data=data_training, col='Condition', hue='TrialType',
-#                   palette=sns.color_palette('pastel')[2:], col_order=['LV', 'MV', 'HV'])
-# g.map(sns.lineplot, 'binned_trial_index', 'bestOption', errorbar='se', err_style='bars')
-# g.set_axis_labels('Blocks', '% of Choosing the Optimal Option')
-# g.set_titles(col_template="{col_name}")
-# g.set(ylim=(0, 1))
-# # g.set(xticks=np.arange(1, 11, 1))
-# g.add_legend(title='Trial Type')
-# plt.savefig('./figures/Training.png', dpi=600)
-# plt.show()
+# ======================================================================================================================
+# Load the data
+data = pd.read_csv("./data/CombinedVarianceData.csv")
+sub_all_count = pd.read_csv('./data/sub_all_count.csv')
+
+data_CA = data[(data['TrialType'] == 'CA') & (data['model'] == 'Dual')]
+data_CA.loc[:, 'Condition'] = data_CA['Condition'].map({'HV': 3, 'MV': 2, 'LV': 1})
+summary = data_CA.groupby(['Subnum', 'Condition']).agg(
+    bestOption=('bestOption', 'mean'),
+    t=('t', 'mean'),
+    a=('a', 'mean'),
+    obj_weight=('best_obj_weight', 'mean'),
+    subj_weight=('subj_weight', 'mean'),
+    best_weight=('best_weight', 'mean')
+).reset_index()
+
+bins = np.linspace(0, 1, 6)
+
+# Plot for time series during training
+data_training = data[data['trial_index'] <= 150]
+data_training.loc[:, 'binned_trial_index'] = pd.cut(data_training['trial_index'], bins=6, labels=False)
+data_training['binned_trial_index'] = data_training['binned_trial_index'] + 1
+
+# put three conditions into three facets
+sns.set_style('whitegrid')
+g = sns.FacetGrid(data=data_training, col='Condition', hue='TrialType',
+                  palette=sns.color_palette('pastel')[2:], col_order=['LV', 'MV', 'HV'])
+g.map(sns.lineplot, 'binned_trial_index', 'bestOption', errorbar='se', err_style='bars')
+g.set_axis_labels('Blocks', '% of Choosing the Optimal Option')
+g.set_titles(col_template="{col_name}")
+g.set(ylim=(0, 1))
+g.set(xticks=np.arange(1, 7, 1))
+g.add_legend(title='Trial Type')
+plt.savefig('./figures/Training.png', dpi=600)
+plt.show()
 #
 #
 # data_transfer = data[data['trial_index'] > 150]
