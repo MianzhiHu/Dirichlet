@@ -71,10 +71,10 @@ if __name__ == '__main__':
         file_name = f'./data/Post_hoc/{models[i]}_posthoc_LV.csv'
         if not os.path.exists(file_name):
             print(f"Simulating {models[i]}_posthoc_LV.csv")
-            simulated_data = model.post_hoc_simulation(LV_results[i], LV_df, models[i],
+            simulated_data = model.bootstrapping_post_hoc_simulation(LV_results[i], models[i],
                                                        reward_means, lv, Gau_fun='Naive_Recency',
                                                        Dir_fun='Linear_Recency',
-                                                       num_iterations=1000)
+                                                       num_iterations=10000)
             simulated_data.to_csv(file_name, index=False)
         else:
             print(f"{models[i]}_posthoc_LV.csv already exists")
@@ -83,10 +83,10 @@ if __name__ == '__main__':
         file_name = f'./data/Post_hoc/{models[i]}_posthoc_MV.csv'
         if not os.path.exists(file_name):
             print(f"Simulating {models[i]}_posthoc_MV.csv")
-            simulated_data = model.post_hoc_simulation(MV_results[i], MV_df, models[i],
+            simulated_data = model.bootstrapping_post_hoc_simulation(MV_results[i], models[i],
                                                        reward_means, mv, Gau_fun='Naive_Recency',
                                                        Dir_fun='Linear_Recency',
-                                                       num_iterations=1000)
+                                                       num_iterations=10000)
             simulated_data.to_csv(file_name, index=False)
         else:
             print(f"{models[i]}_posthoc_MV.csv already exists")
@@ -95,22 +95,23 @@ if __name__ == '__main__':
         file_name = f'./data/Post_hoc/{models[i]}_posthoc_HV.csv'
         if not os.path.exists(file_name):
             print(f"Simulating {models[i]}_posthoc_HV.csv")
-            simulated_data = model.post_hoc_simulation(HV_results[i], HV_df, models[i],
+            simulated_data = model.bootstrapping_post_hoc_simulation(HV_results[i], models[i],
                                                        reward_means, hv, Gau_fun='Naive_Recency',
                                                        Dir_fun='Linear_Recency',
-                                                       num_iterations=1000)
+                                                       num_iterations=10000)
             simulated_data.to_csv(file_name, index=False)
         else:
             print(f"{models[i]}_posthoc_HV.csv already exists")
 
+    # ==================================================================================================================
     # decay model
     for i in range(len(decay_results)):
         file_name = f'./data/Post_hoc/decay_posthoc_{df[i]["Condition"].unique()[0]}.csv'
         if os.path.exists(file_name):
             print(f"decay_posthoc_{df[i]['Condition'].unique()[0]}.csv already exists")
         else:
-            simulated_data = model_decay.post_hoc_simulation(decay_results[i], df[i], reward_means,
-                                                             sd[i], num_iterations=1000)
+            simulated_data = model_decay.bootstrapping_post_hoc_simulation(decay_results[i], reward_means,
+                                                             sd[i], num_iterations=10000, summary=True)
             simulated_data.to_csv(file_name, index=False)
 
     # delta rule model
@@ -120,8 +121,8 @@ if __name__ == '__main__':
             print(f"delta_posthoc_{df[i]['Condition'].unique()[0]}.csv already exists")
         else:
             print(f"Simulating delta_posthoc_{df[i]['Condition'].unique()[0]}.csv")
-            simulated_data = model_delta.post_hoc_simulation(delta_results[i], df[i], reward_means,
-                                                             sd[i], num_iterations=1000)
+            simulated_data = model_delta.bootstrapping_post_hoc_simulation(delta_results[i], reward_means,
+                                                             sd[i], num_iterations=10000, summary=True)
             simulated_data.to_csv(file_name, index=False)
 
     # actr model
@@ -131,20 +132,20 @@ if __name__ == '__main__':
             print(f"actr_posthoc_{df[i]['Condition'].unique()[0]}.csv already exists")
         else:
             print(f"Simulating actr_posthoc_{df[i]['Condition'].unique()[0]}.csv")
-            simulated_data = model_actr.post_hoc_simulation(actr_results[i], df[i], reward_means,
-                                                            sd[i], num_iterations=1000)
+            simulated_data = model_actr.bootstrapping_post_hoc_simulation(actr_results[i], reward_means,
+                                                            sd[i], num_iterations=10000, summary=True)
             simulated_data.to_csv(f'./data/Post_hoc/actr_posthoc_{df[i]["Condition"].unique()[0]}.csv', index=False)
 
     # delta_asym model
     for i in range(len(actr_results)):
-        file_name = f'./data/Post_hoc/delta_asym_posthoc_{df[i]["Condition"].unique()[0]}.csv'
+        file_name = f'./data/Post_hoc/deltaasym_posthoc_{df[i]["Condition"].unique()[0]}.csv'
         if os.path.exists(file_name):
-            print(f"delta_asym_posthoc_{df[i]['Condition'].unique()[0]}.csv already exists")
+            print(f"deltaasym_posthoc_{df[i]['Condition'].unique()[0]}.csv already exists")
         else:
-            print(f"Simulating delta_asym_posthoc_{df[i]['Condition'].unique()[0]}.csv")
-            simulated_data = model_asym.post_hoc_simulation(delta_asym_results[i], df[i], reward_means,
-                                                            sd[i], num_iterations=1000)
-            simulated_data.to_csv(f'./data/Post_hoc/delta_asym_posthoc_{df[i]["Condition"].unique()[0]}.csv', index=False)
+            print(f"Simulating deltaasym_posthoc_{df[i]['Condition'].unique()[0]}.csv")
+            simulated_data = model_asym.bootstrapping_post_hoc_simulation(delta_asym_results[i], reward_means,
+                                                            sd[i], num_iterations=10000, summary=True)
+            simulated_data.to_csv(f'./data/Post_hoc/deltaasym_posthoc_{df[i]["Condition"].unique()[0]}.csv', index=False)
 
     # mean_var_utility model
     for i in range(len(actr_results)):
@@ -153,7 +154,7 @@ if __name__ == '__main__':
             print(f"utility_posthoc_{df[i]['Condition'].unique()[0]}.csv already exists")
         else:
             print(f"Simulating utility_posthoc_{df[i]['Condition'].unique()[0]}.csv")
-            simulated_data = model_utility.post_hoc_simulation(utility_results[i], df[i], reward_means,
-                                                            sd[i], num_iterations=1000)
+            simulated_data = model_utility.bootstrapping_post_hoc_simulation(utility_results[i], reward_means,
+                                                            sd[i], num_iterations=10000, summary=True)
             simulated_data.to_csv(f'./data/Post_hoc/utility_posthoc_{df[i]["Condition"].unique()[0]}.csv', index=False)
 

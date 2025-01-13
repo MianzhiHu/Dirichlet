@@ -198,76 +198,77 @@ if __name__ == '__main__':
 # ======================================================================================================================
 #                                           Traditional Simulation
 # ======================================================================================================================
-# reward_means = [0.65, 0.35, 0.75, 0.25]
-# reward_means_uncertainty = [0.70, 0.30, 0.70, 0.30]
-# hv = [0.48, 0.48, 0.43, 0.43]
-# mv = [0.24, 0.24, 0.22, 0.22]
-# lv = [0.12, 0.12, 0.11, 0.11]
-# uncertainty = [0.43, 0.43, 0.12, 0.12]
+reward_means = [0.65, 0.35, 0.75, 0.25]
+reward_means_uncertainty = [0.70, 0.30, 0.70, 0.30]
+hv = [0.48, 0.48, 0.43, 0.43]
+mv = [0.24, 0.24, 0.22, 0.22]
+lv = [0.12, 0.12, 0.11, 0.11]
+uncertainty = [0.43, 0.43, 0.12, 0.12]
 
-# # ========== Dirichlet Model ==========
-# dir_hv = model.simulate(reward_means, hv, model='Dir', AB_freq=100, CD_freq=50, num_iterations=10000)
-# dir_mv = model.simulate(reward_means, mv, model='Dir', AB_freq=100, CD_freq=50, num_iterations=10000)
-# dir_lv = model.simulate(reward_means, lv, model='Dir', AB_freq=100, CD_freq=50, num_iterations=10000)
-#
-# dir_hv.to_csv('./data/Simulation/dir_hv.csv', index=False)
-# dir_mv.to_csv('./data/Simulation/dir_mv.csv', index=False)
-# dir_lv.to_csv('./data/Simulation/dir_lv.csv', index=False)
-#
-# # ========== Multivariate Gaussian Model ==========
-# gau_hv = model.simulate(reward_means, hv, model='Gau', AB_freq=100, CD_freq=50, num_iterations=10000)
-# gau_mv = model.simulate(reward_means, mv, model='Gau', AB_freq=100, CD_freq=50, num_iterations=10000)
-# gau_lv = model.simulate(reward_means, lv, model='Gau', AB_freq=100, CD_freq=50, num_iterations=10000)
-#
-# gau_hv.to_csv('./data/Simulation/gau_hv.csv', index=False)
-# gau_mv.to_csv('./data/Simulation/gau_mv.csv', index=False)
-# gau_lv.to_csv('./data/Simulation/gau_lv.csv', index=False)
+# ========== Dirichlet Model ==========
+dir_hv = model.simulate(reward_means, hv, model='Dir', AB_freq=100, CD_freq=50, num_iterations=10000)
+dir_mv = model.simulate(reward_means, mv, model='Dir', AB_freq=100, CD_freq=50, num_iterations=10000)
+dir_lv = model.simulate(reward_means, lv, model='Dir', AB_freq=100, CD_freq=50, num_iterations=10000)
 
-# # ========= Dual Process Model ==========
-# dual_hv = model.simulate(reward_means, hv, model='Entropy_Dis_ID', AB_freq=100, CD_freq=50, num_iterations=2000,
-#                          weight_Gau='softmax', weight_Dir='softmax', arbi_option='Entropy', Dir_fun='Linear_Recency',
-#                          Gau_fun='Naive_Recency')
+dir_hv.to_csv('./data/Simulation/dir_hv.csv', index=False)
+dir_mv.to_csv('./data/Simulation/dir_mv.csv', index=False)
+dir_lv.to_csv('./data/Simulation/dir_lv.csv', index=False)
 
-# dual_mv = model.simulate(reward_means, mv, model='Entropy_Dis_ID', AB_freq=100, CD_freq=50, num_iterations=2000,
-#                          weight_Gau='softmax', weight_Dir='softmax', arbi_option='Entropy', Dir_fun='Linear_Recency',
-#                          Gau_fun='Naive_Recency')
-# dual_lv = model.simulate(reward_means, lv, model='Entropy_Dis_ID', AB_freq=100, CD_freq=50, num_iterations=2000,
-#                          weight_Gau='softmax', weight_Dir='softmax', arbi_option='Entropy', Dir_fun='Linear_Recency',
-#                          Gau_fun='Naive_Recency')
+# ========== Multivariate Gaussian Model ==========
+gau_hv = model.simulate(reward_means, hv, model='Gau', AB_freq=100, CD_freq=50, num_iterations=10000)
+gau_mv = model.simulate(reward_means, mv, model='Gau', AB_freq=100, CD_freq=50, num_iterations=10000)
+gau_lv = model.simulate(reward_means, lv, model='Gau', AB_freq=100, CD_freq=50, num_iterations=10000)
 
-# dual_hv.to_csv('./data/Simulation/dual_hv.csv', index=False)
-# dual_mv.to_csv('./data/Simulation/dual_mv.csv', index=False)
-# dual_lv.to_csv('./data/Simulation/dual_lv.csv', index=False)
+gau_hv.to_csv('./data/Simulation/gau_hv.csv', index=False)
+gau_mv.to_csv('./data/Simulation/gau_mv.csv', index=False)
+gau_lv.to_csv('./data/Simulation/gau_lv.csv', index=False)
 
-# ========== Parametric Model ==========
-# mixed_hv = model.simulate(reward_means, hv, model='Param', AB_freq=100, CD_freq=50)
-# mixed_mv = model.simulate(reward_means, mv, model='Param', AB_freq=100, CD_freq=50)
-# mixed_lv = model.simulate(reward_means, lv, model='Param', AB_freq=100, CD_freq=50)
+# ========= Dual Process Model ==========
+dual_hv = model.simulate(reward_means, hv, model='Entropy_Dis_ID', AB_freq=100, CD_freq=50, num_iterations=10000,
+                         weight_Gau='softmax', weight_Dir='softmax', arbi_option='Entropy', Dir_fun='Linear_Recency',
+                         Gau_fun='Naive_Recency')
 
-# mixed_hv.to_csv('./data/Simulation/mixed_hv.csv', index=False)
-# mixed_mv.to_csv('./data/Simulation/mixed_mv.csv', index=False)
-# mixed_lv.to_csv('./data/Simulation/mixed_lv.csv', index=False)
+dual_mv = model.simulate(reward_means, mv, model='Entropy_Dis_ID', AB_freq=100, CD_freq=50, num_iterations=10000,
+                         weight_Gau='softmax', weight_Dir='softmax', arbi_option='Entropy', Dir_fun='Linear_Recency',
+                         Gau_fun='Naive_Recency')
+dual_lv = model.simulate(reward_means, lv, model='Entropy_Dis_ID', AB_freq=100, CD_freq=50, num_iterations=10000,
+                         weight_Gau='softmax', weight_Dir='softmax', arbi_option='Entropy', Dir_fun='Linear_Recency',
+                         Gau_fun='Naive_Recency')
 
-# # ========== Decay Model ==========
-# decay_hv = decay.simulate(reward_means, hv, AB_freq=100, CD_freq=50, num_iterations=10000)
-# decay_mv = decay.simulate(reward_means, mv, AB_freq=100, CD_freq=50, num_iterations=10000)
-# decay_lv = decay.simulate(reward_means, lv, AB_freq=100, CD_freq=50, num_iterations=10000)
-#
-# # ========== Delta Model =========
-# delta_hv = delta.simulate(reward_means, hv, AB_freq=100, CD_freq=50, num_iterations=10000)
-# delta_mv = delta.simulate(reward_means, mv, AB_freq=100, CD_freq=50, num_iterations=10000)
-# delta_lv = delta.simulate(reward_means, lv, AB_freq=100, CD_freq=50, num_iterations=10000)
-#
-# # ========= ACT-R Model ==========
-# actr_hv = actr.simulate(reward_means, hv, AB_freq=100, CD_freq=50, num_iterations=10000)
-# actr_mv = actr.simulate(reward_means, mv, AB_freq=100, CD_freq=50, num_iterations=10000)
-# actr_lv = actr.simulate(reward_means, lv, AB_freq=100, CD_freq=50, num_iterations=10000)
-#
-# # unpacking the results
-# for i, sim in enumerate([decay_hv, decay_mv, decay_lv, delta_hv, delta_mv, delta_lv, actr_hv, actr_mv, actr_lv]):
-#
-#     file_name = ['decay_hv', 'decay_mv', 'decay_lv', 'delta_hv', 'delta_mv', 'delta_lv', 'actr_hv', 'actr_mv',
-#                  'actr_lv'][i]
-#
-#     df = simulation_unpacker(sim)
-#     df.to_csv('./data/Simulation/' + file_name + '.csv', index=False)
+dual_hv.to_csv('./data/Simulation/Traditional Simulations/dual_hv.csv', index=False)
+dual_mv.to_csv('./data/Simulation/Traditional Simulations/dual_mv.csv', index=False)
+dual_lv.to_csv('./data/Simulation/Traditional Simulations/dual_lv.csv', index=False)
+
+# ========== Decay Model ==========
+decay_hv = decay.simulate(reward_means, hv, AB_freq=100, CD_freq=50, num_iterations=10000)
+decay_mv = decay.simulate(reward_means, mv, AB_freq=100, CD_freq=50, num_iterations=10000)
+decay_lv = decay.simulate(reward_means, lv, AB_freq=100, CD_freq=50, num_iterations=10000)
+
+# ========== Delta Model =========
+delta_hv = delta.simulate(reward_means, hv, AB_freq=100, CD_freq=50, num_iterations=10000)
+delta_mv = delta.simulate(reward_means, mv, AB_freq=100, CD_freq=50, num_iterations=10000)
+delta_lv = delta.simulate(reward_means, lv, AB_freq=100, CD_freq=50, num_iterations=10000)
+
+# ========= ACT-R Model ==========
+actr_hv = actr.simulate(reward_means, hv, AB_freq=100, CD_freq=50, num_iterations=10000)
+actr_mv = actr.simulate(reward_means, mv, AB_freq=100, CD_freq=50, num_iterations=10000)
+actr_lv = actr.simulate(reward_means, lv, AB_freq=100, CD_freq=50, num_iterations=10000)
+
+# ========= Delta Asymmetric Model ==========
+delta_asym_hv = delta_asym.simulate(reward_means, hv, AB_freq=100, CD_freq=50, num_iterations=10000)
+delta_asym_mv = delta_asym.simulate(reward_means, mv, AB_freq=100, CD_freq=50, num_iterations=10000)
+delta_asym_lv = delta_asym.simulate(reward_means, lv, AB_freq=100, CD_freq=50, num_iterations=10000)
+
+# ========= Utility Model ==========
+utility_hv = mean_var_utility.simulate(reward_means, hv, AB_freq=100, CD_freq=50, num_iterations=10000)
+utility_mv = mean_var_utility.simulate(reward_means, mv, AB_freq=100, CD_freq=50, num_iterations=10000)
+utility_lv = mean_var_utility.simulate(reward_means, lv, AB_freq=100, CD_freq=50, num_iterations=10000)
+
+# unpacking the results
+for i, sim in enumerate([decay_hv, decay_mv, decay_lv, delta_hv, delta_mv, delta_lv, actr_hv, actr_mv, actr_lv,
+                            delta_asym_hv, delta_asym_mv, delta_asym_lv, utility_hv, utility_mv, utility_lv]):
+
+    file_name = ['decay_hv', 'decay_mv', 'decay_lv', 'delta_hv', 'delta_mv', 'delta_lv', 'actr_hv', 'actr_mv',
+                 'actr_lv', 'deltaasym_hv', 'deltaasym_mv', 'deltaasym_lv', 'utility_hv', 'utility_mv',
+                    'utility_lv'][i]
+    sim.to_csv('./data/Simulation/' + file_name + '.csv', index=False)

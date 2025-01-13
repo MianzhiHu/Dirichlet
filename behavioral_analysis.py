@@ -37,6 +37,12 @@ sub_lv_count = count_choices(sub_lv_data)
 sub_all_summary = summary_choices(data_process[data_process['TrialType'].isin(['AB', 'CD'])])
 sub_all_count = count_choices(data_process[data_process['TrialType'].isin(['AB', 'CD'])])
 
+print(ttest_ind(sub_hv_count[sub_hv_count['TrialType'] == 'AB']['optimal_ratio'],
+                sub_hv_count[sub_hv_count['TrialType'] == 'CD']['optimal_ratio']))
+print(ttest_ind(sub_mv_count[sub_mv_count['TrialType'] == 'AB']['optimal_ratio'],
+                sub_mv_count[sub_mv_count['TrialType'] == 'CD']['optimal_ratio']))
+print(ttest_ind(sub_lv_count[sub_lv_count['TrialType'] == 'AB']['optimal_ratio'],
+                sub_lv_count[sub_lv_count['TrialType'] == 'CD']['optimal_ratio']))
 
 if __name__ == '__main__':
     LV = data[data['Condition'] == 'LV']

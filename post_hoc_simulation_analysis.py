@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 
 # import original data
 data = pd.read_csv("./data/ABCDContRewardsAllData.csv")
+data.rename(columns={'subnum': 'Subnum'}, inplace=True)
 
 mapping = {(0, 1): 'AB',
            (2, 3): 'CD',
@@ -50,8 +51,11 @@ for key in simulations:
     simulations[key]['model'] = model_type
 
     # transform delta, decay, and actr simulations
-    if model_type in ['delta', 'decay', 'actr']:
+    if model_type in ['delta', 'decay', 'actr', 'deltaasym', 'utility']:
         simulations[key]['pair'] = simulations[key]['pair'].astype(str).apply(lambda x: mapping[ast.literal_eval(x)])
+
+    if model_type == 'Entropy':
+        simulations[key] = simulations[key].groupby(['Subnum', 'Condition', 'pair', 'model'])['choice'].mean().reset_index()
 
     simulations[key].rename(columns={'pair': 'TrialType'}, inplace=True)
 
@@ -65,8 +69,7 @@ for key in simulations:
 
 
 # empirical
-data_summary = data.groupby(['subnum', 'Condition', 'TrialType'])['bestOption'].mean().reset_index()
-data_summary.rename(columns={'subnum': 'Subnum'}, inplace=True)
+data_summary = data.groupby(['Condition', 'TrialType'])['bestOption'].mean().reset_index()
 
 # sort all posthoc by condition
 condition_order = ['LV', 'MV', 'HV']
@@ -79,43 +82,53 @@ n_trialtypes = len(all_posthoc['TrialType'].unique())
 all_posthoc = all_posthoc.reset_index(drop=True)
 all_posthoc['Subnum'] = all_posthoc.index // (n_models * n_trialtypes) + 1
 
-# join the empirical data with the simulations
-all_posthoc = all_posthoc.merge(data_summary, on=['Subnum', 'Condition', 'TrialType'], how='left')
+all_posthoc_summary = all_posthoc.groupby(['Condition', 'TrialType', 'model'])['choice'].mean().reset_index()
+all_posthoc_summary = all_posthoc_summary.merge(data_summary, on=['Condition', 'TrialType'], how='left')
 
-# add summary columns to all_posthoc
-all_posthoc['AE'] = np.abs(all_posthoc['bestOption'] - all_posthoc['choice'])
-all_posthoc['squared_error'] = all_posthoc['AE'] ** 2
-all_posthoc.to_csv('./data/all_posthoc.csv', index=False)
+# calculate the RMSE
+all_posthoc_summary['AE'] = np.abs(all_posthoc_summary['bestOption'] - all_posthoc_summary['choice'])
+all_posthoc_summary['squared_error'] = all_posthoc_summary['AE'] ** 2
+all_posthoc_summary['RMSE'] = np.sqrt(all_posthoc_summary['squared_error']).round(3)
+all_posthoc_summary['model'] = pd.Categorical(all_posthoc_summary['model'],
+                                              categories=['delta', 'deltaasym', 'utility', 'decay', 'actr', 'Dual'],
+                                              ordered=True)
+all_posthoc_summary = all_posthoc_summary.sort_values(by=['Condition', 'TrialType', 'model'])
+all_posthoc_summary.to_csv('./data/RMSE_all.csv', index=False)
 
-# get RMSE for each model
-RMSE_all = all_posthoc.groupby(['Subnum', 'Condition', 'TrialType', 'model'])['squared_error'].mean().reset_index()
-RMSE_all['RMSE'] = RMSE_all['squared_error'].apply(np.sqrt)
-RMSE_all.to_csv('./data/RMSE_all.csv', index=False)
+all_posthoc_summary_CA = all_posthoc_summary[all_posthoc_summary['TrialType'] == 'CA']
+rmse = all_posthoc_summary_CA.groupby(['model', 'Condition'])['RMSE'].mean().reset_index()
 
-RMSE = all_posthoc.groupby(['model'])['squared_error'].mean().reset_index()
-RMSE['RMSE'] = RMSE['squared_error'].apply(np.sqrt)
+# CA predictions
+data_CA = data[data['TrialType'] == 'CA']
+data_summary_CA = data_CA.groupby(['Subnum', 'Condition', 'TrialType'])['bestOption'].mean().reset_index()
+data_summary_CA['model'] = 'Empirical'
+data_summary_CA['choice'] = data_summary_CA['bestOption']
+print(data_summary_CA.groupby(['model', 'Condition'])['choice'].mean())
+all_posthoc_CA = all_posthoc[all_posthoc['TrialType'] == 'CA']
+all_posthoc_CA = pd.merge(all_posthoc_CA[['Subnum', 'Condition', 'model', 'choice']], data_summary_CA,
+                          on=['Subnum', 'Condition', 'model'], how='outer')
+all_posthoc_CA['choice'] = all_posthoc_CA['choice_x'].fillna(all_posthoc_CA['choice_y'])
 
-RMSE_CA = all_posthoc[all_posthoc['TrialType'] == 'CA'].groupby(['model'])['squared_error'].mean().reset_index()
-RMSE_CA['RMSE'] = RMSE_CA['squared_error'].apply(np.sqrt)
 
-RMSE_by_condition = all_posthoc.groupby(['Condition', 'model', 'TrialType'])['squared_error'].mean().reset_index()
-RMSE_by_condition['RMSE'] = RMSE_by_condition['squared_error'].apply(np.sqrt)
+print(all_posthoc_CA['model'].unique())
+print(all_posthoc_CA.groupby(['model', 'Condition'])['choice'].mean())
+print(all_posthoc_CA.groupby(['model', 'Condition'])['choice'].apply(lambda x: (x < (0.75/1.4)).mean()))
 
-MAE = all_posthoc.groupby(['model'])['AE'].mean().reset_index()
-MAE_CA = all_posthoc[all_posthoc['TrialType'] == 'CA'].groupby(['model'])['AE'].mean().reset_index()
-MAE_by_condition = all_posthoc.groupby(['Condition', 'model'])['AE'].mean().reset_index()
-
-# Plot the distribution of AE
 sns.set_theme(style='white')
 plt.figure(figsize=(10, 6))
-sns.boxplot(data=all_posthoc, x='model', y='AE', hue='TrialType')
-plt.title('Absolute Error')
-plt.ylabel('Absolute Error')
+sns.barplot(data=all_posthoc_CA, x='model', y='choice', hue='Condition', errorbar='ci',
+            order=['Empirical', 'Dual', 'delta', 'deltaasym', 'utility', 'decay', 'actr'])
+plt.axhline(0.5, color='black', linestyle='--', label='Random Choice')
+plt.axhline(0.75/1.4, color='black', linestyle='-', label='Reward Ratio')
+plt.ylabel('Proportion of C choices in CA trials')
 plt.xlabel('Model')
 plt.legend(loc='upper left', bbox_to_anchor=(1, 1))
+plt.xticks(ticks=np.arange(7), rotation=45, labels=['Empirical', 'Dual-Process', 'Delta',
+                                        'Risk-Sensitive Delta', 'Mean-Variance Utility', 'Decay', 'ACT-R'])
 sns.despine()
+plt.tight_layout()
+plt.savefig('./figures/posthoc_CA.png', dpi=600)
 plt.show()
-
 
 # # add summary columns to all_posthoc
 # all_posthoc['pred_choice'] = np.where(all_posthoc['choice'] > 0.5, 1, 0)

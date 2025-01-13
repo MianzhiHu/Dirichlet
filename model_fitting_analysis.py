@@ -1,16 +1,18 @@
+import ast
 import numpy as np
 import pandas as pd
 import os
-from scipy.stats import ttest_ind, pearsonr, norm
+import pingouin as pg
+from scipy.stats import ttest_ind, pearsonr, norm, f_oneway
 import statsmodels.formula.api as smf
 from utilities.utility_DataAnalysis import (mean_AIC_BIC, create_bayes_matrix, process_chosen_prop,
                                             calculate_mean_squared_error, fitting_summary_generator,
                                             save_df_to_word, individual_param_generator, calculate_difference)
-from utilities.utility_DataAnalysis import extract_all_parameters
 import seaborn as sns
 import matplotlib.pyplot as plt
 from utilities.utility_PlottingFunctions import prop
-from utils.ComputationalModeling import vb_model_selection, compute_exceedance_prob
+from utils.ComputationalModeling import (vb_model_selection, compute_exceedance_prob, parameter_extractor,
+                                         clean_list_string)
 
 # after the simulation has been completed, we can just load the simulated data from the folder
 # folder_path = './data/DataFitting/FittingResults/AlternativeModels/'
@@ -33,7 +35,7 @@ for key in fitting_results:
 # Generate the fitting summary
 # ======================================================================================================================
 # select the models to be compared
-included_models = ['decay', 'delta', 'actr', 'Dual', 'delta_asym', 'utility', 'Gau', 'Dir', 'Obj']
+included_models = ['decay', 'delta', 'actr', 'Dual', 'delta_asym', 'utility']
 indices_to_calculate = ['AIC', 'BIC']
 fitting_summary = fitting_summary_generator(fitting_results, included_models, indices_to_calculate)
 fitting_summary = fitting_summary.round(3)
@@ -79,6 +81,7 @@ individual_param_df.to_csv('./data/IndividualParamResults.csv', index=False)
 
 dual_param = individual_param_df[individual_param_df['model'] == 'Dual'].reset_index()
 dual_param.loc[:, 'Subnum'] = dual_param.index + 1
+print(individual_param_df['model'].unique())
 print(f'max t for all models: {individual_param_df["param_1"].max()}; min t: {individual_param_df["param_1"].min()}')
 print(f'max t for dual: {dual_param["param_1"].max()}; min t for dual: {dual_param["param_1"].min()}')
 print(f'max a for dual: {dual_param["param_2"].max()}; min a for dual: {dual_param["param_2"].min()}')
@@ -194,36 +197,6 @@ _, combined_HV_results = combine_results(hv_results)
 _, combined_MV_results = combine_results(mv_results)
 _, combined_LV_results = combine_results(lv_results)
 
-# # plot the AIC and BIC values
-# sns.set_theme(style='white')
-# fig, ax = plt.subplots(1, 3, figsize=(15, 5))
-# sns.barplot(x='Model', y='BIC', data=combined_LV_results, ax=ax[0], errorbar=None, color='darkred')
-# ax[0].set_title('LV')
-# sns.barplot(x='Model', y='BIC', data=combined_MV_results, ax=ax[1], errorbar=None, color='darkred')
-# ax[1].set_title('MV')
-# sns.barplot(x='Model', y='BIC', data=combined_HV_results, ax=ax[2], errorbar=None, color='darkred')
-# ax[2].set_title('HV')
-# for i in range(3):
-#     # remove the x label
-#     ax[i].set_xlabel('')
-#     # set lower y limit
-#     dfs = [combined_LV_results, combined_MV_results, combined_HV_results]
-#     y_lower = dfs[i].groupby('Model')['BIC'].mean().min() - 10
-#     ax[i].set_ylim(bottom=y_lower)
-#     # set the font properties
-#     ax[i].set_xticklabels(ax[i].get_xticklabels(), fontproperties=prop, fontsize=15)
-#     ax[i].set_yticklabels(ax[i].get_yticks(), fontproperties=prop, fontsize=15)
-#     # set the title
-#     ax[i].set_title(ax[i].get_title(), fontproperties=prop, fontsize=25)
-# for i in (1, 2):
-#     ax[i].set_ylabel('')
-# ax[0].set_ylabel('BIC', fontproperties=prop, fontsize=20)
-# sns.despine()
-# plt.tight_layout()
-# plt.savefig('./figures/BICValues.png', dpi=600)
-# plt.show()
-
-
 # combine the dataframes and add a column for the condition
 HV_df['Condition'] = 'HV'
 MV_df['Condition'] = 'MV'
@@ -239,13 +212,84 @@ combined_df.rename(columns={'param_1': 't', 'param_2': 'a', 'param_3': 'subj_wei
 combined_df.to_csv('./data/CombinedVarianceData.csv', index=False)
 
 # --------------------------------------------------------------------------------------------------------------
+# Extract the EV Gau
+# --------------------------------------------------------------------------------------------------------------
+# extract the EV Gau
+EV_Gau = []
+for result in [Dual_HV_results, Dual_MV_results, Dual_LV_results]:
+    for i in range(len(result)):
+        EV_Gau.append(result['EV_Gau'].iloc[i])
+
+EV_Gau_df = pd.DataFrame(EV_Gau, columns=['EV_Gau'])
+EV_Gau_df['Condition'] = ['HV'] * 100 + ['MV'] * 100 + ['LV'] * 93
+EV_Gau_df['Subnum'] = EV_Gau_df.index + 1
+
+# extract Gaussian EV for A and C
+for i in range(len(EV_Gau_df)):
+    while True:
+        try:
+            # Try to evaluate the current row
+            EV_Gau_df.at[i, 'EV_Gau'] = ast.literal_eval(EV_Gau_df.at[i, 'EV_Gau'])
+            break  # If successful, exit the loop
+        except (SyntaxError, ValueError):
+            # If evaluation fails, clean the string and retry
+            EV_Gau_df.at[i, 'EV_Gau'] = clean_list_string(EV_Gau_df.at[i, 'EV_Gau'])
+
+EV_Gau_df['EV_A'] = EV_Gau_df['EV_Gau'].apply(lambda x: x[0])
+EV_Gau_df['EV_C'] = EV_Gau_df['EV_Gau'].apply(lambda x: x[2])
+
+# incorporate real data
+data_filtered = combined_df[(combined_df['Trial'] <= 150)]
+data_filtered = data_filtered.groupby(['Subnum', 'Condition', 'KeyResponse'])[['Reward']].mean().reset_index()
+data_filtered = data_filtered[data_filtered['KeyResponse'].isin([0, 2])]
+data_filtered = data_filtered.pivot_table(index=['Subnum', 'Condition'], columns='KeyResponse', values='Reward').reset_index()
+EV_Gau_df = EV_Gau_df.merge(data_filtered, on=['Subnum', 'Condition'], how='left')
+
+# make the data long
+EV_Gau_df = EV_Gau_df.melt(id_vars=['Subnum', 'Condition'], value_vars=['EV_A', 'EV_C', 0, 2], var_name='Option',
+                            value_name='EV')
+
+# visualize the data
+plt.figure()
+sns.barplot(data=EV_Gau_df, x='Condition', y='EV', hue='Option', errorbar='se', hue_order=['EV_A', 0, 'EV_C', 2],
+            palette=sns.color_palette('pastel')[:4])
+handles, labels = plt.gca().get_legend_handles_labels()
+plt.legend(handles=handles, labels=['EV(A)', 'Reward(A)', 'EV(C)', 'Reward(C)'], title='')
+sns.despine()
+plt.xlabel('')
+plt.tight_layout()
+plt.savefig('./figures/EV_Gau.png', dpi=1000)
+
+# --------------------------------------------------------------------------------------------------------------
+# Examine the parameters
+# --------------------------------------------------------------------------------------------------------------
+# anova
+model_of_interest = 'deltaasym'
+# t
+print(pg.anova(data=individual_param_df[individual_param_df['model'] == model_of_interest], dv='param_1', between='condition'))
+# a
+print(pg.anova(data=individual_param_df[individual_param_df['model'] == model_of_interest], dv='param_2', between='condition'))
+# subj_weight
+print(pg.anova(data=individual_param_df[individual_param_df['model'] == model_of_interest], dv='param_3', between='condition'))
+
+# mediation analysis
+fre_rate = combined_df.groupby(['Subnum', 'TrialType'])[['bestOption', 'best_weight']].mean().reset_index()
+fre_rate = fre_rate[fre_rate['TrialType'] == 'CA']
+
+dual_param = dual_param.merge(fre_rate, on='Subnum')
+dual_param['best_weight'] = dual_param['best_weight'].astype(float)
+
+
+results = pg.mediation_analysis(data=dual_param, x='best_weight', m='param_3', y='bestOption', alpha=0.05)
+
+# --------------------------------------------------------------------------------------------------------------
 # Perform variational Bayesian model selection
 # --------------------------------------------------------------------------------------------------------------
 K = 6 # number of models
 
 # select columns that end with BIC
 condition_of_interest = combined_HV_results
-bic_cols = [col for col in condition_of_interest.columns if col.endswith('AIC')]
+bic_cols = [col for col in condition_of_interest.columns if col.endswith('BIC')]
 condition_of_interest['best_model'] = condition_of_interest[bic_cols].idxmin(axis=1)
 print(condition_of_interest['best_model'].value_counts() / len(condition_of_interest))
 log_evidences = condition_of_interest[bic_cols].values / (-2)
@@ -264,3 +308,65 @@ print("Expected model frequencies:", alpha_est / np.sum(alpha_est))
 ex_probs = compute_exceedance_prob(alpha_est, n_samples=100000)
 print("Exceedance probabilities:", ex_probs)
 
+# ======================================================================================================================
+# Additional Model Fitting Analysis as Requested by Reviewers
+# ======================================================================================================================
+folder_50_path = './data/DataFitting/FittingResults/AlternativeModels/'
+fitting_50_results = {}
+
+for file in os.listdir(folder_50_path):
+    if (file.endswith('.csv')) and ('50' in file):
+        file_path = os.path.join(folder_50_path, file)
+        df_name = os.path.splitext(file)[0]
+        fitting_50_results[df_name] = pd.read_csv(file_path)
+
+# unnest the dictionary into dfs
+for key in fitting_50_results:
+    print(key)
+    mean_AIC_BIC(fitting_50_results[key])
+    globals()[key] = fitting_50_results[key]
+
+# extract the weights
+HV_50 = HV_df[(HV_df['TrialType'] == 'AB') | (HV_df['TrialType'] == 'CD')].groupby(['Subnum', 'TrialType']).head(50)
+MV_50 = MV_df[(MV_df['TrialType'] == 'AB') | (MV_df['TrialType'] == 'CD')].groupby(['Subnum', 'TrialType']).head(50)
+LV_50 = LV_df[(LV_df['TrialType'] == 'AB') | (LV_df['TrialType'] == 'CD')].groupby(['Subnum', 'TrialType']).head(50)
+
+_, dual_50_HV = process_chosen_prop(dual_50_HV_results, HV_50, sub=True, values=['best_weight', 'best_obj_weight'])
+_, dual_50_MV = process_chosen_prop(dual_50_MV_results, MV_50, sub=True, values=['best_weight', 'best_obj_weight'])
+_, dual_50_LV = process_chosen_prop(dual_50_LV_results, LV_50, sub=True, values=['best_weight', 'best_obj_weight'])
+
+# extract the parameters
+dual_param_HV = parameter_extractor(dual_50_HV_results).reset_index(drop=True)
+dual_param_MV = parameter_extractor(dual_50_MV_results).reset_index(drop=True)
+dual_param_LV = parameter_extractor(dual_50_LV_results).reset_index(drop=True)
+
+# add condition labels
+dual_param_HV['Condition'] = 'HV'
+dual_param_MV['Condition'] = 'MV'
+dual_param_LV['Condition'] = 'LV'
+
+# combine the dataframes
+dual_param_50 = pd.concat([dual_param_LV, dual_param_MV, dual_param_HV], axis=0).reset_index(drop=True)
+dual_param_50.rename(columns={'participant_id': 'Subnum'}, inplace=True)
+
+dual_param_50 = dual_param_50[['Subnum', 't', 'alpha', 'subj_weight', 'Condition']]
+dual_data_50 = pd.concat([dual_50_LV, dual_50_MV, dual_50_HV], axis=0).reset_index(drop=True)
+
+dual_param_50.loc[:, 'Subnum'] = dual_param_50.index + 1
+dual_data_50.loc[:, 'Subnum'] = dual_data_50.index // 100 + 1
+
+dual_50 = pd.merge(dual_data_50, dual_param_50, on='Subnum')
+
+# # visualize the distribution
+# bins = np.linspace(0, 1, 11)
+# plt.figure()
+# g = sns.FacetGrid(dual_50, col='Condition', margin_titles=False)
+# g.map(sns.histplot, 'best_obj_weight', kde=True, color=sns.color_palette('deep')[0], stat='probability', bins=bins)
+# g.set_axis_labels('', '% of Participants', fontproperties=prop, fontsize=15)
+# g.set_titles(col_template="{col_name}", fontproperties=prop, size=20)
+# g.set(xlim=(0, 1))
+# g.set_xticklabels(fontproperties=prop)
+# g.set_yticklabels(fontproperties=prop)
+# g.fig.text(0.5, 0.05, 'Objective Dirichlet Weight', ha='center', fontproperties=prop, fontsize=15)
+# plt.savefig('./figures/Weight_Distribution_50.png', dpi=1000)
+# plt.show()

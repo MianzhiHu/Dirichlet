@@ -76,23 +76,23 @@ data_training = data[data['trial_index'] <= 150]
 data_training.loc[:, 'binned_trial_index'] = pd.cut(data_training['trial_index'], bins=6, labels=False)
 data_training['binned_trial_index'] = data_training['binned_trial_index'] + 1
 
-# put three conditions into three facets
-sns.set_style('whitegrid')
-g = sns.FacetGrid(data=data_training, col='Condition', hue='TrialType',
-                  palette=sns.color_palette('pastel')[2:], col_order=['LV', 'MV', 'HV'])
-g.map(sns.lineplot, 'binned_trial_index', 'bestOption', errorbar='se', err_style='bars')
-g.set_axis_labels('Blocks', '% of Choosing the Optimal Option')
-g.set_titles(col_template="{col_name}")
-g.set(ylim=(0, 1))
-g.set(xticks=np.arange(1, 7, 1))
-g.add_legend(title='Trial Type')
-plt.savefig('./figures/Training.png', dpi=600)
-plt.show()
-#
-#
-# data_transfer = data[data['trial_index'] > 150]
-# data_transfer.loc[:, 'trial_index'] = data_transfer.groupby(['Subnum', 'TrialType']).cumcount() + 1
-#
+# # put three conditions into three facets
+# sns.set_style('whitegrid')
+# g = sns.FacetGrid(data=data_training, col='Condition', hue='TrialType',
+#                   palette=sns.color_palette('pastel')[2:], col_order=['LV', 'MV', 'HV'])
+# g.map(sns.lineplot, 'binned_trial_index', 'bestOption', errorbar='se', err_style='bars')
+# g.set_axis_labels('Blocks', '% of Choosing the Optimal Option')
+# g.set_titles(col_template="{col_name}")
+# g.set(ylim=(0, 1))
+# g.set(xticks=np.arange(1, 7, 1))
+# g.add_legend(title='Trial Type')
+# plt.savefig('./figures/Training.png', dpi=600)
+# plt.show()
+
+
+data_transfer = data[data['trial_index'] > 150]
+data_transfer.loc[:, 'trial_index'] = data_transfer.groupby(['Subnum', 'TrialType']).cumcount() + 1
+
 # # put three conditions into three facets
 # sns.set_style('whitegrid')
 # g = sns.FacetGrid(data=data_transfer, col='Condition', hue='TrialType',
@@ -125,13 +125,13 @@ plt.show()
 # plt.show()
 #
 #
-# # revert the condition to the original order
-# summary['Condition'] = summary['Condition'].map({3: 'HV', 2: 'MV', 1: 'LV'})
-#
-# # sort the summary by condition from LV to HV
-# order = ['LV', 'MV', 'HV']
-# summary = summary.sort_values(by='Condition', key=lambda x: x.map({v: i for i, v in enumerate(order)}))
-#
+# revert the condition to the original order
+summary['Condition'] = summary['Condition'].map({3: 'HV', 2: 'MV', 1: 'LV'})
+
+# sort the summary by condition from LV to HV
+order = ['LV', 'MV', 'HV']
+summary = summary.sort_values(by='Condition', key=lambda x: x.map({v: i for i, v in enumerate(order)}))
+
 # # plot the distribution of the weights for each condition and each weight using facet grid
 # plt.figure()
 # g = sns.FacetGrid(summary, col='Condition', margin_titles=False)
@@ -162,17 +162,17 @@ plt.show()
 # plt.savefig('./figures/RT.png', dpi=600)
 # plt.show()
 #
-# # plot for all
-# # Define colors for each bar
-# palette6 = sns.color_palette("pastel", 6)
-# palette3 = sns.color_palette("pastel", 3)
-#
-# all_mean = data.groupby(['Subnum', 'Condition', 'TrialType'])['bestOption'].mean().reset_index()
-# all_mean.loc[:, 'Condition'] = pd.Categorical(all_mean['Condition'], categories=['LV', 'MV', 'HV'], ordered=True)
-# all_mean_CA = all_mean[all_mean['TrialType'] == 'CA']
-# all_mean_CA.loc[:, 'Condition'] = pd.Categorical(all_mean_CA['Condition'], categories=['LV', 'MV', 'HV'], ordered=True)
-#
-# hue_order = ['AB', 'CD', 'CA', 'BD', 'AD', 'CB']
+# plot for all
+# Define colors for each bar
+palette6 = sns.color_palette("pastel", 6)
+palette3 = sns.color_palette("pastel", 3)
+
+all_mean = data.groupby(['Subnum', 'Condition', 'TrialType'])['bestOption'].mean().reset_index()
+all_mean.loc[:, 'Condition'] = pd.Categorical(all_mean['Condition'], categories=['LV', 'MV', 'HV'], ordered=True)
+all_mean_CA = all_mean[all_mean['TrialType'] == 'CA']
+all_mean_CA.loc[:, 'Condition'] = pd.Categorical(all_mean_CA['Condition'], categories=['LV', 'MV', 'HV'], ordered=True)
+
+hue_order = ['AB', 'CD', 'CA', 'BD', 'AD', 'CB']
 #
 # sns.barplot(x='Condition', y='bestOption', hue='TrialType', data=all_mean, palette=palette6, hue_order=hue_order,
 #             order=['LV', 'MV', 'HV'])
@@ -192,20 +192,21 @@ plt.show()
 # plt.savefig('./figures/all_behavioral.png', dpi=1000)
 # plt.show()
 #
-# # plot for CA
-# all_mean_CA.loc[:, 'As'] = 1 - all_mean_CA['bestOption']
-# sns.set_style('white')
-# sns.barplot(x='Condition', y='As', data=all_mean_CA, color=palette6[2], order=['LV', 'MV', 'HV'], errorbar='se')
-# plt.ylabel('% Selecting A in CA Trials', fontproperties=prop, fontsize=20)
-# plt.xlabel('')
-# plt.gca().yaxis.set_major_formatter(ticker.PercentFormatter(xmax=1))
-# plt.xticks(fontproperties=prop, fontsize=15)
-# plt.yticks(fontproperties=prop, fontsize=15)
-# plt.axhline(y=0.5, color='black', linestyle='--', linewidth=1)
-# sns.despine()
-# plt.savefig('./figures/CA_behavioral.png', dpi=1000)
-# plt.show()
-#
+# plot for CA
+all_mean_CA.loc[:, 'As'] = 1 - all_mean_CA['bestOption']
+print(all_mean_CA.groupby('Condition')['bestOption'].mean())
+sns.set_style('white')
+sns.barplot(x='Condition', y='bestOption', data=all_mean_CA, color=palette6[2], order=['LV', 'MV', 'HV'], errorbar='ci')
+plt.ylabel('% Selecting A in CA Trials', fontproperties=prop, fontsize=20)
+plt.xlabel('')
+plt.gca().yaxis.set_major_formatter(ticker.PercentFormatter(xmax=1))
+plt.xticks(fontproperties=prop, fontsize=15)
+plt.yticks(fontproperties=prop, fontsize=15)
+plt.axhline(y=0.5, color='black', linestyle='--', linewidth=1)
+sns.despine()
+plt.savefig('./figures/CA_behavioral.png', dpi=1000)
+plt.show()
+
 # # plot the distribution of counts for MV and LV
 # fig, ax = plt.subplots(1, 3, figsize=(10, 5), sharey=True, sharex=True)
 # sns.histplot(sub_lv_count['optimal_ratio'], kde=True, stat='probability', bins=bins, color=sns.color_palette('deep')[3], ax=ax[0])
