@@ -9,22 +9,22 @@ from utils.ComputationalModeling import ComputationalModels, model_recovery, par
 
 
 if __name__ == '__main__':
-    # define the models
-    model = DualProcessModel()
-    model_decay = ComputationalModels(model_type='decay')
-    model_delta = ComputationalModels(model_type='delta')
-    model_actr = ComputationalModels(model_type='ACTR')
-    model_utility = ComputationalModels(model_type='mean_var_utility')
-    model_asym = ComputationalModels(model_type='delta_asymmetric')
-
-    # define the reward means and variances
-    reward_means = [0.65, 0.35, 0.75, 0.25]
-    hv = [0.48, 0.48, 0.43, 0.43]
-    mv = [0.24, 0.24, 0.22, 0.22]
-    lv = [0.12, 0.12, 0.11, 0.11]
-    n = 100
-    n_fitting_iterations = 30
-
+    # # define the models
+    # model = DualProcessModel()
+    # model_decay = ComputationalModels(model_type='decay')
+    # model_delta = ComputationalModels(model_type='delta')
+    # model_actr = ComputationalModels(model_type='ACTR')
+    # model_utility = ComputationalModels(model_type='mean_var_utility')
+    # model_asym = ComputationalModels(model_type='delta_asymmetric')
+    #
+    # # define the reward means and variances
+    # reward_means = [0.65, 0.35, 0.75, 0.25]
+    # hv = [0.48, 0.48, 0.43, 0.43]
+    # mv = [0.24, 0.24, 0.22, 0.22]
+    # lv = [0.12, 0.12, 0.11, 0.11]
+    # n = 100
+    # n_fitting_iterations = 30
+    #
     # hv_sim, hv_fit, hv_recovery = model_recovery(
     #     ['Dual-Process', 'Delta', 'Risk-Sensitive Delta', 'Mean-Variance Utility', 'Decay', 'ACT-R'],
     #     [model, model_delta, model_asym, model_utility, model_decay, model_actr],
@@ -53,32 +53,60 @@ if __name__ == '__main__':
     # lv_recovery.to_csv('./data/Simulation/Model Recovery/lv_recovery.csv', index=False)
 
 
-    # # ==================================================================================================================
-    # # Model Recovery Analysis
-    # # ==================================================================================================================
-    # hv_model_recovery = pd.read_csv('./data/Simulation/Model Recovery/hv_recovery.csv')
-    # mv_model_recovery = pd.read_csv('./data/Simulation/Model Recovery/mv_recovery.csv')
-    # lv_model_recovery = pd.read_csv('./data/Simulation/Model Recovery/lv_recovery.csv')
-    #
-    # # construct the confusion and inversion matrix
-    # model_recovery_df = hv_model_recovery
-    # print(model_recovery_df['simulated_model'].unique())
-    # m_confusion = confusion_matrix(model_recovery_df['simulated_model'], model_recovery_df['fit_model'],
-    #                                normalize='true', labels=model_recovery_df['simulated_model'].unique())
-    # m_inversion = confusion_matrix(model_recovery_df['simulated_model'], model_recovery_df['fit_model'], normalize='pred',
-    #                                labels=model_recovery_df['simulated_model'].unique())
-    #
-    # dual = model_recovery_df[model_recovery_df['simulated_model'] == 'Dual-Process']
-    # print(f'Model Recovery for Dual-Process: {dual["fit_model"].value_counts()}')
-    #
-    # # plot the confusion matrix
-    # sns.heatmap(m_inversion, annot=True, cmap='Blues', xticklabels=model_recovery_df['simulated_model'].unique(),
-    #             yticklabels=model_recovery_df['simulated_model'].unique(), cbar=False)
-    # plt.xlabel('Fit Model')
-    # plt.ylabel('Simulated Model')
-    # plt.tight_layout()
-    # plt.savefig('./figures/model_recovery.png', dpi=600)
-    # plt.show()
+    # ==================================================================================================================
+    # Model Recovery Analysis
+    # ==================================================================================================================
+    hv_model_recovery = pd.read_csv('./data/Simulation/Model Recovery/hv_recovery.csv')
+    mv_model_recovery = pd.read_csv('./data/Simulation/Model Recovery/mv_recovery.csv')
+    lv_model_recovery = pd.read_csv('./data/Simulation/Model Recovery/lv_recovery.csv')
+
+    # construct the confusion and inversion matrix
+    model_recovery_df = hv_model_recovery
+    print(model_recovery_df['simulated_model'].unique())
+    m_confusion = confusion_matrix(model_recovery_df['simulated_model'], model_recovery_df['fit_model'],
+                                   normalize='true', labels=model_recovery_df['simulated_model'].unique())
+    m_inversion = confusion_matrix(model_recovery_df['simulated_model'], model_recovery_df['fit_model'], normalize='pred',
+                                   labels=model_recovery_df['simulated_model'].unique())
+
+    dual = model_recovery_df[model_recovery_df['simulated_model'] == 'Dual-Process']
+    print(f'Model Recovery for Dual-Process: {dual["fit_model"].value_counts()}')
+
+    # plot the confusion matrix
+    sns.heatmap(m_inversion, annot=True, cmap='Blues', xticklabels=model_recovery_df['simulated_model'].unique(),
+                yticklabels=model_recovery_df['simulated_model'].unique(), cbar=False)
+    plt.xlabel('Fit Model')
+    plt.ylabel('Simulated Model')
+    plt.tight_layout()
+    plt.savefig('./figures/model_recovery.png', dpi=600)
+    plt.show()
+
+    # model recovery 2
+    hv_fit = pd.read_csv('./data/Simulation/Model Recovery/hv_fit.csv')
+    mv_fit = pd.read_csv('./data/Simulation/Model Recovery/mv_fit.csv')
+    lv_fit = pd.read_csv('./data/Simulation/Model Recovery/lv_fit.csv')
+    fit = lv_fit
+
+    # add 6 * i to the participant id every 36 rows
+    fit['block'] = fit.index // 36
+    fit['participant_id'] = (fit.index % 6 + 1) + 6 * fit['block']
+    best_fitting_model = fit.loc[fit.groupby('participant_id')['AIC'].idxmin()].reset_index(drop=True)
+
+    m_confusion = confusion_matrix(best_fitting_model['simulated_model'], best_fitting_model['fit_model'],
+                                   normalize='true', labels=best_fitting_model['simulated_model'].unique())
+    m_inversion = confusion_matrix(best_fitting_model['simulated_model'], best_fitting_model['fit_model'], normalize='pred',
+                                   labels=best_fitting_model['simulated_model'].unique())
+
+    dual = best_fitting_model[best_fitting_model['simulated_model'] == 'Dual-Process']
+    print(f'Model Recovery for Dual-Process: {dual["fit_model"].value_counts()}')
+
+    # plot the confusion matrix
+    sns.heatmap(m_confusion, annot=True, cmap='Blues', xticklabels=best_fitting_model['simulated_model'].unique(),
+                yticklabels=best_fitting_model['simulated_model'].unique(), cbar=False)
+    plt.xlabel('Fit Model')
+    plt.ylabel('Simulated Model')
+    plt.tight_layout()
+    plt.savefig('./figures/model_recovery.png', dpi=600)
+    plt.show()
 
     # ==================================================================================================================
     # Parameter Recovery Analysis

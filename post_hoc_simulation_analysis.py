@@ -95,6 +95,9 @@ all_posthoc_summary['model'] = pd.Categorical(all_posthoc_summary['model'],
 all_posthoc_summary = all_posthoc_summary.sort_values(by=['Condition', 'TrialType', 'model'])
 all_posthoc_summary.to_csv('./data/RMSE_all.csv', index=False)
 
+all_posthoc_summary_model = all_posthoc_summary.groupby(['model'], observed=False)['RMSE'].mean().reset_index()
+all_posthoc_summary_model = all_posthoc_summary_model.sort_values(by=['Condition', 'model'])
+
 all_posthoc_summary_CA = all_posthoc_summary[all_posthoc_summary['TrialType'] == 'CA']
 rmse = all_posthoc_summary_CA.groupby(['model', 'Condition'])['RMSE'].mean().reset_index()
 
@@ -121,9 +124,9 @@ sns.barplot(data=all_posthoc_CA, x='model', y='choice', hue='Condition', errorba
 plt.axhline(0.5, color='black', linestyle='--', label='Random Choice')
 plt.axhline(0.75/1.4, color='black', linestyle='-', label='Reward Ratio')
 plt.ylabel('Proportion of C choices in CA trials')
-plt.xlabel('Model')
-plt.legend(loc='upper left', bbox_to_anchor=(1, 1))
-plt.xticks(ticks=np.arange(7), rotation=45, labels=['Empirical', 'Dual-Process', 'Delta',
+plt.xlabel('')
+plt.legend(loc='lower left')
+plt.xticks(ticks=np.arange(7), rotation=90, labels=['Empirical', 'Dual-Process', 'Delta',
                                         'Risk-Sensitive Delta', 'Mean-Variance Utility', 'Decay', 'ACT-R'])
 sns.despine()
 plt.tight_layout()

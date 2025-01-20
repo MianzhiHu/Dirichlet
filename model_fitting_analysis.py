@@ -3,8 +3,11 @@ import numpy as np
 import pandas as pd
 import os
 import pingouin as pg
+import sm
 from scipy.stats import ttest_ind, pearsonr, norm, f_oneway
 import statsmodels.formula.api as smf
+
+from plotting import data_CA
 from utilities.utility_DataAnalysis import (mean_AIC_BIC, create_bayes_matrix, process_chosen_prop,
                                             calculate_mean_squared_error, fitting_summary_generator,
                                             save_df_to_word, individual_param_generator, calculate_difference)
@@ -35,7 +38,7 @@ for key in fitting_results:
 # Generate the fitting summary
 # ======================================================================================================================
 # select the models to be compared
-included_models = ['decay', 'delta', 'actr', 'Dual', 'delta_asym', 'utility']
+included_models = ['decay', 'delta', 'actr', 'Dual', 'deltaasym', 'utility', 'Obj', 'Gau', 'Dir']
 indices_to_calculate = ['AIC', 'BIC']
 fitting_summary = fitting_summary_generator(fitting_results, included_models, indices_to_calculate)
 fitting_summary = fitting_summary.round(3)
@@ -85,6 +88,7 @@ print(individual_param_df['model'].unique())
 print(f'max t for all models: {individual_param_df["param_1"].max()}; min t: {individual_param_df["param_1"].min()}')
 print(f'max t for dual: {dual_param["param_1"].max()}; min t for dual: {dual_param["param_1"].min()}')
 print(f'max a for dual: {dual_param["param_2"].max()}; min a for dual: {dual_param["param_2"].min()}')
+print(f'sd a for dual: {dual_param["param_2"].std()}')
 print(f'max subj_weight for dual: {dual_param["param_3"].max()}; min subj_weight for dual: {dual_param["param_3"].min()}')
 
 # ======================================================================================================================
@@ -159,11 +163,11 @@ process_chosen_df = [process_chosen_HV, process_chosen_MV, process_chosen_LV]
 
 # combine the AIC and BIC values
 columns = ['AIC', 'BIC', 'Model']
-hv_results = [Dual_HV_results, delta_HV_results, decay_HV_results, actr_HV_results, delta_asym_HV_results,
+hv_results = [Dual_HV_results, delta_HV_results, decay_HV_results, actr_HV_results, deltaasym_HV_results,
               utility_HV_results]
-mv_results = [Dual_MV_results, delta_MV_results, decay_MV_results, actr_MV_results, delta_asym_MV_results,
+mv_results = [Dual_MV_results, delta_MV_results, decay_MV_results, actr_MV_results, deltaasym_MV_results,
               utility_MV_results]
-lv_results = [Dual_LV_results, delta_LV_results, decay_LV_results, actr_LV_results, delta_asym_LV_results,
+lv_results = [Dual_LV_results, delta_LV_results, decay_LV_results, actr_LV_results, deltaasym_LV_results,
               utility_LV_results]
 
 # hv_results = [Dual_HV_results, delta_HV_results, decay_HV_results, actr_HV_results, delta_asym_HV_results,
@@ -252,7 +256,7 @@ EV_Gau_df = EV_Gau_df.melt(id_vars=['Subnum', 'Condition'], value_vars=['EV_A', 
 # visualize the data
 plt.figure()
 sns.barplot(data=EV_Gau_df, x='Condition', y='EV', hue='Option', errorbar='se', hue_order=['EV_A', 0, 'EV_C', 2],
-            palette=sns.color_palette('pastel')[:4])
+            palette=sns.color_palette('deep')[:4])
 handles, labels = plt.gca().get_legend_handles_labels()
 plt.legend(handles=handles, labels=['EV(A)', 'Reward(A)', 'EV(C)', 'Reward(C)'], title='')
 sns.despine()
@@ -264,9 +268,12 @@ plt.savefig('./figures/EV_Gau.png', dpi=1000)
 # Examine the parameters
 # --------------------------------------------------------------------------------------------------------------
 # anova
+print(individual_param_df['model'].unique())
 model_of_interest = 'deltaasym'
+
 # t
 print(pg.anova(data=individual_param_df[individual_param_df['model'] == model_of_interest], dv='param_1', between='condition'))
+pairwise = pg.pairwise_tukey(data=individual_param_df[individual_param_df['model'] == model_of_interest], dv='param_1', between='condition')
 # a
 print(pg.anova(data=individual_param_df[individual_param_df['model'] == model_of_interest], dv='param_2', between='condition'))
 # subj_weight
@@ -279,8 +286,11 @@ fre_rate = fre_rate[fre_rate['TrialType'] == 'CA']
 dual_param = dual_param.merge(fre_rate, on='Subnum')
 dual_param['best_weight'] = dual_param['best_weight'].astype(float)
 
+results = pg.mediation_analysis(data=dual_param, x='best_weight', m='param_1', y='bestOption', alpha=0.05)
 
-results = pg.mediation_analysis(data=dual_param, x='best_weight', m='param_3', y='bestOption', alpha=0.05)
+# generalized linear model
+data_CA = combined_df[combined_df['TrialType'] == 'CA']
+model = smf.mixedlm("best_obj_weight ~ C(condition)", data_CA, groups=data_CA["Subnum"])
 
 # --------------------------------------------------------------------------------------------------------------
 # Perform variational Bayesian model selection
@@ -288,8 +298,8 @@ results = pg.mediation_analysis(data=dual_param, x='best_weight', m='param_3', y
 K = 6 # number of models
 
 # select columns that end with BIC
-condition_of_interest = combined_HV_results
-bic_cols = [col for col in condition_of_interest.columns if col.endswith('BIC')]
+condition_of_interest = combined_LV_results
+bic_cols = [col for col in condition_of_interest.columns if col.endswith('AIC')]
 condition_of_interest['best_model'] = condition_of_interest[bic_cols].idxmin(axis=1)
 print(condition_of_interest['best_model'].value_counts() / len(condition_of_interest))
 log_evidences = condition_of_interest[bic_cols].values / (-2)
@@ -306,7 +316,7 @@ print("Expected model frequencies:", alpha_est / np.sum(alpha_est))
 
 # calculate the exceedance probabilities
 ex_probs = compute_exceedance_prob(alpha_est, n_samples=100000)
-print("Exceedance probabilities:", ex_probs)
+print("Exceedance probabilities:", ex_probs.round(3))
 
 # ======================================================================================================================
 # Additional Model Fitting Analysis as Requested by Reviewers

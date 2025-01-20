@@ -20,7 +20,7 @@ from sklearn.linear_model import LinearRegression
 # ======================================================================================================================
 # plot illustrations of Dirichlet distribution
 alpha = [2, 101]
-scatter_Dirichlet_2D(alpha)
+# scatter_Dirichlet_2D(alpha)
 # bar_Dirichlet(alpha, resolution=500, elev=45, azim=60)
 
 # do the same for multivariate Gaussian distribution
@@ -93,37 +93,37 @@ data_training['binned_trial_index'] = data_training['binned_trial_index'] + 1
 data_transfer = data[data['trial_index'] > 150]
 data_transfer.loc[:, 'trial_index'] = data_transfer.groupby(['Subnum', 'TrialType']).cumcount() + 1
 
-# # put three conditions into three facets
-# sns.set_style('whitegrid')
-# g = sns.FacetGrid(data=data_transfer, col='Condition', hue='TrialType',
-#                   palette=sns.color_palette('pastel')[2:], col_order=['LV', 'MV', 'HV'])
-# g.map(sns.lineplot, 'trial_index', 'bestOption', errorbar='se', err_style='bars')
-# g.set_axis_labels('Trial Index', '% of Choosing the Optimal Option')
-# g.set_titles(col_template="{col_name}")
-# g.set(ylim=(0, 1))
-# # g.set(xticks=np.arange(1, 11, 1))
-# g.add_legend(title='Trial Type')
-# plt.savefig('./figures/Transfer.png', dpi=600)
-# plt.show()
+# put three conditions into three facets
+sns.set_style('whitegrid')
+g = sns.FacetGrid(data=data_transfer, col='Condition', hue='TrialType',
+                  palette=sns.color_palette('pastel')[2:], col_order=['LV', 'MV', 'HV'])
+g.map(sns.lineplot, 'trial_index', 'bestOption', errorbar='se', err_style='bars')
+g.set_axis_labels('Trial Index', '% of Choosing the Optimal Option')
+g.set_titles(col_template="{col_name}")
+g.set(ylim=(0, 1))
+# g.set(xticks=np.arange(1, 11, 1))
+g.add_legend(title='Trial Type')
+plt.savefig('./figures/Transfer.png', dpi=600)
+plt.show()
+
+
+
+# Create a 3D plot to show the relationship between weight, best_option, and condition
+three_planes(summary, 'best_weight', x_label='Overall Dirichlet Weight', name='Overall_Weight_Optimal')
+
 #
-#
-#
-# # Create a 3D plot to show the relationship between weight, best_option, and condition
-# three_planes(summary, 'best_weight', x_label='Overall Dirichlet Weight', name='Overall_Weight_Optimal')
-#
-#
-# # plot how subjective and objective weights change across conditions
-# summary.loc[:, "gaussian_weight"] = 1 - summary['best_weight']
-# plt.figure()
-# sns.barplot(x='Condition', y='best_weight', data=summary, color=sns.color_palette('deep')[3], errorbar='ci')
-# plt.ylabel('Dirichlet Weights in CA Trials', fontproperties=prop, fontsize=15)
-# plt.xlabel('')
-# plt.xticks([0, 1, 2], ['LV', 'MV', 'HV'], fontproperties=prop, fontsize=15)
-# plt.yticks(fontproperties=prop)
-# sns.despine()
-# plt.savefig('./figures/Weight_Condition.png', dpi=1000)
-# plt.show()
-#
+# plot how subjective and objective weights change across conditions
+summary.loc[:, "gaussian_weight"] = 1 - summary['best_weight']
+plt.figure()
+sns.barplot(x='Condition', y='best_weight', data=summary, color=sns.color_palette('pastel')[3], errorbar='se', order=[1, 2, 3])
+plt.ylabel('Dirichlet Weights in CA Trials', fontproperties=prop, fontsize=15)
+plt.xlabel('')
+plt.xticks([0, 1, 2], ['LV', 'MV', 'HV'], fontproperties=prop, fontsize=15)
+plt.yticks(fontproperties=prop)
+sns.despine()
+plt.savefig('./figures/Weight_Condition.png', dpi=1000)
+plt.show()
+
 #
 # revert the condition to the original order
 summary['Condition'] = summary['Condition'].map({3: 'HV', 2: 'MV', 1: 'LV'})
@@ -132,36 +132,37 @@ summary['Condition'] = summary['Condition'].map({3: 'HV', 2: 'MV', 1: 'LV'})
 order = ['LV', 'MV', 'HV']
 summary = summary.sort_values(by='Condition', key=lambda x: x.map({v: i for i, v in enumerate(order)}))
 
-# # plot the distribution of the weights for each condition and each weight using facet grid
-# plt.figure()
-# g = sns.FacetGrid(summary, col='Condition', margin_titles=False)
-# g.map(sns.histplot, 'best_weight', kde=True, color=sns.color_palette('deep')[0], stat='probability', bins=bins)
-# g.set_axis_labels('', '% of Participants', fontproperties=prop, fontsize=15)
-# g.set_titles(col_template="{col_name}", fontproperties=prop, size=20)
-# g.set(xlim=(0, 1))
-# g.set_xticklabels(fontproperties=prop)
-# g.set_yticklabels(fontproperties=prop)
-# g.fig.text(0.5, 0.05, 'Overall Dirichlet Weight', ha='center', fontproperties=prop, fontsize=15)
-# plt.savefig('./figures/Weight_Distribution.png', dpi=1000)
-# plt.show()
-#
-# # plot for RT
-# RT = data[data['TrialType'] == 'CA'].groupby(['Subnum', 'best_weight', 'Condition'])['RT'].mean().reset_index()
-#
-# pos_bins = np.linspace(0, 1, 21)
-#
-# red_color = sns.color_palette("bright", 6)[3]
-#
-# sns.regplot(x='best_weight', y='RT', data=RT, x_ci='ci', ci=95, fit_reg=True, order=4, line_kws={'color': red_color, 'lw': 3},
-#             scatter_kws={'alpha': 0.5}, x_bins=pos_bins, n_boot=10000)
-# plt.ylabel('Reaction Time', fontproperties=prop, fontsize=15)
-# plt.xlabel('Dirichlet Weight', fontproperties=prop, fontsize=15)
-# plt.xticks(fontproperties=prop)
-# plt.yticks(fontproperties=prop)
-# sns.despine()
-# plt.savefig('./figures/RT.png', dpi=600)
-# plt.show()
-#
+# plot the distribution of the weights for each condition and each weight using facet grid
+plt.figure()
+g = sns.FacetGrid(summary, col='Condition', margin_titles=False)
+g.map(sns.histplot, 'best_weight', kde=True, color=sns.color_palette('deep')[0], stat='probability', bins=bins)
+g.set_axis_labels('', '% of Participants', fontproperties=prop, fontsize=15)
+g.set_titles(col_template="{col_name}", fontproperties=prop, size=20)
+g.set(xlim=(0, 1))
+g.set_xticklabels(fontproperties=prop)
+g.set_yticklabels(fontproperties=prop)
+g.fig.text(0.5, 0.05, 'Overall Dirichlet Weight', ha='center', fontproperties=prop, fontsize=15)
+plt.savefig('./figures/Weight_Distribution.png', dpi=1000)
+plt.show()
+
+
+# plot for RT
+RT = data[data['TrialType'] == 'CA'].groupby(['Subnum', 'best_weight', 'Condition'])['RT'].mean().reset_index()
+
+pos_bins = np.linspace(0, 1, 21)
+
+red_color = sns.color_palette("bright", 6)[3]
+
+sns.regplot(x='best_weight', y='RT', data=RT, x_ci='ci', ci=95, fit_reg=True, order=4, line_kws={'color': red_color, 'lw': 3},
+            scatter_kws={'alpha': 0.5}, x_bins=pos_bins, n_boot=10000)
+plt.ylabel('Reaction Time', fontproperties=prop, fontsize=15)
+plt.xlabel('Dirichlet Weight', fontproperties=prop, fontsize=15)
+plt.xticks(fontproperties=prop)
+plt.yticks(fontproperties=prop)
+sns.despine()
+plt.savefig('./figures/RT.png', dpi=600)
+plt.show()
+
 # plot for all
 # Define colors for each bar
 palette6 = sns.color_palette("pastel", 6)
@@ -202,7 +203,9 @@ plt.xlabel('')
 plt.gca().yaxis.set_major_formatter(ticker.PercentFormatter(xmax=1))
 plt.xticks(fontproperties=prop, fontsize=15)
 plt.yticks(fontproperties=prop, fontsize=15)
-plt.axhline(y=0.5, color='black', linestyle='--', linewidth=1)
+plt.axhline(y=(0.75/1.4), color='black', linestyle='-', linewidth=1, label='Reward Ratio')
+plt.axhline(y=0.5, color='black', linestyle='--', linewidth=1, label='Random Choice')
+plt.legend(prop=prop, framealpha=0.5, loc='lower left')
 sns.despine()
 plt.savefig('./figures/CA_behavioral.png', dpi=1000)
 plt.show()

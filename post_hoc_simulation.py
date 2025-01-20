@@ -57,7 +57,7 @@ if __name__ == '__main__':
     decay_results = [decay_LV_results, decay_MV_results, decay_HV_results]
     delta_results = [delta_LV_results, delta_MV_results, delta_HV_results]
     actr_results = [actr_LV_results, actr_MV_results, actr_HV_results]
-    delta_asym_results = [delta_asym_LV_results, delta_asym_MV_results, delta_asym_HV_results]
+    delta_asym_results = [deltaasym_LV_results, deltaasym_MV_results, deltaasym_HV_results]
     utility_results = [utility_LV_results, utility_MV_results, utility_HV_results]
 
     reward_means = [0.65, 0.35, 0.75, 0.25]

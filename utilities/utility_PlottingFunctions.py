@@ -222,7 +222,7 @@ def crop_colormap(cmap, minval=0.0, maxval=1.0, n=100):
 
 # Generate a 3D visualization of the simulation results
 def visualization_3D(sim_summary, x_var='reward_ratio', y_var='var', z_var='choice',
-                     x_label='Reward Ratio', y_label='Variance', z_label='Proportion of C choices',
+                     x_label='Reward Ratio', y_label='Variance', z_label='% of C choices',
                      plot_type='surface', cmap='coolwarm', color='skyblue', elev=20, azim=-135, title=True):
     fig, axs = plt.subplots(2, 3, subplot_kw={'projection': '3d'}, figsize=(16, 8))
     axs = axs.flatten()
@@ -291,16 +291,20 @@ def visualization_3D(sim_summary, x_var='reward_ratio', y_var='var', z_var='choi
 
     if plot_type == 'surface':
         # Create a single colorbar for all subplots
-        cbar_ax = fig.add_axes([0.95, 0.25, 0.01, 0.5])
+        cbar_ax = fig.add_axes([0.93, 0.25, 0.01, 0.5])
         mappable = plt.cm.ScalarMappable(norm=norm, cmap=cmap)
         mappable.set_array([])  # so colorbar knows the data range
-        fig.colorbar(mappable, cax=cbar_ax, orientation='vertical')
+        cbar = fig.colorbar(mappable, cax=cbar_ax, orientation='vertical')
+        cbar.set_label('% of Choosing C - Reward Ratio', fontproperties=prop, fontsize=15, labelpad=15)
+        for tick in cbar.ax.get_yticklabels():
+            tick.set_fontproperties(prop)
 
     plt.savefig(f'./figures/simulation_{plot_type}.png', dpi=1000)
-    plt.show(dpi=600)
+    plt.show(dpi=1000)
+
 
 def visualization_3D_prop(sim_summary, x_var='reward_ratio', y_var='var', z_var='proportion',
-                     x_label='Reward Ratio', y_label='Variance', z_label='Proportion of Frequency Effects',
+                     x_label='Reward Ratio', y_label='Variance', z_label='% of Frequency Effects',
                      plot_type='surface', cmap='coolwarm', color='skyblue', elev=20, azim=-135, title=True):
     fig, axs = plt.subplots(2, 3, subplot_kw={'projection': '3d'}, figsize=(16, 8))
     axs = axs.flatten()
@@ -310,8 +314,8 @@ def visualization_3D_prop(sim_summary, x_var='reward_ratio', y_var='var', z_var=
 
     fig.subplots_adjust(hspace=0.25, wspace=-0.1)
 
-    max_z = float('inf')
-    min_z = float('-inf')
+    max_z = float('-inf')
+    min_z = float('inf')
     for data in sim_summary:
         z = data[z_var]
         max_z = max(max_z, z.max())
@@ -330,7 +334,7 @@ def visualization_3D_prop(sim_summary, x_var='reward_ratio', y_var='var', z_var=
         grid_z = griddata((x, y), z, (grid_x, grid_y), method='linear')
 
         if plot_type == 'surface':
-            axs[i].plot_surface(grid_x, grid_y, grid_z, cmap=cmap, norm=norm, alpha=0.99)
+            axs[i].plot_surface(grid_x, grid_y, grid_z, cmap=cmap, norm=norm, alpha=0.99, rstride=1, cstride=1)
         elif plot_type == 'wireframe':
             axs[i].plot_wireframe(grid_x, grid_y, grid_z, color=color)
         elif plot_type == 'contour':
@@ -359,11 +363,14 @@ def visualization_3D_prop(sim_summary, x_var='reward_ratio', y_var='var', z_var=
 
     if plot_type == 'surface':
         # Create a single colorbar for all subplots
-        cbar_ax = fig.add_axes([0.95, 0.25, 0.01, 0.5])
-        fig.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=cmap), cax=cbar_ax, orientation='vertical')
+        cbar_ax = fig.add_axes([0.93, 0.25, 0.01, 0.5])
+        cbar = fig.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=cmap), cax=cbar_ax, orientation='vertical')
+        cbar.set_label(z_label, fontproperties=prop, fontsize=15, labelpad=15)
+        for tick in cbar.ax.get_yticklabels():
+            tick.set_fontproperties(prop)
 
     plt.savefig(f'./figures/simulation_{plot_type}_percentage.png', dpi=1000)
-    plt.show(dpi=600)
+    plt.show(dpi=1000)
 
 
 # Function to plot planes with filled colors

@@ -92,76 +92,76 @@ if __name__ == '__main__':
                             result = model.fit(LV, model_type, num_iterations=200, weight_Gau=gau_weight, weight_Dir=dir_weight,
                                                arbi_option='Entropy', Dir_fun=dir_fun, Gau_fun=gau_fun)
                             result.to_csv(file_path, index=False)
-    #
-    # # ------------------------------------------------------------------------------------------------------------------
-    # # Fit the traditional models: decay, delta, actr, actr_original_version
-    # # ------------------------------------------------------------------------------------------------------------------
-    # HV_decay = decay.fit(HV, num_iterations=200)
-    # HV_delta = delta.fit(HV, num_iterations=200)
-    # HV_actr = actr.fit(HV, num_iterations=200)
-    # HV_actr_original = actr_original.fit(HV, num_iterations=200)
-    # HV_delta_asym = delta_asym.fit(HV, num_iterations=200)
-    # HV_utility = mean_var_utility.fit(HV, num_iterations=200)
 
-    # MV_decay = decay.fit(MV, num_iterations=200)
-    # MV_delta = delta.fit(MV, num_iterations=200)
-    # MV_actr = actr.fit(MV, num_iterations=200)
-    # MV_actr_original = actr_original.fit(MV, num_iterations=200)
-    # MV_delta_asym = delta_asym.fit(MV, num_iterations=200)
-    # MV_utility = mean_var_utility.fit(MV, num_iterations=200)
+    # ------------------------------------------------------------------------------------------------------------------
+    # Fit the traditional models: decay, delta, actr, actr_original_version
+    # ------------------------------------------------------------------------------------------------------------------
+    HV_decay = decay.fit(HV, num_iterations=200)
+    HV_delta = delta.fit(HV, num_iterations=200)
+    HV_actr = actr.fit(HV, num_iterations=200)
+    HV_actr_original = actr_original.fit(HV, num_iterations=200)
+    HV_delta_asym = delta_asym.fit(HV, num_iterations=200)
+    HV_utility = mean_var_utility.fit(HV, num_iterations=200)
 
-    # LV_decay = decay.fit(LV, num_iterations=200)
-    # LV_delta = delta.fit(LV, num_iterations=200)
-    # LV_actr = actr.fit(LV, num_iterations=200)
-    # LV_actr_original = actr_original.fit(LV, num_iterations=200)
-    # LV_delta_asym = delta_asym.fit(LV, num_iterations=200)
-    # LV_utility = mean_var_utility.fit(LV, num_iterations=200)
+    MV_decay = decay.fit(MV, num_iterations=200)
+    MV_delta = delta.fit(MV, num_iterations=200)
+    MV_actr = actr.fit(MV, num_iterations=200)
+    MV_actr_original = actr_original.fit(MV, num_iterations=200)
+    MV_delta_asym = delta_asym.fit(MV, num_iterations=200)
+    MV_utility = mean_var_utility.fit(MV, num_iterations=200)
 
-    # # save
-    # HV_decay.to_csv('./data/DataFitting/FittingResults/decay_HV_results.csv', index=False)
-    # HV_delta.to_csv('./data/DataFitting/FittingResults/delta_HV_results.csv', index=False)
-    # HV_actr.to_csv('./data/DataFitting/FittingResults/actr_HV_results.csv', index=False)
-    # HV_actr_original.to_csv('./data/DataFitting/FittingResults/actr_original_HV_results.csv', index=False)
-    # HV_delta_asym.to_csv('./data/DataFitting/FittingResults/delta_asym_HV_results.csv', index=False)
-    # HV_utility.to_csv('./data/DataFitting/FittingResults/utility_HV_results.csv', index=False)
+    LV_decay = decay.fit(LV, num_iterations=200)
+    LV_delta = delta.fit(LV, num_iterations=200)
+    LV_actr = actr.fit(LV, num_iterations=200)
+    LV_actr_original = actr_original.fit(LV, num_iterations=200)
+    LV_delta_asym = delta_asym.fit(LV, num_iterations=200)
+    LV_utility = mean_var_utility.fit(LV, num_iterations=200)
 
-    # MV_decay.to_csv('./data/DataFitting/FittingResults/decay_MV_results.csv', index=False)
-    # MV_delta.to_csv('./data/DataFitting/FittingResults/delta_MV_results.csv', index=False)
-    # MV_actr.to_csv('./data/DataFitting/FittingResults/actr_MV_results.csv', index=False)
-    # MV_actr_original.to_csv('./data/DataFitting/FittingResults/actr_original_MV_results.csv', index=False)
-    # MV_delta_asym.to_csv('./data/DataFitting/FittingResults/delta_asym_MV_results.csv', index=False)
-    # MV_utility.to_csv('./data/DataFitting/FittingResults/utility_MV_results.csv', index=False)
+    # save
+    HV_decay.to_csv('./data/DataFitting/FittingResults/decay_HV_results.csv', index=False)
+    HV_delta.to_csv('./data/DataFitting/FittingResults/delta_HV_results.csv', index=False)
+    HV_actr.to_csv('./data/DataFitting/FittingResults/actr_HV_results.csv', index=False)
+    HV_actr_original.to_csv('./data/DataFitting/FittingResults/actr_original_HV_results.csv', index=False)
+    HV_delta_asym.to_csv('./data/DataFitting/FittingResults/delta_asym_HV_results.csv', index=False)
+    HV_utility.to_csv('./data/DataFitting/FittingResults/utility_HV_results.csv', index=False)
 
-    # LV_decay.to_csv('./data/DataFitting/FittingResults/decay_LV_results.csv', index=False)
-    # LV_delta.to_csv('./data/DataFitting/FittingResults/delta_LV_results.csv', index=False)
-    # LV_actr.to_csv('./data/DataFitting/FittingResults/actr_LV_results.csv', index=False)
-    # LV_actr_original.to_csv('./data/DataFitting/FittingResults/actr_original_LV_results.csv', index=False)
-    # LV_delta_asym.to_csv('./data/DataFitting/FittingResults/delta_asym_LV_results.csv', index=False)
-    # LV_utility.to_csv('./data/DataFitting/FittingResults/utility_LV_results.csv', index=False)
-    #
-    # print(f'Time taken: {time.time() - start}')
+    MV_decay.to_csv('./data/DataFitting/FittingResults/decay_MV_results.csv', index=False)
+    MV_delta.to_csv('./data/DataFitting/FittingResults/delta_MV_results.csv', index=False)
+    MV_actr.to_csv('./data/DataFitting/FittingResults/actr_MV_results.csv', index=False)
+    MV_actr_original.to_csv('./data/DataFitting/FittingResults/actr_original_MV_results.csv', index=False)
+    MV_delta_asym.to_csv('./data/DataFitting/FittingResults/delta_asym_MV_results.csv', index=False)
+    MV_utility.to_csv('./data/DataFitting/FittingResults/utility_MV_results.csv', index=False)
 
-    # # ==================================================================================================================
-    # # Additional Model Fitting as Requested by Reviewers
-    # # ==================================================================================================================
-    # # select the first 50 AB and CD trials
-    # HV_50 = HV_df[(HV_df['TrialType'] == 'AB') | (HV_df['TrialType'] == 'CD')].groupby(['Subnum', 'TrialType']).head(50)
-    # MV_50 = MV_df[(MV_df['TrialType'] == 'AB') | (MV_df['TrialType'] == 'CD')].groupby(['Subnum', 'TrialType']).head(50)
-    # LV_50 = LV_df[(LV_df['TrialType'] == 'AB') | (LV_df['TrialType'] == 'CD')].groupby(['Subnum', 'TrialType']).head(50)
-    #
-    # HV_50 = dict_generator(HV_50)
-    # MV_50 = dict_generator(MV_50)
-    # LV_50 = dict_generator(LV_50)
-    #
-    # # fit the models
-    # dual_50_HV = model.fit(HV_50, 'Entropy_Dis_ID', num_iterations=200, weight_Gau='softmax', weight_Dir='softmax',
-    #                         arbi_option='Entropy', Dir_fun='Linear_Recency', Gau_fun='Naive_Recency')
-    # dual_50_MV = model.fit(MV_50, 'Entropy_Dis_ID', num_iterations=200, weight_Gau='softmax', weight_Dir='softmax',
-    #                         arbi_option='Entropy', Dir_fun='Linear_Recency', Gau_fun='Naive_Recency')
-    # dual_50_LV = model.fit(LV_50, 'Entropy_Dis_ID', num_iterations=200, weight_Gau='softmax', weight_Dir='softmax',
-    #                         arbi_option='Entropy', Dir_fun='Linear_Recency', Gau_fun='Naive_Recency')
-    #
-    # # save the results
-    # dual_50_HV.to_csv('./data/DataFitting/FittingResults/AlternativeModels/50_dual_HV_results.csv', index=False)
-    # dual_50_MV.to_csv('./data/DataFitting/FittingResults/AlternativeModels/50_dual_MV_results.csv', index=False)
-    # dual_50_LV.to_csv('./data/DataFitting/FittingResults/AlternativeModels/50_dual_LV_results.csv', index=False)
+    LV_decay.to_csv('./data/DataFitting/FittingResults/decay_LV_results.csv', index=False)
+    LV_delta.to_csv('./data/DataFitting/FittingResults/delta_LV_results.csv', index=False)
+    LV_actr.to_csv('./data/DataFitting/FittingResults/actr_LV_results.csv', index=False)
+    LV_actr_original.to_csv('./data/DataFitting/FittingResults/actr_original_LV_results.csv', index=False)
+    LV_delta_asym.to_csv('./data/DataFitting/FittingResults/delta_asym_LV_results.csv', index=False)
+    LV_utility.to_csv('./data/DataFitting/FittingResults/utility_LV_results.csv', index=False)
+
+    print(f'Time taken: {time.time() - start}')
+
+    # ==================================================================================================================
+    # Additional Model Fitting as Requested by Reviewers
+    # ==================================================================================================================
+    # select the first 50 AB and CD trials
+    HV_50 = HV_df[(HV_df['TrialType'] == 'AB') | (HV_df['TrialType'] == 'CD')].groupby(['Subnum', 'TrialType']).head(50)
+    MV_50 = MV_df[(MV_df['TrialType'] == 'AB') | (MV_df['TrialType'] == 'CD')].groupby(['Subnum', 'TrialType']).head(50)
+    LV_50 = LV_df[(LV_df['TrialType'] == 'AB') | (LV_df['TrialType'] == 'CD')].groupby(['Subnum', 'TrialType']).head(50)
+
+    HV_50 = dict_generator(HV_50)
+    MV_50 = dict_generator(MV_50)
+    LV_50 = dict_generator(LV_50)
+
+    # fit the models
+    dual_50_HV = model.fit(HV_50, 'Entropy_Dis_ID', num_iterations=200, weight_Gau='softmax', weight_Dir='softmax',
+                            arbi_option='Entropy', Dir_fun='Linear_Recency', Gau_fun='Naive_Recency')
+    dual_50_MV = model.fit(MV_50, 'Entropy_Dis_ID', num_iterations=200, weight_Gau='softmax', weight_Dir='softmax',
+                            arbi_option='Entropy', Dir_fun='Linear_Recency', Gau_fun='Naive_Recency')
+    dual_50_LV = model.fit(LV_50, 'Entropy_Dis_ID', num_iterations=200, weight_Gau='softmax', weight_Dir='softmax',
+                            arbi_option='Entropy', Dir_fun='Linear_Recency', Gau_fun='Naive_Recency')
+
+    # save the results
+    dual_50_HV.to_csv('./data/DataFitting/FittingResults/AlternativeModels/50_dual_HV_results.csv', index=False)
+    dual_50_MV.to_csv('./data/DataFitting/FittingResults/AlternativeModels/50_dual_MV_results.csv', index=False)
+    dual_50_LV.to_csv('./data/DataFitting/FittingResults/AlternativeModels/50_dual_LV_results.csv', index=False)

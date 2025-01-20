@@ -60,6 +60,7 @@ actr = ComputationalModels("ACTR")
 # randomly draw reward values and variances
 n = 5000
 n_iterations = 1000
+n_iterations_other = 1
 epsilon = 0.01
 
 
@@ -78,23 +79,22 @@ def run_simulation(i):
     # Simulate the data
     dual_simulation = model.simulate([a_val, b_val, c_val, d_val], var, model='Entropy_Dis_ID',
                                      AB_freq=100, CD_freq=50, num_iterations=n_iterations, weight_Gau='softmax',
-                                     weight_Dir='softmax', arbi_option='Entropy', Dir_fun='Linear_Recency',
-                                     Gau_fun='Naive_Recency')
+                                     weight_Dir='softmax', Dir_fun='Linear_Recency', Gau_fun='Naive_Recency')
 
     decay_simulation = decay.simulate([a_val, b_val, c_val, d_val], var, AB_freq=100, CD_freq=50,
-                                      num_iterations=n_iterations)
+                                      num_iterations=n_iterations_other)
 
     delta_simulation = delta.simulate([a_val, b_val, c_val, d_val], var, AB_freq=100, CD_freq=50,
-                                      num_iterations=n_iterations)
+                                      num_iterations=n_iterations_other)
 
     delta_asym_simulation = delta_asym.simulate([a_val, b_val, c_val, d_val], var, AB_freq=100, CD_freq=50,
-                                                num_iterations=n_iterations)
+                                                num_iterations=n_iterations_other)
 
     utility_simulation = mean_var_utility.simulate([a_val, b_val, c_val, d_val], var, AB_freq=100,
-                                                   CD_freq=50, num_iterations=n_iterations)
+                                                   CD_freq=50, num_iterations=n_iterations_other)
 
     actr_simulation = actr.simulate([a_val, b_val, c_val, d_val], var, AB_freq=100, CD_freq=50,
-                                    num_iterations=n_iterations)
+                                    num_iterations=n_iterations_other)
 
     # Summarize the results
     dual_results = dual_simulation[dual_simulation['pair'] == ('C', 'A')].groupby('simulation_num').agg(
