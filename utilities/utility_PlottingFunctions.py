@@ -222,7 +222,7 @@ def crop_colormap(cmap, minval=0.0, maxval=1.0, n=100):
 
 # Generate a 3D visualization of the simulation results
 def visualization_3D(sim_summary, x_var='reward_ratio', y_var='var', z_var='choice',
-                     x_label='Reward Ratio', y_label='Variance', z_label='% of C choices',
+                     x_label='Reward Ratio', y_label='Variance (SD)', z_label='% of C choices',
                      plot_type='surface', cmap='coolwarm', color='skyblue', elev=20, azim=-135, title=True):
     fig, axs = plt.subplots(2, 3, subplot_kw={'projection': '3d'}, figsize=(16, 8))
     axs = axs.flatten()
@@ -304,7 +304,7 @@ def visualization_3D(sim_summary, x_var='reward_ratio', y_var='var', z_var='choi
 
 
 def visualization_3D_prop(sim_summary, x_var='reward_ratio', y_var='var', z_var='proportion',
-                     x_label='Reward Ratio', y_label='Variance', z_label='% of Frequency Effects',
+                     x_label='Reward Ratio', y_label='Variance (SD)', z_label='% of Frequency Effects',
                      plot_type='surface', cmap='coolwarm', color='skyblue', elev=20, azim=-135, title=True):
     fig, axs = plt.subplots(2, 3, subplot_kw={'projection': '3d'}, figsize=(16, 8))
     axs = axs.flatten()

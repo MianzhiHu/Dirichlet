@@ -153,7 +153,7 @@ if __name__ == '__main__':
 
     start_time = time.time()
 
-    dual_filepath = './data/Simulation/random_dual.csv'
+    dual_filepath = './data/Simulation/random_dual4.csv'
     decay_filepath = './data/Simulation/random_decay.csv'
     delta_filepath = './data/Simulation/random_delta.csv'
     delta_asym_filepath = './data/Simulation/random_delta_asym.csv'
@@ -205,35 +205,17 @@ mv = [0.24, 0.24, 0.22, 0.22]
 lv = [0.12, 0.12, 0.11, 0.11]
 uncertainty = [0.43, 0.43, 0.12, 0.12]
 
-# ========== Dirichlet Model ==========
-dir_hv = model.simulate(reward_means, hv, model='Dir', AB_freq=100, CD_freq=50, num_iterations=10000)
-dir_mv = model.simulate(reward_means, mv, model='Dir', AB_freq=100, CD_freq=50, num_iterations=10000)
-dir_lv = model.simulate(reward_means, lv, model='Dir', AB_freq=100, CD_freq=50, num_iterations=10000)
-
-dir_hv.to_csv('./data/Simulation/dir_hv.csv', index=False)
-dir_mv.to_csv('./data/Simulation/dir_mv.csv', index=False)
-dir_lv.to_csv('./data/Simulation/dir_lv.csv', index=False)
-
-# ========== Multivariate Gaussian Model ==========
-gau_hv = model.simulate(reward_means, hv, model='Gau', AB_freq=100, CD_freq=50, num_iterations=10000)
-gau_mv = model.simulate(reward_means, mv, model='Gau', AB_freq=100, CD_freq=50, num_iterations=10000)
-gau_lv = model.simulate(reward_means, lv, model='Gau', AB_freq=100, CD_freq=50, num_iterations=10000)
-
-gau_hv.to_csv('./data/Simulation/gau_hv.csv', index=False)
-gau_mv.to_csv('./data/Simulation/gau_mv.csv', index=False)
-gau_lv.to_csv('./data/Simulation/gau_lv.csv', index=False)
-
 # ========= Dual Process Model ==========
-dual_hv = model.simulate(reward_means, hv, model='Entropy_Dis_ID', AB_freq=100, CD_freq=50, num_iterations=10000,
-                         weight_Gau='softmax', weight_Dir='softmax', arbi_option='Entropy', Dir_fun='Linear_Recency',
-                         Gau_fun='Naive_Recency')
+dual_hv = model.simulate(reward_means, hv, model='Entropy_Dis_ID', AB_freq=100, CD_freq=50, num_iterations=1000,
+                         weight_Gau='softmax', weight_Dir='softmax', Dir_fun='Linear_Recency',
+                         Gau_fun='Naive_Recency', a_min=1)
 
-dual_mv = model.simulate(reward_means, mv, model='Entropy_Dis_ID', AB_freq=100, CD_freq=50, num_iterations=10000,
-                         weight_Gau='softmax', weight_Dir='softmax', arbi_option='Entropy', Dir_fun='Linear_Recency',
-                         Gau_fun='Naive_Recency')
-dual_lv = model.simulate(reward_means, lv, model='Entropy_Dis_ID', AB_freq=100, CD_freq=50, num_iterations=10000,
-                         weight_Gau='softmax', weight_Dir='softmax', arbi_option='Entropy', Dir_fun='Linear_Recency',
-                         Gau_fun='Naive_Recency')
+dual_mv = model.simulate(reward_means, mv, model='Entropy_Dis_ID', AB_freq=100, CD_freq=50, num_iterations=1000,
+                         weight_Gau='softmax', weight_Dir='softmax', Dir_fun='Linear_Recency',
+                         Gau_fun='Naive_Recency', a_min=1)
+dual_lv = model.simulate(reward_means, lv, model='Entropy_Dis_ID', AB_freq=100, CD_freq=50, num_iterations=1000,
+                         weight_Gau='softmax', weight_Dir='softmax', Dir_fun='Linear_Recency',
+                         Gau_fun='Naive_Recency', a_min=1)
 
 dual_hv.to_csv('./data/Simulation/Traditional Simulations/dual_hv.csv', index=False)
 dual_mv.to_csv('./data/Simulation/Traditional Simulations/dual_mv.csv', index=False)

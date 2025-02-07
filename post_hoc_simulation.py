@@ -46,10 +46,6 @@ if __name__ == '__main__':
     model_utility = ComputationalModels(model_type='mean_var_utility')
 
     # simulate the data
-    # LV_results = [Dual_LV_results, Obj_LV_results]
-    # MV_results = [Dual_MV_results, Obj_MV_results]
-    # HV_results = [Dual_HV_results, Obj_HV_results]
-    # models = ['Entropy_Dis_ID', 'Entropy_Dis']
     LV_results = [Dual_LV_results]
     MV_results = [Dual_MV_results]
     HV_results = [Dual_HV_results]
@@ -74,7 +70,7 @@ if __name__ == '__main__':
             simulated_data = model.bootstrapping_post_hoc_simulation(LV_results[i], models[i],
                                                        reward_means, lv, Gau_fun='Naive_Recency',
                                                        Dir_fun='Linear_Recency',
-                                                       num_iterations=10000)
+                                                       num_iterations=10000, a_min=1)
             simulated_data.to_csv(file_name, index=False)
         else:
             print(f"{models[i]}_posthoc_LV.csv already exists")
@@ -86,7 +82,7 @@ if __name__ == '__main__':
             simulated_data = model.bootstrapping_post_hoc_simulation(MV_results[i], models[i],
                                                        reward_means, mv, Gau_fun='Naive_Recency',
                                                        Dir_fun='Linear_Recency',
-                                                       num_iterations=10000)
+                                                       num_iterations=10000, a_min=1)
             simulated_data.to_csv(file_name, index=False)
         else:
             print(f"{models[i]}_posthoc_MV.csv already exists")
@@ -98,7 +94,7 @@ if __name__ == '__main__':
             simulated_data = model.bootstrapping_post_hoc_simulation(HV_results[i], models[i],
                                                        reward_means, hv, Gau_fun='Naive_Recency',
                                                        Dir_fun='Linear_Recency',
-                                                       num_iterations=10000)
+                                                       num_iterations=10000, a_min=1)
             simulated_data.to_csv(file_name, index=False)
         else:
             print(f"{models[i]}_posthoc_HV.csv already exists")

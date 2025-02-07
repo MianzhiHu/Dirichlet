@@ -82,7 +82,7 @@ n_trialtypes = len(all_posthoc['TrialType'].unique())
 all_posthoc = all_posthoc.reset_index(drop=True)
 all_posthoc['Subnum'] = all_posthoc.index // (n_models * n_trialtypes) + 1
 
-all_posthoc_summary = all_posthoc.groupby(['Condition', 'TrialType', 'model'])['choice'].mean().reset_index()
+all_posthoc_summary = all_posthoc.groupby(['Condition', 'TrialType', 'model'], observed=False)['choice'].mean().reset_index()
 all_posthoc_summary = all_posthoc_summary.merge(data_summary, on=['Condition', 'TrialType'], how='left')
 
 # calculate the RMSE
@@ -95,8 +95,11 @@ all_posthoc_summary['model'] = pd.Categorical(all_posthoc_summary['model'],
 all_posthoc_summary = all_posthoc_summary.sort_values(by=['Condition', 'TrialType', 'model'])
 all_posthoc_summary.to_csv('./data/RMSE_all.csv', index=False)
 
-all_posthoc_summary_model = all_posthoc_summary.groupby(['model'], observed=False)['RMSE'].mean().reset_index()
+all_posthoc_summary_model = all_posthoc_summary.groupby(['Condition', 'model'], observed=False)['RMSE'].mean().reset_index()
 all_posthoc_summary_model = all_posthoc_summary_model.sort_values(by=['Condition', 'model'])
+
+all_posthoc_summary_model = all_posthoc_summary.groupby(['model'], observed=False)['RMSE'].mean().reset_index()
+all_posthoc_summary_model = all_posthoc_summary_model.sort_values(by=['model'])
 
 all_posthoc_summary_CA = all_posthoc_summary[all_posthoc_summary['TrialType'] == 'CA']
 rmse = all_posthoc_summary_CA.groupby(['model', 'Condition'])['RMSE'].mean().reset_index()
@@ -133,81 +136,81 @@ plt.tight_layout()
 plt.savefig('./figures/posthoc_CA.png', dpi=600)
 plt.show()
 
-# # add summary columns to all_posthoc
-# all_posthoc['pred_choice'] = np.where(all_posthoc['choice'] > 0.5, 1, 0)
-# all_posthoc['AE'] = np.abs(all_posthoc['bestOption'] - all_posthoc['choice'])
-# all_posthoc['squared_error'] = all_posthoc['AE'] ** 2
+# add summary columns to all_posthoc
+all_posthoc['pred_choice'] = np.where(all_posthoc['choice'] > 0.5, 1, 0)
+all_posthoc['AE'] = np.abs(all_posthoc['bestOption'] - all_posthoc['choice'])
+all_posthoc['squared_error'] = all_posthoc['AE'] ** 2
 
-# # ========================================
-# # filter steps (comment out if not needed)
-# # ========================================
-# included_models = ['Dual', 'delta', 'decay', 'actr', 'Obj']
-# all_posthoc = all_posthoc[all_posthoc['model'].isin(included_models)]
-#
-# # reset subject number
-# n_models = len(included_models)
-# n_trials = 250
-# # sort by condition
-# all_posthoc = all_posthoc.sort_values(by=['Condition', 'Subnum', 'model', 'trial_index'])
-# all_posthoc = all_posthoc.reset_index(drop=True)
-# all_posthoc['Subnum'] = all_posthoc.index // (n_models * n_trials) + 1
-#
-# # # save the data
-# # all_posthoc.to_csv('./data/all_posthoc.csv', index=False)
-#
-# for condition, model in all_posthoc.groupby(['Condition', 'model']):
-#     print(f'{condition[0]}: {condition[1]}')
-#     print(f'MSE: {model["squared_error"].mean()}')
-#     print(f'RMSE: {np.sqrt(model["squared_error"].mean())}')
-#     print(f'MAE: {model["AE"].mean()}')
-#
-# MSE_by_participant = all_posthoc.groupby(['Condition', 'model', 'Subnum', 'TrialType'])[[
-#     'AE', 'squared_error']].mean().reset_index()
-# # MSE_by_participant.to_csv('./data/MSE_by_participant.csv', index=False)
-#
-# # calculate the proportion of accurately predicting the best option
-# all_posthoc['correct'] = np.where(all_posthoc['bestOption'] == all_posthoc['pred_choice'], 1, 0)
-# proportion_correct = all_posthoc.groupby(['Condition', 'model', 'Subnum', 'TrialType'])['correct'].mean().reset_index()
-# proportion_correct_CA = proportion_correct[proportion_correct['TrialType'] == 'CA']
-#
-# proportion_correct.to_csv('./data/proportion_correct.csv', index=False)
-#
-# # calculate the proportion of best option chosen
-# proportion_best_option = all_posthoc.groupby(['Condition', 'model', 'Subnum', 'TrialType'])[
-#     'choice'].mean().reset_index()
-# proportion_best_option_by_trial = all_posthoc.groupby(['Condition', 'model', 'TrialType'])[
-#     'choice'].mean().reset_index()
-# proportion_best_option_by_trial_AD = proportion_best_option_by_trial[
-#     proportion_best_option_by_trial['TrialType'] == 'AD']
-#
-# proportion_best_option_CA = proportion_best_option[proportion_best_option['TrialType'] == 'CA']
-# proportion_best_option_CA = proportion_best_option_CA[proportion_best_option_CA['model'].isin(included_models)]
-# proportion_best_option_CA['Condition'] = pd.Categorical(proportion_best_option_CA['Condition'],
-#                                                         categories=['LV', 'MV', 'HV'], ordered=True)
-#
-# # plot the proportion of correctly predicting the best option
-# palette = sns.color_palette("pastel", 4)
-# sns.set_theme(style='white')
-# plt.figure(figsize=(10, 6))
-# sns.barplot(data=proportion_correct_CA, x='model', y='correct', hue='Condition', palette=palette)
-# plt.title('Proportion of correctly predicting the best option')
-# plt.ylabel('Proportion')
-# plt.xlabel('Model')
-# plt.show()
-#
-# # MSE for the proportion of optimal choices for each trial plot_type
-# MAE_by_proportion = all_posthoc.groupby(['Condition', 'model', 'TrialType'])[
-#     ['choice', 'bestOption']].mean().reset_index()
-# MAE_by_proportion = MAE_by_proportion.groupby(['Condition', 'model', 'TrialType']).apply(
-#     lambda x: np.abs(x['choice'] - x['bestOption']).mean()).reset_index()
-# # divide the df by the condition
-# MSE_by_proportion_HV = MAE_by_proportion[MAE_by_proportion['Condition'] == 'HV']
-# MSE_by_proportion_MV = MAE_by_proportion[MAE_by_proportion['Condition'] == 'MV']
-# MSE_by_proportion_LV = MAE_by_proportion[MAE_by_proportion['Condition'] == 'LV']
-# MSE_by_proportion = MAE_by_proportion[MAE_by_proportion['TrialType'] == 'CA']
-#
-# # MSE for processes chosen
-# process_data = pd.read_csv('./data/CombinedVarianceData.csv')
-# HV_process = process_data[process_data['Condition'] == 'HV']
-# MV_process = process_data[process_data['Condition'] == 'MV']
-# LV_process = process_data[process_data['Condition'] == 'LV']
+# ========================================
+# filter steps (comment out if not needed)
+# ========================================
+included_models = ['Dual', 'delta', 'decay', 'actr', 'Obj']
+all_posthoc = all_posthoc[all_posthoc['model'].isin(included_models)]
+
+# reset subject number
+n_models = len(included_models)
+n_trials = 250
+# sort by condition
+all_posthoc = all_posthoc.sort_values(by=['Condition', 'Subnum', 'model', 'trial_index'])
+all_posthoc = all_posthoc.reset_index(drop=True)
+all_posthoc['Subnum'] = all_posthoc.index // (n_models * n_trials) + 1
+
+# # save the data
+# all_posthoc.to_csv('./data/all_posthoc.csv', index=False)
+
+for condition, model in all_posthoc.groupby(['Condition', 'model']):
+    print(f'{condition[0]}: {condition[1]}')
+    print(f'MSE: {model["squared_error"].mean()}')
+    print(f'RMSE: {np.sqrt(model["squared_error"].mean())}')
+    print(f'MAE: {model["AE"].mean()}')
+
+MSE_by_participant = all_posthoc.groupby(['Condition', 'model', 'Subnum', 'TrialType'])[[
+    'AE', 'squared_error']].mean().reset_index()
+# MSE_by_participant.to_csv('./data/MSE_by_participant.csv', index=False)
+
+# calculate the proportion of accurately predicting the best option
+all_posthoc['correct'] = np.where(all_posthoc['bestOption'] == all_posthoc['pred_choice'], 1, 0)
+proportion_correct = all_posthoc.groupby(['Condition', 'model', 'Subnum', 'TrialType'])['correct'].mean().reset_index()
+proportion_correct_CA = proportion_correct[proportion_correct['TrialType'] == 'CA']
+
+proportion_correct.to_csv('./data/proportion_correct.csv', index=False)
+
+# calculate the proportion of best option chosen
+proportion_best_option = all_posthoc.groupby(['Condition', 'model', 'Subnum', 'TrialType'])[
+    'choice'].mean().reset_index()
+proportion_best_option_by_trial = all_posthoc.groupby(['Condition', 'model', 'TrialType'])[
+    'choice'].mean().reset_index()
+proportion_best_option_by_trial_AD = proportion_best_option_by_trial[
+    proportion_best_option_by_trial['TrialType'] == 'AD']
+
+proportion_best_option_CA = proportion_best_option[proportion_best_option['TrialType'] == 'CA']
+proportion_best_option_CA = proportion_best_option_CA[proportion_best_option_CA['model'].isin(included_models)]
+proportion_best_option_CA['Condition'] = pd.Categorical(proportion_best_option_CA['Condition'],
+                                                        categories=['LV', 'MV', 'HV'], ordered=True)
+
+# plot the proportion of correctly predicting the best option
+palette = sns.color_palette("pastel", 4)
+sns.set_theme(style='white')
+plt.figure(figsize=(10, 6))
+sns.barplot(data=proportion_correct_CA, x='model', y='correct', hue='Condition', palette=palette)
+plt.title('Proportion of correctly predicting the best option')
+plt.ylabel('Proportion')
+plt.xlabel('Model')
+plt.show()
+
+# MSE for the proportion of optimal choices for each trial plot_type
+MAE_by_proportion = all_posthoc.groupby(['Condition', 'model', 'TrialType'])[
+    ['choice', 'bestOption']].mean().reset_index()
+MAE_by_proportion = MAE_by_proportion.groupby(['Condition', 'model', 'TrialType']).apply(
+    lambda x: np.abs(x['choice'] - x['bestOption']).mean()).reset_index()
+# divide the df by the condition
+MSE_by_proportion_HV = MAE_by_proportion[MAE_by_proportion['Condition'] == 'HV']
+MSE_by_proportion_MV = MAE_by_proportion[MAE_by_proportion['Condition'] == 'MV']
+MSE_by_proportion_LV = MAE_by_proportion[MAE_by_proportion['Condition'] == 'LV']
+MSE_by_proportion = MAE_by_proportion[MAE_by_proportion['TrialType'] == 'CA']
+
+# MSE for processes chosen
+process_data = pd.read_csv('./data/CombinedVarianceData.csv')
+HV_process = process_data[process_data['Condition'] == 'HV']
+MV_process = process_data[process_data['Condition'] == 'MV']
+LV_process = process_data[process_data['Condition'] == 'LV']

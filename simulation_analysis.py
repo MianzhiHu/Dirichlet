@@ -4,10 +4,11 @@ import pandas as pd
 import os
 import matplotlib.pyplot as plt
 import seaborn as sns
+from scipy.interpolate import griddata
 from utilities.utility_PlottingFunctions import visualization_3D, prop, crop_colormap, visualization_3D_prop
 
 # after the simulation has been completed, we can just load the simulated data from the folder
-dual = pd.read_csv('./data/Simulation/random_dual.csv')
+dual = pd.read_csv('./data/Simulation/random_dual32.csv')
 delta = pd.read_csv('./data/Simulation/random_delta.csv')
 delta_asym = pd.read_csv('./data/Simulation/random_delta_asym.csv')
 decay = pd.read_csv('./data/Simulation/random_decay.csv')
@@ -51,7 +52,7 @@ zi = griddata((x, y), z, (xi[None, :], yi[:, None]), method='cubic')
 fig, ax = plt.subplots()
 c = ax.pcolormesh(xi, yi, zi, cmap='Oranges')
 ax.set_xlabel('Reward Ratio', fontproperties=prop, fontsize=20)
-ax.set_ylabel('Variance', fontproperties=prop, fontsize=20)
+ax.set_ylabel('Variance (SD)', fontproperties=prop, fontsize=20)
 plt.xticks(fontproperties=prop, fontsize=15)
 plt.yticks(fontproperties=prop, fontsize=15)
 cbar = plt.colorbar(c, ax=ax)
@@ -67,7 +68,7 @@ plt.show()
 sns.set(style='white')
 fig = plt.figure()
 ax = fig.add_subplot(111)
-sns.regplot(data=sim_summary[0], x='obj_weight', y='proportion', ax=ax, x_ci='ci', ci=95, color='darkorange',
+sns.regplot(data=sim_summary[0], x='obj_weight', y='choice', ax=ax, x_ci='ci', ci=95, color='darkorange',
             scatter_kws={'s': 10, 'alpha': 0.3})
 ax.set_xlabel('Objective Weight of the Dirichlet Process', fontproperties=prop, fontsize=20)
 ax.set_ylabel('% of Frequency Effects', fontproperties=prop, fontsize=20)
