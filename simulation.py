@@ -206,14 +206,14 @@ lv = [0.12, 0.12, 0.11, 0.11]
 uncertainty = [0.43, 0.43, 0.12, 0.12]
 
 # ========= Dual Process Model ==========
-dual_hv = model.simulate(reward_means, hv, model='Entropy_Dis_ID', AB_freq=100, CD_freq=50, num_iterations=1000,
+dual_hv = model.simulate(reward_means, hv, model='Entropy_Dis_ID', AB_freq=100, CD_freq=50, num_iterations=10000,
                          weight_Gau='softmax', weight_Dir='softmax', Dir_fun='Linear_Recency',
                          Gau_fun='Naive_Recency', a_min=1)
 
-dual_mv = model.simulate(reward_means, mv, model='Entropy_Dis_ID', AB_freq=100, CD_freq=50, num_iterations=1000,
+dual_mv = model.simulate(reward_means, mv, model='Entropy_Dis_ID', AB_freq=100, CD_freq=50, num_iterations=10000,
                          weight_Gau='softmax', weight_Dir='softmax', Dir_fun='Linear_Recency',
                          Gau_fun='Naive_Recency', a_min=1)
-dual_lv = model.simulate(reward_means, lv, model='Entropy_Dis_ID', AB_freq=100, CD_freq=50, num_iterations=1000,
+dual_lv = model.simulate(reward_means, lv, model='Entropy_Dis_ID', AB_freq=100, CD_freq=50, num_iterations=10000,
                          weight_Gau='softmax', weight_Dir='softmax', Dir_fun='Linear_Recency',
                          Gau_fun='Naive_Recency', a_min=1)
 

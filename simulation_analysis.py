@@ -8,7 +8,7 @@ from scipy.interpolate import griddata
 from utilities.utility_PlottingFunctions import visualization_3D, prop, crop_colormap, visualization_3D_prop
 
 # after the simulation has been completed, we can just load the simulated data from the folder
-dual = pd.read_csv('./data/Simulation/random_dual32.csv')
+dual = pd.read_csv('./data/Simulation/random_dual.csv')
 delta = pd.read_csv('./data/Simulation/random_delta.csv')
 delta_asym = pd.read_csv('./data/Simulation/random_delta_asym.csv')
 decay = pd.read_csv('./data/Simulation/random_decay.csv')
