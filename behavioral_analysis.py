@@ -9,6 +9,7 @@ from statsmodels.stats.multicomp import pairwise_tukeyhsd
 import scikit_posthocs as sp
 from utilities.utility_DataAnalysis import option_mean_calculation, count_choices, summary_choices
 from utilities.utility_PlottingFunctions import prop
+import pingouin as pg
 
 # import the data
 data = pd.read_csv("./data/ABCDContRewardsAllData.csv")
@@ -91,11 +92,13 @@ if __name__ == '__main__':
     for condition in ['LV', 'MV', 'HV']:
         CA_trials = data[(data['Condition'] == condition) & (data['TrialType'] == 'CA')]
         CA_trials = CA_trials.groupby('subnum')['bestOption'].mean()
-        t, p = ttest_1samp(CA_trials, 0.5)
-        t1, p1 = ttest_1samp(CA_trials, reward_ratio)
+        results_random = pg.ttest(CA_trials, 0.5)
+        results_ratio = pg.ttest(CA_trials, reward_ratio)
         print(f"Condition: {condition}")
-        print(f"Against 0.5: {t}, {p}")
-        print(f"Against reward ratio: {t1}, {p1}")
+        print(f"Against 0.5: t = {results_random['T'].values[0]}, p = {results_random['p-val'].values[0]}")
+        print(f"Against 0.5: CI = {results_random['CI95%'].values[0]}, cohen's d = {results_random['cohen-d'].values[0]}")
+        print(f"Against reward ratio: t = {results_ratio['T'].values[0]}, p = {results_ratio['p-val'].values[0]}")
+        print(f"Against reward ratio: CI = {results_ratio['CI95%'].values[0]}, cohen's d = {results_ratio['cohen-d'].values[0]}")
 
     # Conduct Kruskal-Wallis test
     summary_hv = summary[summary['Condition'] == 'HV']
@@ -108,6 +111,18 @@ if __name__ == '__main__':
     sub_all_count.loc[:, 'total_ratio'] = (sub_all_count['AB'] * 2 + sub_all_count['CD']) / 3
     sub_all_count = pd.merge(sub_all_count, summary, on='Subnum', how='outer')
     sub_all_count.to_csv('./data/sub_all_count.csv', index=False)
+
+    # ANOVA
+    agg_data = pd.read_csv('./data/agg_data.csv')
+
+    # 6*2*3 ANOVA
+    selected_condition = ['MV', 'HV']
+    agg_data = agg_data[agg_data['Condition'].isin(selected_condition)]
+    aov = pg.mixed_anova(data=agg_data, dv='perf', within='Block', between='Condition', subject='Subnum')
+    # get confidence interval
+    ci = pg.pairwise_tests(data=agg_data, dv='perf', within='Block', between='Condition', subject='Subnum')
+    print(aov)
+
 
     # Get demographics
     sex = [1, 2, 1, 2, 2, 2, 2, 2, 1, 2, 2, 2, 1, 2, 2, 1, 2, 2, 1, 2, 2, 2, 1, 1, 2, 2, 2, 2, 2, 2, 1, 2, 2, 1, 2, 2,

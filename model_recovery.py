@@ -25,32 +25,32 @@ if __name__ == '__main__':
     n = 100
     n_fitting_iterations = 30
 
-    hv_sim, hv_fit, hv_recovery = model_recovery(
-        ['Dual-Process', 'Delta', 'Risk-Sensitive Delta', 'Mean-Variance Utility', 'Decay', 'ACT-R'],
-        [model, model_delta, model_asym, model_utility, model_decay, model_actr],
-        reward_means, hv, n_iterations=n, n_fitting_iterations=n_fitting_iterations)
-
-    hv_sim.to_csv('./data/Simulation/Model Recovery/hv_sim.csv', index=False)
-    hv_fit.to_csv('./data/Simulation/Model Recovery/hv_fit.csv', index=False)
-    hv_recovery.to_csv('./data/Simulation/Model Recovery/hv_recovery.csv', index=False)
-
-    mv_sim, mv_fit, mv_recovery = model_recovery(
-        ['Dual-Process', 'Delta', 'Risk-Sensitive Delta', 'Mean-Variance Utility', 'Decay', 'ACT-R'],
-        [model, model_delta, model_asym, model_utility, model_decay, model_actr],
-        reward_means, mv, n_iterations=n, n_fitting_iterations=n_fitting_iterations)
-
-    mv_sim.to_csv('./data/Simulation/Model Recovery/mv_sim.csv', index=False)
-    mv_fit.to_csv('./data/Simulation/Model Recovery/mv_fit.csv', index=False)
-    mv_recovery.to_csv('./data/Simulation/Model Recovery/mv_recovery.csv', index=False)
-
-    lv_sim, lv_fit, lv_recovery = model_recovery(
-        ['Dual-Process', 'Delta', 'Risk-Sensitive Delta', 'Mean-Variance Utility', 'Decay', 'ACT-R'],
-        [model, model_delta, model_asym, model_utility, model_decay, model_actr],
-        reward_means, lv, n_iterations=n, n_fitting_iterations=n_fitting_iterations)
-
-    lv_sim.to_csv('./data/Simulation/Model Recovery/lv_sim.csv', index=False)
-    lv_fit.to_csv('./data/Simulation/Model Recovery/lv_fit.csv', index=False)
-    lv_recovery.to_csv('./data/Simulation/Model Recovery/lv_recovery.csv', index=False)
+    # hv_sim, hv_fit, hv_recovery = model_recovery(
+    #     ['Dual-Process', 'Delta', 'Risk-Sensitive Delta', 'Mean-Variance Utility', 'Decay', 'ACT-R'],
+    #     [model, model_delta, model_asym, model_utility, model_decay, model_actr],
+    #     reward_means, hv, n_iterations=n, n_fitting_iterations=n_fitting_iterations)
+    #
+    # hv_sim.to_csv('./data/Simulation/Model Recovery/hv_sim.csv', index=False)
+    # hv_fit.to_csv('./data/Simulation/Model Recovery/hv_fit.csv', index=False)
+    # hv_recovery.to_csv('./data/Simulation/Model Recovery/hv_recovery.csv', index=False)
+    #
+    # mv_sim, mv_fit, mv_recovery = model_recovery(
+    #     ['Dual-Process', 'Delta', 'Risk-Sensitive Delta', 'Mean-Variance Utility', 'Decay', 'ACT-R'],
+    #     [model, model_delta, model_asym, model_utility, model_decay, model_actr],
+    #     reward_means, mv, n_iterations=n, n_fitting_iterations=n_fitting_iterations)
+    #
+    # mv_sim.to_csv('./data/Simulation/Model Recovery/mv_sim.csv', index=False)
+    # mv_fit.to_csv('./data/Simulation/Model Recovery/mv_fit.csv', index=False)
+    # mv_recovery.to_csv('./data/Simulation/Model Recovery/mv_recovery.csv', index=False)
+    #
+    # lv_sim, lv_fit, lv_recovery = model_recovery(
+    #     ['Dual-Process', 'Delta', 'Risk-Sensitive Delta', 'Mean-Variance Utility', 'Decay', 'ACT-R'],
+    #     [model, model_delta, model_asym, model_utility, model_decay, model_actr],
+    #     reward_means, lv, n_iterations=n, n_fitting_iterations=n_fitting_iterations)
+    #
+    # lv_sim.to_csv('./data/Simulation/Model Recovery/lv_sim.csv', index=False)
+    # lv_fit.to_csv('./data/Simulation/Model Recovery/lv_fit.csv', index=False)
+    # lv_recovery.to_csv('./data/Simulation/Model Recovery/lv_recovery.csv', index=False)
 
 
     # ==================================================================================================================
@@ -61,7 +61,7 @@ if __name__ == '__main__':
     lv_model_recovery = pd.read_csv('./data/Simulation/Model Recovery/lv_recovery.csv')
 
     # construct the confusion and inversion matrix
-    model_recovery_df = hv_model_recovery
+    model_recovery_df = lv_model_recovery
     print(model_recovery_df['simulated_model'].unique())
     m_confusion = confusion_matrix(model_recovery_df['simulated_model'], model_recovery_df['fit_model'],
                                    normalize='true', labels=model_recovery_df['simulated_model'].unique())
@@ -72,7 +72,8 @@ if __name__ == '__main__':
     print(f'Model Recovery for Dual-Process: {dual["fit_model"].value_counts()}')
 
     # plot the confusion matrix
-    sns.heatmap(m_inversion, annot=True, cmap='Blues', xticklabels=model_recovery_df['simulated_model'].unique(),
+    matrix_of_interest = m_inversion
+    sns.heatmap(matrix_of_interest, annot=True, cmap='Blues', xticklabels=model_recovery_df['simulated_model'].unique(),
                 yticklabels=model_recovery_df['simulated_model'].unique(), cbar=False)
     plt.xlabel('Fit Model')
     plt.ylabel('Simulated Model')
